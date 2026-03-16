@@ -43,6 +43,7 @@ import { Toaster, toast } from 'sonner';
 import { UI_LABELS } from './lib/constants';
 import { useArchive } from './context/ArchiveContext';
 import { ArchiveProvider } from './context/ArchiveContext';
+import { AdminRequests } from './components/AdminRequests';
 
 
 type AppTab = 'file-request' | 'dashboard' | 'user-management' | 'registration' | 'status-update' | 'upload';
@@ -104,17 +105,31 @@ const AppContent: React.FC = () => {
         { id: 'product', label: 'Product', icon: Package },
         { id: 'box', label: 'Box Registration', icon: Box },
         { id: 'drawer-assignment', label: 'Drawer Assignment', icon: Square },
+        { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
+        { id: 'file-request', label: 'File Request', icon: FileSearch },
         { id: 'add-to-box', label: 'Add File to Box', icon: FolderOpen }
+        
       ]
     },
     { id: 'status-update', label: UI_LABELS.SIDEBAR.STATUS_UPDATE, icon: RefreshCcw, roles: ['Admin', 'Manager'] },
     { id: 'upload', label: UI_LABELS.SIDEBAR.UPLOAD, icon: UploadCloud, roles: ['Admin'] },
     { id: 'user-management', label: 'User Management', icon: Users, roles: ['Admin'] },
+    { id: 'request-management', label: 'Request Management', icon: CheckCircle2, roles: ['Admin'] },
+    //{ id: 'registration', label: 'Registration', icon: Building2, roles: ['Admin'],subItems: [...] }
+
+
+    
   ];
+
+
+  
 
   const visibleMenuItems = menuItems.filter(item => 
     !item.roles || (user && item.roles.includes(user.role))
   );
+
+
+  
 
   // Handle tab change
   const handleTabChange = (tabId: AppTab, subTab?: string) => {
@@ -399,7 +414,16 @@ const AppContent: React.FC = () => {
                   <AddIngestFileForm userRole={user.role} />
                 </motion.div>
               )}
-
+              {activeTab === 'request-management' && user?.role === 'Admin' && (
+                <motion.div
+                key="request-management"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                >
+                  <AdminRequests />
+                </motion.div>
+)}
               {activeTab === 'user-management' && user?.role === 'Admin' && (
                 <motion.div
                   key="user-management"

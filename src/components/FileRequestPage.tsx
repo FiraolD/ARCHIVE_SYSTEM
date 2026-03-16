@@ -181,7 +181,7 @@ export const FileRequestPage: React.FC = () => {
                         </div>
                         <div>
                           <h4 className="font-black text-slate-900 group-hover:text-blue-700 transition-colors">
-                            {doc.title}
+                            {doc.claim_number || doc.policy_number || doc.insured_name || 'Untitled Document'}
                           </h4>
                           <div className="flex items-center gap-3 mt-1">
                             <span className="text-xs font-black uppercase text-slate-400 tracking-tighter">
@@ -204,9 +204,9 @@ export const FileRequestPage: React.FC = () => {
                     </div>
                     
                     <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100">
-                      <InfoItem label="Insured" value={doc.insuredName || 'N/A'} icon={User} />
-                      <InfoItem label="Policy #" value={doc.policyNumber || 'N/A'} icon={Hash} />
-                      <InfoItem label="Claim #" value={doc.claimNumber || 'N/A'} icon={FileText} />
+                      <InfoItem label="Insured" value={doc.insured_name || 'N/A'} icon={User} />
+                      <InfoItem label="Policy #" value={doc.policy_number || 'N/A'} icon={Hash} />
+                      <InfoItem label="Claim #" value={doc.claim_number || 'N/A'} icon={FileText} />
                     </div>
                     
                     <div className="mt-4 flex items-center gap-2">

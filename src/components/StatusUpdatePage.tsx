@@ -32,11 +32,11 @@ export const StatusUpdatePage: React.FC = () => {
 
     const query = searchQuery.toLowerCase();
     const filtered = documents.filter(doc => 
-      doc.archiveReferenceNumber?.toLowerCase().includes(query) ||
+      doc.archive_reference_number?.toLowerCase().includes(query) ||
       doc.title?.toLowerCase().includes(query) ||
-      doc.policyNumber?.toLowerCase().includes(query) ||
-      doc.claimNumber?.toLowerCase().includes(query) ||
-      doc.insuredName?.toLowerCase().includes(query)
+      doc.policy_number?.toLowerCase().includes(query) ||
+      doc.claim_number?.toLowerCase().includes(query) ||
+      doc.insured_name?.toLowerCase().includes(query)
     );
     setFilteredDocs(filtered);
   }, [searchQuery, documents]);
@@ -110,7 +110,7 @@ export const StatusUpdatePage: React.FC = () => {
                     <span className="text-xs font-bold text-slate-400">•</span>
                     <span className="text-xs font-bold text-slate-500">{doc.type}</span>
                   </div>
-                  <h4 className="font-bold text-slate-900 truncate">{doc.title}</h4>
+                  <h4 className="font-bold text-slate-900 truncate">{doc.archive_reference_number}</h4>
                   <div className="flex items-center gap-4 mt-2">
                     <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
                       <Calendar className="w-3 h-3" /> {new Date(doc.createdAt).toLocaleDateString()}
@@ -169,7 +169,7 @@ export const StatusUpdatePage: React.FC = () => {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Selected File</p>
-                        <p className="font-bold text-slate-900 truncate">{selectedDoc.title}</p>
+                        <p className="font-bold text-slate-900 truncate">{selectedDoc.archiveReferenceNumber}</p>
                       </div>
                     </div>
                     <div className="p-4 bg-white border border-slate-200 rounded-xl">

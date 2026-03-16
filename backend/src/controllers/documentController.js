@@ -1,8 +1,34 @@
 const { query } = require('../config/database');
-const { generateArchiveReferenceNumber } = require('../utils/generators');
 const { validationResult } = require('express-validator');
 const path = require('path');
 const fs = require('fs');
+
+// ==================== REFERENCE NUMBER GENERATOR ====================
+
+/**
+ * Generate a sequential file reference number
+ * Format: FL/BRANCH_CODE/PRODUCT_CODE/SEQUENCE/YY
+ * Sequence starts from 000001 and increments by 1 for each document
+ */
+const generateSequentialReference = async (branchCode, productCode) => {
+  const year = new Date().getFullYear().toString().slice(-2);
+  
+  // Get the next sequence number for this branch and year
+  const result = await query(
+    `SELECT COALESCE(MAX(CAST(SUBSTRING(archive_reference_number FROM 'FL/[^/]+/[^/]+/([0-9]+)/') AS INTEGER)), 0) + 1 as next_number
+     FROM documents 
+     WHERE archive_reference_number LIKE $1
+     AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)`,
+    [`FL/${branchCode}/%`]
+  );
+  
+  const nextNumber = parseInt(result.rows[0].next_number);
+  const formattedNumber = nextNumber.toString().padStart(6, '0');
+  
+  return `FL/${branchCode}/${productCode}/${formattedNumber}/${year}`;
+};
+
+// ==================== INGEST DOCUMENT ====================
 
 const ingestDocument = async (req, res) => {
   try {
@@ -11,7 +37,33 @@ const ingestDocument = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const archiveRef = await generateArchiveReferenceNumber();
+    // Get branch and product codes for reference generation
+    let branchCode = 'XXX';
+    let productCode = 'PRD';
+
+    if (req.body.branchId) {
+      const branchResult = await query(
+        'SELECT code FROM branches WHERE id = $1',
+        [req.body.branchId]
+      );
+      if (branchResult.rows.length > 0) {
+        branchCode = branchResult.rows[0].code;
+      }
+    }
+
+    if (req.body.productId) {
+      const productResult = await query(
+        'SELECT name FROM products WHERE id = $1',
+        [req.body.productId]
+      );
+      if (productResult.rows.length > 0) {
+        // Generate full product code (remove spaces, uppercase)
+        productCode = productResult.rows[0].name.replace(/\s+/g, '').toUpperCase();
+      }
+    }
+
+    // Generate sequential reference number
+    const archiveRef = await generateSequentialReference(branchCode, productCode);
     
     // Handle file upload
     let filePath = null;
@@ -21,6 +73,20 @@ const ingestDocument = async (req, res) => {
       fileSize = req.file.size;
     }
 
+    // Log received data for debugging
+    console.log('Received document data:', {
+      title: req.body.title,
+      type: req.body.type,
+      branchId: req.body.branchId,
+      branchCode,
+      productCode,
+      archiveRef,
+      insuredName: req.body.insuredName,
+      policyNumber: req.body.policyNumber,
+      claimNumber: req.body.claimNumber
+    });
+
+    // Prepare document data object
     const documentData = {
       archive_reference_number: archiveRef,
       physical_placement: req.body.physicalPlacement,
@@ -32,43 +98,55 @@ const ingestDocument = async (req, res) => {
       file_size: fileSize,
       
       // Claim File specific
-      insured_name: req.body.insuredName,
-      policy_number: req.body.policyNumber,
-      claim_number: req.body.claimNumber,
-      estimated_loss: req.body.estimatedLoss,
+      insured_name: req.body.insuredName || null,
+      policy_number: req.body.policyNumber || null,
+      claim_number: req.body.claimNumber || null,
+      estimated_loss: req.body.estimatedLoss || null,
       branch_id: req.body.branchId,
-      department_id: req.body.departmentId,
-      product_id: req.body.productId,
+      department_id: req.body.departmentId || null,
+      product_id: req.body.productId || null,
+      
+      // Cabinet and drawer fields
+      cabinet_id: req.body.cabinetId || null,
+      drawer_number: req.body.drawerNumber || null,
       
       // Common fields
       date_added: req.body.dateAdded || new Date().toISOString().split('T')[0],
       received_by: req.body.receivedBy,
       delivered_by: req.body.deliveredBy,
-      receiver_remark: req.body.receiverRemark
-
-      
+      receiver_remark: req.body.receiverRemark || null
     };
 
+    // Build the INSERT query dynamically
+    const fields = [];
+    const values = [];
+    const placeholders = [];
+    let paramIndex = 1;
 
-    // In ingestDocument function, after successful insertion
-const document = result.rows[0];
+    // Only include fields that have values
+    Object.entries(documentData).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        fields.push(key);
+        values.push(value);
+        placeholders.push(`$${paramIndex}`);
+        paramIndex++;
+      }
+    });
 
-// Return the generated reference
-res.status(201).json({
-  ...document,
-  message: 'Document ingested successfully',
-  referenceNumber: document.archive_reference_number
-});
-    const result = await query(
-      `INSERT INTO documents (
-        archive_reference_number, physical_placement, title, type, status,
-        owner_id, file_path, file_size, insured_name, policy_number,
-        claim_number, estimated_loss, branch_id, department_id, product_id,
-        date_added, received_by, delivered_by, receiver_remark
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-      RETURNING *`,
-      Object.values(documentData)
-    );
+    const queryText = `
+      INSERT INTO documents (${fields.join(', ')})
+      VALUES (${placeholders.join(', ')})
+      RETURNING *
+    `;
+
+    console.log('Insert Query:', queryText);
+    console.log('Insert Values:', values);
+
+    // Execute the query
+    const result = await query(queryText, values);
+
+    // Now we can safely use result
+    console.log('Document inserted:', result.rows[0]);
 
     // Create initial version
     await query(
@@ -83,19 +161,19 @@ res.status(201).json({
       `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address, user_agent)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [req.user.id, req.user.name, 'Document Ingested', result.rows[0].archive_reference_number,
-       `Document "${req.body.title}" ingested`, req.ip, req.get('user-agent')]
+       `Document "${req.body.title}" ingested with reference: ${archiveRef}`, req.ip, req.get('user-agent')]
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Document ingestion error:', error);
-    res.status(500).json({ error: 'Server error during document ingestion' });
+    res.status(500).json({ error: 'Server error during document ingestion: ' + error.message });
   }
 };
 
-// In backend/src/controllers/documentController.js, update the getDocuments function
+// ==================== GET DOCUMENTS ====================
 
-// backend/src/controllers/documentController.js
+// In documentController.js, update the getDocuments function
 
 const getDocuments = async (req, res) => {
   try {
@@ -104,19 +182,24 @@ const getDocuments = async (req, res) => {
 
     console.log('\n========== BACKEND SEARCH DEBUG ==========');
     console.log('Request query:', req.query);
-    console.log('Search term:', search);
 
     let queryText = `
-      SELECT d.*, 
-             u.name as owner_name,
-             b.name as branch_name,
-             dept.name as department_name,
-             p.name as product_name
+      SELECT 
+        d.*, 
+        u.name as owner_name,
+        b.name as branch_name,
+        b.code as branch_code,
+        dept.name as department_name,
+        p.name as product_name,
+        c.number as cabinet_number,
+        c.id as cabinet_id,
+        d.drawer_number
       FROM documents d
       LEFT JOIN users u ON d.owner_id = u.id
       LEFT JOIN branches b ON d.branch_id = b.id
       LEFT JOIN departments dept ON d.department_id = dept.id
       LEFT JOIN products p ON d.product_id = p.id
+      LEFT JOIN cabinets c ON d.cabinet_id = c.id
       WHERE 1=1
     `;
     
@@ -125,8 +208,6 @@ const getDocuments = async (req, res) => {
 
     if (search && search.trim() !== '') {
       const searchTerm = `%${search.trim()}%`;
-      
-      console.log('Search pattern:', searchTerm);
       
       queryText += ` AND (
         d.title ILIKE $${paramIndex} OR
@@ -167,23 +248,11 @@ const getDocuments = async (req, res) => {
     const result = await query(queryText, queryParams);
     
     console.log(`Query returned ${result.rows.length} documents`);
-    if (result.rows.length > 0) {
-      console.log('First result:', {
-        id: result.rows[0].id,
-        title: result.rows[0].title,
-        claim_number: result.rows[0].claim_number,
-        policy_number: result.rows[0].policy_number,
-        insured_name: result.rows[0].insured_name
-      });
-    }
 
     // Get total count
     let countQuery = 'SELECT COUNT(*) FROM documents';
     const countResult = await query(countQuery);
     const total = parseInt(countResult.rows[0].count);
-
-    console.log('Total documents in DB:', total);
-    console.log('========== END BACKEND DEBUG ==========\n');
 
     res.json({
       documents: result.rows,
@@ -200,6 +269,57 @@ const getDocuments = async (req, res) => {
   }
 };
 
+// Also update getDocumentById for single document views
+const getDocumentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      `SELECT 
+        d.*, 
+        u.name as owner_name,
+        b.name as branch_name,
+        b.code as branch_code,
+        dept.name as department_name,
+        p.name as product_name,
+        c.number as cabinet_number,
+        d.drawer_number,
+        box.identifier as box_identifier
+       FROM documents d
+       LEFT JOIN users u ON d.owner_id = u.id
+       LEFT JOIN branches b ON d.branch_id = b.id
+       LEFT JOIN departments dept ON d.department_id = dept.id
+       LEFT JOIN products p ON d.product_id = p.id
+       LEFT JOIN cabinets c ON d.cabinet_id = c.id
+       LEFT JOIN boxes box ON d.box_id = box.id
+       WHERE d.id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Get versions
+    const versions = await query(
+      `SELECT * FROM document_versions 
+       WHERE document_id = $1 
+       ORDER BY version_number DESC`,
+      [id]
+    );
+
+    const document = result.rows[0];
+    document.versions = versions.rows;
+
+    res.json(document);
+  } catch (error) {
+    console.error('Get document error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// ==================== GET DOCUMENT BY ID ====================
+/*
 const getDocumentById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -241,7 +361,9 @@ const getDocumentById = async (req, res) => {
     console.error('Get document error:', error);
     res.status(500).json({ error: 'Server error' });
   }
-};
+}; */
+
+// ==================== UPDATE DOCUMENT STATUS ====================
 
 const updateDocumentStatus = async (req, res) => {
   try {
@@ -283,6 +405,7 @@ const updateDocumentStatus = async (req, res) => {
   }
 };
 
+// ==================== UPDATE PHYSICAL PLACEMENT ====================
 
 const updatePhysicalPlacement = async (req, res) => {
   try {
@@ -324,15 +447,8 @@ const updatePhysicalPlacement = async (req, res) => {
   }
 };
 
-module.exports = {
-  ingestDocument,
-  getDocuments,
-  getDocumentById,
-  updateDocumentStatus,
-  updatePhysicalPlacement
-};
+// ==================== TEST SEARCH FUNCTIONS ====================
 
-// TEMPORARY TEST ENDPOINT - Add this to documentController.js
 const testSearch = async (req, res) => {
   try {
     const { field, value } = req.query;
@@ -359,7 +475,6 @@ const testSearch = async (req, res) => {
   }
 };
 
-// Add to documentController.js for testing
 const testSearchField = async (req, res) => {
   try {
     const { field, value } = req.query;
@@ -399,4 +514,16 @@ const testSearchField = async (req, res) => {
     console.error('Test search error:', error);
     res.status(500).json({ error: error.message });
   }
+};
+
+// ==================== EXPORTS ====================
+
+module.exports = {
+  ingestDocument,
+  getDocuments,
+  getDocumentById,
+  updateDocumentStatus,
+  updatePhysicalPlacement,
+  testSearch,
+  testSearchField
 };

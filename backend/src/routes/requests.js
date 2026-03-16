@@ -1,3 +1,5 @@
+// backend/src/routes/requests.js
+
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
@@ -10,6 +12,7 @@ const requestValidation = [
   body('notes').optional()
 ];
 
+// User routes - any authenticated user can access
 router.post('/', 
   authenticate,
   requestValidation,
@@ -21,22 +24,44 @@ router.get('/my-requests',
   requestController.getUserRequests
 );
 
+// Admin/Manager routes - require specific roles
+router.get('/pending', 
+  authenticate,
+  authorize('Admin', 'Manager'),  // Allow both Admin and Manager
+  requestController.getPendingRequests
+);
+
 router.get('/all', 
   authenticate,
-  authorize('Admin', 'Manager'),
+  authorize('Admin', 'Manager'),  // Changed from just 'Admin' to include Manager
   requestController.getAllRequests
 );
 
 router.patch('/:id/approve', 
   authenticate,
-  authorize('Admin'),
+  authorize('Admin'),  // Only Admin can approve
   requestController.approveRequest
+);
+
+router.patch('/:id/reject', 
+  authenticate,
+  authorize('Admin'),  // Only Admin can reject
+  [
+    body('reason').notEmpty().withMessage('Rejection reason is required')
+  ],
+  requestController.rejectRequest
 );
 
 router.patch('/:id/return', 
   authenticate,
-  authorize('Admin'),
+  authorize('Admin'),  // Only Admin can mark as returned
   requestController.returnDocument
+);
+
+// Public route for reference lookup (still requires authentication)
+router.get('/reference/:reference', 
+  authenticate,
+  requestController.getRequestByReference
 );
 
 module.exports = router;

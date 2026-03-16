@@ -52,7 +52,7 @@ const BranchRegistrationForm: React.FC = () => {
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required 
-          placeholder="e.g. Lagos Main" 
+          placeholder="e.g. Bole Premium Branch" 
           className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
         />
       </div>
@@ -74,10 +74,8 @@ const BranchRegistrationForm: React.FC = () => {
 // ============================================================================
 // DEPARTMENT REGISTRATION FORM
 // ============================================================================
-
 // In RegistrationForms.tsx, update the DepartmentRegistrationForm
 
-// In RegistrationForms.tsx, update the DepartmentRegistrationForm
 
 const DepartmentRegistrationForm: React.FC = () => {
   const { addDepartment } = useArchive();
