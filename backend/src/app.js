@@ -18,6 +18,7 @@ const auditRoutes = require('./routes/audit');
 const notificationRoutes = require('./routes/notifications');
 const userRoutes = require('./routes/users');
 const dashboardRoutes = require('./routes/dashboard');
+const reportsRoutes = require('./routes/reports');
 
 
 
@@ -104,6 +105,7 @@ app.use('/api/audit', authenticate, auditRoutes);
 app.use('/api/notifications', authenticate, notificationRoutes);  // This was missing
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/dashboard', authenticate, dashboardRoutes);
+app.use('/api/reports', authenticate, reportsRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {

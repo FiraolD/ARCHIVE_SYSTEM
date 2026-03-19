@@ -407,6 +407,66 @@ const updateDocumentStatus = async (req, res) => {
 
 // ==================== UPDATE PHYSICAL PLACEMENT ====================
 
+
+// Add to documentController.js
+
+// Add this to your documentController.js if it's missing
+
+const assignToBox = async (req, res) => {
+  try {
+    const { documentId, boxId } = req.body;
+
+    if (!documentId || !boxId) {
+      return res.status(400).json({ error: 'Document ID and Box ID are required' });
+    }
+
+    // Check if document exists
+    const docResult = await query(
+      'SELECT * FROM documents WHERE id = $1',
+      [documentId]
+    );
+
+    if (docResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Check if box exists
+    const boxResult = await query(
+      'SELECT * FROM boxes WHERE id = $1',
+      [boxId]
+    );
+
+    if (boxResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Box not found' });
+    }
+
+    // Update document with box_id
+    const result = await query(
+      `UPDATE documents 
+       SET box_id = $1, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $2 
+       RETURNING *`,
+      [boxId, documentId]
+    );
+
+    // Create audit log
+    await query(
+      `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address, user_agent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [req.user.id, req.user.name, 'Document Assigned to Box', result.rows[0].archive_reference_number,
+       `Document assigned to box: ${boxId}`, req.ip, req.get('user-agent')]
+    );
+
+    res.json({
+      message: 'Document assigned to box successfully',
+      document: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Assign to box error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 const updatePhysicalPlacement = async (req, res) => {
   try {
     const { id } = req.params;
@@ -518,12 +578,15 @@ const testSearchField = async (req, res) => {
 
 // ==================== EXPORTS ====================
 
+// At the end of your documentController.js, check the module.exports
+
 module.exports = {
   ingestDocument,
   getDocuments,
   getDocumentById,
   updateDocumentStatus,
   updatePhysicalPlacement,
+  assignToBox,  // Make sure this line exists
   testSearch,
   testSearchField
 };

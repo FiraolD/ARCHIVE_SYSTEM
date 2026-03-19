@@ -259,6 +259,24 @@ async function setupDatabase() {
     client.release();
     pool.end();
   }
+
+
+
+  -- Check if columns exist and add them if they don't
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'file_requests' AND column_name = 'policy_number') THEN
+        ALTER TABLE file_requests ADD COLUMN policy_number VARCHAR(50);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'file_requests' AND column_name = 'claim_number') THEN
+        ALTER TABLE file_requests ADD COLUMN claim_number VARCHAR(50);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'file_requests' AND column_name = 'insured_name') THEN
+        ALTER TABLE file_requests ADD COLUMN insured_name VARCHAR(255);
+    END IF;
+END $$;
 }
 
 setupDatabase();

@@ -60,50 +60,35 @@ export const AdminRequests: React.FC = () => {
     }
   }, [requests, searchQuery, statusFilter]);
 
-  const loadRequests = async () => {
-    try {
-      setIsLoading(true);
-      console.log('Loading requests...');
-      console.log('Current user:', user); // Now user is defined
-      console.log('API URL:', import.meta.env.VITE_API_URL);
-      
-      const params = statusFilter !== 'all' ? { status: statusFilter } : {};
-      console.log('Request params:', params);
-      
-      const response = await requestApi.getAllRequests(params);
-      console.log('Response:', response);
-      setRequests(response.data);
-    } catch (error: any) {
-      console.error('Full error object:', error);
-      console.error('Error config:', error.config);
-      console.error('Error response:', error.response);
-      console.error('Error status:', error.response?.status);
-      console.error('Error data:', error.response?.data);
-      console.error('Error message:', error.message);
-      console.error('Error code:', error.code);
-      
-      // Check for network errors
-      if (error.code === 'ERR_NETWORK') {
-        toast.error('Cannot connect to server. Please check if backend is running.');
-      } else if (error.code === 'ECONNABORTED') {
-        toast.error('Request timeout. Server is not responding.');
-      } else if (error.response?.status === 403) {
-        toast.error('You do not have permission to view requests');
-      } else if (error.response?.status === 401) {
-        toast.error('Your session has expired. Please login again.');
-      } else {
-        const errorMessage = error.response?.data?.error || 
-                            error.response?.data?.message || 
-                            error.message || 
-                            'Failed to load requests';
-        toast.error(errorMessage);
-      }
-      
-      setRequests([]);
-    } finally {
-      setIsLoading(false);
+const loadRequests = async () => {
+  try {
+    setIsLoading(true);
+    console.log('Loading requests...');
+    
+    const params = statusFilter !== 'all' ? { status: statusFilter } : {};
+    console.log('Request params:', params);
+    
+    const response = await requestApi.getAllRequests(params);
+    console.log('Requests loaded:', response.data);
+    setRequests(response.data);
+  } catch (error: any) {
+    console.error('Failed to load requests:', error);
+    console.error('Error response:', error.response?.data); // This will show the backend error
+    console.error('Error status:', error.response?.status);
+    
+    if (error.response?.status === 403) {
+      toast.error('You do not have permission to view requests');
+    } else if (error.response?.status === 500) {
+      toast.error('Server error: ' + (error.response?.data?.error || 'Unknown error'));
+    } else {
+      toast.error('Failed to load requests');
     }
-  };
+    
+    setRequests([]);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const filterRequests = () => {
     if (!requests) {
@@ -155,27 +140,65 @@ export const AdminRequests: React.FC = () => {
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedRequest || !rejectReason.trim()) {
-      toast.error('Please provide a rejection reason');
-      return;
-    }
+  // In AdminRequests.tsx, update the handleReject function:
+
+const handleReject = async () => {
+  if (!selectedRequest || !rejectReason.trim()) {
+    toast.error('Please provide a rejection reason');
+    return;
+  }
+  
+  try {
+    setProcessingId(selectedRequest.id);
     
-    try {
-      setProcessingId(selectedRequest.id);
-      await requestApi.rejectRequest(selectedRequest.id, { reason: rejectReason });
-      toast.success('Request rejected successfully');
-      setShowRejectModal(false);
-      setRejectReason('');
-      await loadRequests();
-      setSelectedRequest(null);
-    } catch (error) {
-      console.error('Reject error:', error);
-      toast.error('Failed to reject request');
-    } finally {
-      setProcessingId(null);
+    console.log('🔄 Rejecting request:', {
+      requestId: selectedRequest.id,
+      reason: rejectReason,
+      requestRef: selectedRequest.request_reference
+    });
+    
+    // Log the API method to verify it exists
+    console.log('API Methods available:', Object.keys(requestApi));
+    console.log('rejectRequest method:', requestApi.rejectRequest);
+    
+    // Make the API call
+    const response = await requestApi.rejectRequest(selectedRequest.id, { 
+      reason: rejectReason 
+    });
+    
+    console.log('✅ Reject response:', response.data);
+    
+    toast.success('Request rejected successfully');
+    setShowRejectModal(false);
+    setRejectReason('');
+    await loadRequests();
+    setSelectedRequest(null);
+  } catch (error: any) {
+    console.error('❌ Reject error:', error);
+    console.error('Error config:', error.config);
+    console.error('Error response:', error.response);
+    console.error('Error status:', error.response?.status);
+    console.error('Error data:', error.response?.data);
+    console.error('Error message:', error.message);
+    
+    // Show specific error message
+    if (error.response?.status === 403) {
+      toast.error('You do not have permission to reject requests');
+    } else if (error.response?.status === 404) {
+      toast.error('Request not found');
+    } else {
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Failed to reject request';
+      toast.error(errorMessage);
     }
-  };
+  } finally {
+    setProcessingId(null);
+  }
+};
+
+
 
   const getStatusBadge = (status: string) => {
     if (!status) return null;
@@ -474,6 +497,7 @@ const RequestDetailsModal: React.FC<{
             <p className="text-xs font-bold text-slate-500 uppercase mb-1">Requester</p>
             <p className="font-medium text-slate-900">{request.requester_name || 'Unknown'}</p>
             <p className="text-xs text-slate-500">{request.requester_email || 'No email'}</p>
+            <p className="text-xs text-slate-500 mt-1">{request.requester_department_name || 'No department'}</p>
           </div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase mb-1">Expected Return</p>

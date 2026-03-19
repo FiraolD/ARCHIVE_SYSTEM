@@ -1,3 +1,5 @@
+// backend/src/routes/documents.js
+
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
@@ -47,7 +49,15 @@ router.patch('/:id/placement',
   documentController.updatePhysicalPlacement
 );
 
-// TEMPORARY TEST ROUTE - Comment this out if documentController.testSearchField doesn't exist
-// router.get('/test-search-field', authenticate, documentController.testSearchField);
+// NEW ROUTE - Make sure this is line 51 and that documentController.assignToBox exists
+router.post('/assign-to-box', 
+  authenticate,
+  authorize('Admin'),
+  [
+    body('documentId').notEmpty().withMessage('Document ID is required'),
+    body('boxId').notEmpty().withMessage('Box ID is required')
+  ],
+  documentController.assignToBox  // Make sure this function exists
+);
 
 module.exports = router;

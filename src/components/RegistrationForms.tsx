@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo , useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Building2, 
@@ -15,9 +15,8 @@ import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
 import { DrawerAssignment } from './DrawerAssignment';
 import { AddFileToBox } from './AddFileToBox';
-
 type RegistrationTab = 'branch' | 'department' | 'product' | 'box' | 'cabinet' | 'drawer-assignment' | 'add-to-box';
-type FileType = 'Claim File' | 'Circular' | 'Policy' | 'Billing' | 'Correspondence';
+type FileType = 'Claim File' | 'Circular' | 'Policy';
 
 
 // ============================================================================

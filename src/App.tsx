@@ -44,9 +44,11 @@ import { UI_LABELS } from './lib/constants';
 import { useArchive } from './context/ArchiveContext';
 import { ArchiveProvider } from './context/ArchiveContext';
 import { AdminRequests } from './components/AdminRequests';
+import ReportsPage from './components/ReportsPage';
+import { api } from './services/api';
 
 
-type AppTab = 'file-request' | 'dashboard' | 'user-management' | 'registration' | 'status-update' | 'upload';
+type AppTab = 'file-request' | 'dashboard' | 'user-management' | 'registration' | 'status-update' | 'upload' | 'request-management' | 'reports';
 
 const AppContent: React.FC = () => {
   const { 
@@ -115,6 +117,7 @@ const AppContent: React.FC = () => {
     { id: 'upload', label: UI_LABELS.SIDEBAR.UPLOAD, icon: UploadCloud, roles: ['Admin'] },
     { id: 'user-management', label: 'User Management', icon: Users, roles: ['Admin'] },
     { id: 'request-management', label: 'Request Management', icon: CheckCircle2, roles: ['Admin'] },
+    { id: 'reports', label: 'Reports', icon: Grid, roles: ['Admin', 'Manager'] }
     //{ id: 'registration', label: 'Registration', icon: Building2, roles: ['Admin'],subItems: [...] }
 
 
@@ -432,6 +435,16 @@ const AppContent: React.FC = () => {
                   exit={{ opacity: 0, y: -10 }}
                 >
                   <UserManagement />
+                </motion.div>
+              )}
+              {activeTab === 'reports' && (user?.role === 'Admin' || user?.role === 'Manager') && (
+                <motion.div
+                  key="reports"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <ReportsPage />
                 </motion.div>
               )}
             </AnimatePresence>

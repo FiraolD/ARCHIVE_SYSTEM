@@ -17,7 +17,8 @@ import {
   Building2,
   Archive,
   Grid,
-  Loader2
+  Loader2,
+  ArrowRight
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useArchive } from '../context/ArchiveContext';
@@ -34,7 +35,7 @@ interface DashboardStats {
   myRequests?: number;
   myActiveRequests?: number;
   myOverdueRequests?: number;
-  recentActivity?: any[];
+  recentActivity?: any[4];
   recentDocuments?: any[];
   claimDocuments?: any[];
   policyDocuments?: any[];
@@ -170,6 +171,7 @@ export const OperationsDashboard: React.FC = () => {
             </div>
             <div className="space-y-4">
               {claimDocuments.map((doc) => (
+                
                 <DocumentCard key={doc.id} document={doc} />
               ))}
             </div>
@@ -190,18 +192,29 @@ export const OperationsDashboard: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Recent Documents */}
-        {stats.recentDocuments && stats.recentDocuments.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Recently Added Documents</h3>
-            <div className="space-y-4">
-              {stats.recentDocuments.map((doc) => (
-                <DocumentCard key={doc.id} document={doc} />
-              ))}
-            </div>
-          </div>
-        )}
+        
+ {/* Recent Documents */}
+{stats.recentDocuments && stats.recentDocuments.length > 0 && (
+  <div className="bg-white rounded-2xl border border-slate-200 p-6">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-lg font-bold text-slate-800">Recently Added Documents</h3>
+      {stats.recentDocuments.length > 5 && (
+        <button 
+          onClick={() => {/* navigate to full document list */}}
+          className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+        >
+          View All ({stats.recentDocuments.length})
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+    <div className="space-y-4">
+      {stats.recentDocuments.slice(0, 5).map((doc) => (
+        <DocumentCard key={doc.id} document={doc} />
+      ))}
+    </div>
+  </div>
+)}
 
         {/* Recent Activity */}
         <RecentActivity activities={stats.recentActivity || []} />
@@ -341,7 +354,7 @@ const StatCard: React.FC<{
   icon: any; 
   color: string;
   subtitle?: string;
-}> = ({ title, value, icon: Icon, color, subtitle }) => (
+}> = ({ title, value, icon: Icon, color, subtitle, claim_number, policy_number, insured_name}) => (
   <motion.div
     whileHover={{ scale: 1.02 }}
     className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm"
@@ -353,13 +366,18 @@ const StatCard: React.FC<{
       <span className="text-3xl font-black text-slate-900">{value}</span>
     </div>
     <p className="text-sm font-bold text-slate-700 mt-4">{title}</p>
+    <p className="text-sm font-bold text-slade-700 mt-4">{claim_number}</p>
+    <p className="text-sm font-bold text-slade-700 mt-4">{policy_number}</p>
+    <p className="text-sm font-bold text-slade-700 mt-4">{insured_name}</p>
     {subtitle && (
       <p className="text-xs text-slate-400 mt-1">{subtitle}</p>
     )}
   </motion.div>
 );
 
-const RecentActivity: React.FC<{ activities: any[]; title?: string, claim_number?: string }> = ({ 
+// Add this component before the OperationsDashboard component or at the end of the file
+
+const RecentActivity: React.FC<{ activities: any[]; title?: string }> = ({ 
   activities, 
   title = "Recent Activity" 
 }) => (
@@ -367,7 +385,7 @@ const RecentActivity: React.FC<{ activities: any[]; title?: string, claim_number
     <h3 className="text-lg font-bold text-slate-800 mb-4">{title}</h3>
     <div className="space-y-4">
       {activities.length > 0 ? (
-        activities.map((activity, i) => (
+        activities.slice(0, 5).map((activity, i) => (
           <div key={activity.id || i} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
             <div className={`w-2 h-2 rounded-full ${
               activity.status === 'Approved' ? 'bg-green-500' :

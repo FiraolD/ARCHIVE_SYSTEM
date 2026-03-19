@@ -8,6 +8,8 @@ const RequestReferenceGenerator = require('../services/RequestReferenceGenerator
 
 // In requestController.js
 
+// In requestController.js, update createFileRequest
+
 const createFileRequest = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -17,7 +19,7 @@ const createFileRequest = async (req, res) => {
 
     const { documentId, expectedReturnDate, notes } = req.body;
 
-    // Get document details including policy and claim numbers
+    // Get document details
     const docResult = await query(
       `SELECT d.*, 
               u.name as owner_name,
@@ -35,13 +37,16 @@ const createFileRequest = async (req, res) => {
 
     const document = docResult.rows[0];
 
-    console.log('Document retrieved for request:', {
-      id: document.id,
-      title: document.title,
-      policy_number: document.policy_number,
-      claim_number: document.claim_number,
-      insured_name: document.insured_name
-    });
+    // Get user's department
+    const userResult = await query(
+      `SELECT u.*, d.name as department_name 
+       FROM users u
+       LEFT JOIN departments d ON u.department = d.id
+       WHERE u.id = $1`,
+      [req.user.id]
+    );
+
+    const user = userResult.rows[0];
 
     if (document.status !== 'Active') {
       return res.status(400).json({ 
@@ -57,8 +62,9 @@ const createFileRequest = async (req, res) => {
       `INSERT INTO file_requests (
         document_id, requested_by, request_date, expected_return_date, 
         status, notes, request_reference,
-        policy_number, claim_number, insured_name
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        policy_number, claim_number, insured_name,
+        requester_department, requester_department_name
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
         documentId, 
@@ -68,17 +74,13 @@ const createFileRequest = async (req, res) => {
         'Pending', 
         notes, 
         requestReference,
-        document.policy_number || null,  // Ensure null if undefined
-        document.claim_number || null,    // Ensure null if undefined
-        document.insured_name || null     // Ensure null if undefined
+        document.policy_number || null,
+        document.claim_number || null,
+        document.insured_name || null,
+        user.department || null,
+        user.department_name || null
       ]
     );
-
-    console.log('Request created with policy/claim:', {
-      policy: requestResult.rows[0].policy_number,
-      claim: requestResult.rows[0].claim_number,
-      insured: requestResult.rows[0].insured_name
-    });
 
     // Create notification for admin
     await query(
@@ -87,19 +89,11 @@ const createFileRequest = async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5)`,
       [
         'New File Request',
-        `${req.user.name} requested "${document.title || 'Untitled'}" - Ref: ${requestReference}`,
+        `${req.user.name} from ${user.department_name || 'No Department'} requested "${document.title}" - Ref: ${requestReference}`,
         'info',
         true,
         requestResult.rows[0].id
       ]
-    );
-
-    // Create audit log
-    await query(
-      `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address, user_agent)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [req.user.id, req.user.name, 'File Requested', document.archive_reference_number,
-       `Request created with reference: ${requestReference}`, req.ip, req.get('user-agent')]
     );
 
     res.status(201).json({
@@ -296,6 +290,8 @@ const getPendingRequests = async (req, res) => {
   }
 };
 
+// In requestController.js, update getAllRequests
+
 const getAllRequests = async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
@@ -312,9 +308,11 @@ const getAllRequests = async (req, res) => {
         fr.notes,
         fr.rejection_reason,
         fr.created_at,
-        d.policy_number,
-        d.claim_number,
-        d.insured_name,
+        fr.policy_number,
+        fr.claim_number,
+        fr.insured_name,
+        fr.requester_department,
+        fr.requester_department_name,
         d.id as document_id,
         d.title as document_title,
         d.archive_reference_number,
@@ -331,11 +329,8 @@ const getAllRequests = async (req, res) => {
     const queryParams = [];
 
     if (status && status !== 'all' && status !== 'undefined') {
-      const validStatuses = ['Pending', 'Approved', 'Rejected', 'Returned', 'Overdue'];
-      if (validStatuses.includes(status)) {
-        queryText += ` AND fr.status = $${queryParams.length + 1}`;
-        queryParams.push(status);
-      }
+      queryText += ` AND fr.status = $${queryParams.length + 1}`;
+      queryParams.push(status);
     }
 
     queryText += ` ORDER BY fr.created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
@@ -346,10 +341,9 @@ const getAllRequests = async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Get all requests error:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
-
 const getRequestByReference = async (req, res) => {
   try {
     const { reference } = req.params;
