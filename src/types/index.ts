@@ -3,8 +3,14 @@ export type Role = 'Admin' | 'Manager' | 'Agent' | 'Viewer';
 export interface User {
   id: string;
   name: string;
+  email?: string;
   role: Role;
   avatar: string;
+  createdAt?: string;
+  lastLogin?: string;
+  // snake_case aliases returned directly by the backend API
+  created_at?: string;
+  last_login?: string;
 }
 
 export interface DocumentVersion {
@@ -17,7 +23,7 @@ export interface DocumentVersion {
 
 
 export type FileType = 'Claim File' | 'Circular' | 'Policy' | 'Billing' | 'Correspondence';
-export type FileStatus = 'Active' | 'Checked-out' | 'Settled Claims';
+export type FileStatus = 'Active' | 'Checked-out' | 'Settled Claims' | 'Returned';
 
 export interface Document {
   id: string;
@@ -56,6 +62,28 @@ export interface Document {
   deliveredBy?: string;
   receiverRemark?: string;
   dateModified?: string;
+
+  // snake_case aliases returned directly by the backend API
+  archive_reference_number?: string;
+  physical_placement?: string;
+  claim_number?: string;
+  policy_number?: string;
+  insured_name?: string;
+  estimated_loss?: string;
+  branch_name?: string;
+  department_name?: string;
+  product_name?: string;
+  cabinet_number?: string;
+  drawer_number?: string;
+  date_added?: string;
+  received_by?: string;
+  delivered_by?: string;
+  receiver_remark?: string;
+  created_at?: string;
+  updated_at?: string;
+  owner_name?: string;
+  file_size?: number;
+  file_path?: string;
 }
 
 export interface RetentionPolicy {
@@ -105,6 +133,17 @@ export interface Cabinet {
   id: string;
   number: string;
   drawers: string[];
+  branchId?: string;
+  branchName?: string;
+  // snake_case aliases returned directly by the backend API
+  branch_id?: string;
+  branch_name?: string;
+  drawer_assignments?: Array<{
+    drawer: string;
+    branchId: string;
+    branchName?: string;
+    branchCode?: string;
+  }>;
 }
 
 export interface CabinetAssignment {
@@ -126,10 +165,21 @@ export interface FileRequest {
   requestedBy: string;
   requestDate: string;
   expectedReturnDate: string;
-  status: 'Pending' | 'Approved' | 'Returned' | 'Overdue';
+  status: 'Pending' | 'Approved' | 'Returned' | 'Rejected' | 'Overdue';
   claimNumber?: string;
   policyNumber?: string;
   insuredName?: string;
+  // snake_case aliases returned directly by the backend API
+  request_reference?: string;
+  document_title?: string;
+  archive_reference_number?: string;
+  requester_name?: string;
+  requester_email?: string;
+  requester_department_name?: string;
+  request_date?: string;
+  expected_return_date?: string;
+  actual_return_date?: string;
+  rejection_reason?: string;
 }
 
 export interface Notification {

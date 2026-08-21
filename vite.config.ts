@@ -22,14 +22,12 @@ export default defineConfig({
     port: parseInt(process.env.PORT || "", 10) || 3009,
     host: true,
     allowedHosts: true,
-    sharing: true, // Enable sharing for development server
   },
   preview: {
     // preview should stay on 3009 by default but also use env if provided
     port: parseInt(process.env.PORT || "", 10) || 3009,
     host: true,
     allowedHosts: true,
-    share: true, // Enable sharing for preview as well
   },
   resolve: {
     alias: {

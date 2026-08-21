@@ -52,6 +52,12 @@ router.patch('/:id/reject',
   requestController.rejectRequest
 );
 
+// Add this route before module.exports
+router.patch('/:id/return-by-requester', 
+  authenticate,
+  requestController.returnDocumentByRequester
+);
+
 router.patch('/:id/return', 
   authenticate,
   authorize('Admin'),  // Only Admin can mark as returned

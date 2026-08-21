@@ -154,7 +154,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
   const getReferencePreview = (): string => {
     if (!selectedBranchCode || !selectedProductCode) return '';
     const year = new Date().getFullYear().toString().slice(-2);
-    return `FL/${selectedBranchCode}/${selectedProductCode}/${formattedNumber}/${year}`;
+    return `FL/${selectedBranchCode}/${selectedProductCode}/######/${year}`;
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -253,14 +253,15 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       const response = await ingestDocument(formDataToSend);
       
       // Display the generated reference from backend
-      if (response?.archiveReferenceNumber) {
-        setGeneratedReference(response.archiveReferenceNumber);
+      const generatedRef = response?.archive_reference_number || response?.archiveReferenceNumber;
+      if (generatedRef) {
+        setGeneratedReference(generatedRef);
         setShowReference(true);
         
         toast.success(
           <div>
             <p className="font-bold">Document ingested successfully!</p>
-            <p className="text-xs font-mono mt-1">Ref: {response.archiveReferenceNumber}</p>
+            <p className="text-xs font-mono mt-1">Ref: {generatedRef}</p>
           </div>
         );
       }

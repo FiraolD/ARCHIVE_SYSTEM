@@ -1,4 +1,4 @@
-const { query } = require('../config/database');
+const { query, withTransaction } = require('../config/database');
 const { validationResult } = require('express-validator');
 const path = require('path');
 const fs = require('fs');
@@ -73,19 +73,6 @@ const ingestDocument = async (req, res) => {
       fileSize = req.file.size;
     }
 
-    // Log received data for debugging
-    console.log('Received document data:', {
-      title: req.body.title,
-      type: req.body.type,
-      branchId: req.body.branchId,
-      branchCode,
-      productCode,
-      archiveRef,
-      insuredName: req.body.insuredName,
-      policyNumber: req.body.policyNumber,
-      claimNumber: req.body.claimNumber
-    });
-
     // Prepare document data object
     const documentData = {
       archive_reference_number: archiveRef,
@@ -139,30 +126,28 @@ const ingestDocument = async (req, res) => {
       RETURNING *
     `;
 
-    console.log('Insert Query:', queryText);
-    console.log('Insert Values:', values);
+    // Insert document, initial version and audit log atomically
+    const result = await withTransaction(async (client) => {
+      const docResult = await client.query(queryText, values);
 
-    // Execute the query
-    const result = await query(queryText, values);
+      // Create initial version
+      await client.query(
+        `INSERT INTO document_versions (
+          document_id, version_number, updated_by, changes, file_path
+        ) VALUES ($1, 1, $2, $3, $4)`,
+        [docResult.rows[0].id, req.user.id, 'Initial document archival', filePath]
+      );
 
-    // Now we can safely use result
-    console.log('Document inserted:', result.rows[0]);
+      // Create audit log
+      await client.query(
+        `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address, user_agent)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [req.user.id, req.user.name, 'Document Ingested', docResult.rows[0].archive_reference_number,
+         `Document "${req.body.title}" ingested with reference: ${archiveRef}`, req.ip, req.get('user-agent')]
+      );
 
-    // Create initial version
-    await query(
-      `INSERT INTO document_versions (
-        document_id, version_number, updated_by, changes, file_path
-      ) VALUES ($1, 1, $2, $3, $4)`,
-      [result.rows[0].id, req.user.id, 'Initial document archival', filePath]
-    );
-
-    // Create audit log
-    await query(
-      `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address, user_agent)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [req.user.id, req.user.name, 'Document Ingested', result.rows[0].archive_reference_number,
-       `Document "${req.body.title}" ingested with reference: ${archiveRef}`, req.ip, req.get('user-agent')]
-    );
+      return docResult;
+    });
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -179,9 +164,6 @@ const getDocuments = async (req, res) => {
   try {
     const { search, type, status, branch, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
-
-    console.log('\n========== BACKEND SEARCH DEBUG ==========');
-    console.log('Request query:', req.query);
 
     let queryText = `
       SELECT 
@@ -242,12 +224,7 @@ const getDocuments = async (req, res) => {
     queryText += ` ORDER BY d.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams.push(limit, offset);
 
-    console.log('SQL Query:', queryText);
-    console.log('SQL Params:', queryParams);
-
     const result = await query(queryText, queryParams);
-    
-    console.log(`Query returned ${result.rows.length} documents`);
 
     // Get total count
     let countQuery = 'SELECT COUNT(*) FROM documents';
@@ -507,78 +484,7 @@ const updatePhysicalPlacement = async (req, res) => {
   }
 };
 
-// ==================== TEST SEARCH FUNCTIONS ====================
-
-const testSearch = async (req, res) => {
-  try {
-    const { field, value } = req.query;
-    
-    if (!field || !value) {
-      return res.status(400).json({ error: 'Field and value required' });
-    }
-    
-    // Test which fields actually have data
-    const result = await query(
-      `SELECT id, title, insured_name, policy_number, claim_number 
-       FROM documents 
-       WHERE ${field} IS NOT NULL AND ${field} != '' 
-       LIMIT 5`
-    );
-    
-    res.json({
-      field,
-      sampleValues: result.rows
-    });
-  } catch (error) {
-    console.error('Test search error:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const testSearchField = async (req, res) => {
-  try {
-    const { field, value } = req.query;
-    
-    if (!field || !value) {
-      return res.status(400).json({ error: 'Field and value required' });
-    }
-    
-    console.log(`Testing search on ${field} for "${value}"`);
-    
-    // Test exact match
-    const exactMatch = await query(
-      `SELECT id, ${field} FROM documents WHERE ${field} = $1`,
-      [value]
-    );
-    
-    // Test ILIKE match
-    const likeMatch = await query(
-      `SELECT id, ${field} FROM documents WHERE ${field} ILIKE $1`,
-      [`%${value}%`]
-    );
-    
-    // Test without slashes
-    const noSlashesMatch = await query(
-      `SELECT id, ${field} FROM documents WHERE REPLACE(${field}, '/', '') ILIKE $1`,
-      [`%${value.replace(/\//g, '')}%`]
-    );
-    
-    res.json({
-      field,
-      value,
-      exactMatch: exactMatch.rows,
-      likeMatch: likeMatch.rows,
-      noSlashesMatch: noSlashesMatch.rows
-    });
-  } catch (error) {
-    console.error('Test search error:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
 // ==================== EXPORTS ====================
-
-// At the end of your documentController.js, check the module.exports
 
 module.exports = {
   ingestDocument,
@@ -586,7 +492,5 @@ module.exports = {
   getDocumentById,
   updateDocumentStatus,
   updatePhysicalPlacement,
-  assignToBox,  // Make sure this line exists
-  testSearch,
-  testSearchField
+  assignToBox  // Make sure this line exists
 };

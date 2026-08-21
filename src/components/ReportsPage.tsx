@@ -236,7 +236,7 @@ export const ReportsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black text-slate-900">Analytics & Reports</h2>
+          <h2 className="text-3xl font-black text-slate-900	dark:text-white dark:text-white">Analytics & Reports</h2>
           <p className="text-slate-500 font-medium">
             Real-time insights into archival metrics and system health.
           </p>

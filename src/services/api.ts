@@ -9,35 +9,19 @@ const api = axios.create({
   },
 });
 
-// In api.ts, add to your request interceptor
+// Attach auth token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
-  console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
-    data: config.data,
-    params: config.params,
-    headers: config.headers
-  });
-  
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Add response interceptor for debugging
+// Response interceptor - propagate errors without leaking payload data
 api.interceptors.response.use(
-  (response) => {
-    console.log(`✅ API Response: ${response.status} ${response.config.url}`, response.data);
-    return response;
-  },
-  (error) => {
-    console.error(`❌ API Error: ${error.config?.url}`, {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
-    return Promise.reject(error);
-  }
+  (response) => response,
+  (error) => Promise.reject(error)
 );
 // Auth API
 export const authApi = {
@@ -94,6 +78,8 @@ export const requestApi = {
   
   // Get pending requests (admin only)
   getPendingRequests: () => api.get('/requests/pending'),
+
+  returnByRequester: (id: string) => api.patch(`/requests/${id}/return-by-requester`),
   
   // Approve a request (admin only)
   approveRequest: (id: string) => api.patch(`/requests/${id}/approve`),
@@ -147,6 +133,13 @@ export const registrationApi = {
   getDrawerAssignments: () => 
     api.get('/registration/drawer-assignments'),
   
+  getDrawerHistory: (cabinetId: string, drawerNumber: string) => 
+    api.get('/registration/drawer-history', { params: { cabinetId, drawerNumber } }),
+  
+  // Cabinet Assignment - link a cabinet to a branch
+  assignCabinet: (data: { cabinetId: string; branchId: string }) => 
+    api.post('/registration/assign-cabinet', data),
+  
   // Box Assignments
   assignBox: (data: { boxId: string; cabinetId: string; drawerNumber: string }) => 
     api.post('/registration/assign-box', data),
@@ -154,6 +147,7 @@ export const registrationApi = {
   export const notificationApi = {
     getNotifications: () => api.get('/notifications'),
     markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+    markAllAsRead: () => api.patch('/notifications/read-all'),
   };
 export default api;
 

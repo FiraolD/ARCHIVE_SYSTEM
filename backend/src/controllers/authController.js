@@ -5,31 +5,6 @@ const { query } = require('../config/database');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 
-const register = async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const existingUser = await User.findByEmail(req.body.email);
-    if (existingUser) {
-      return res.status(400).json({ error: 'Email already registered' });
-    }
-
-    const user = await User.create(req.body);
-    const token = new User().generateAuthToken(user);
-
-    res.status(201).json({
-      user,
-      token
-    });
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Server error during registration' });
-  }
-};
-
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -70,7 +45,6 @@ const getProfile = async (req, res) => {
 };
 
 module.exports = {
-  register,
   login,
   getProfile
 };

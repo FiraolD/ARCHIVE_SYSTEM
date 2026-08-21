@@ -27,7 +27,7 @@ interface ArchiveContextType {
   // Documents
   fetchDocuments: (params?: any) => Promise<void>;
   fetchDocument: (id: string) => Promise<Document>;
-  ingestDocument: (formData: FormData) => Promise<void>;
+  ingestDocument: (formData: FormData) => Promise<any>;
   updateDocumentStatus: (id: string, status: string) => Promise<void>;
   updatePhysicalPlacement: (id: string, placement: string) => Promise<void>;
   
@@ -154,6 +154,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       const response = await documentApi.ingestDocument(formData);
       setDocuments(prev => [response.data, ...prev]);
       toast.success('Document ingested successfully');
+      return response.data;
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to ingest document');
       throw error;

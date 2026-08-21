@@ -62,6 +62,16 @@ router.post('/cabinets',
   registrationController.createCabinet
 );
 
+// ==================== CABINET ASSIGNMENT ROUTES ====================
+router.post('/assign-cabinet',
+  authorize('Admin'),
+  [
+    body('cabinetId').notEmpty().withMessage('Cabinet ID is required'),
+    body('branchId').notEmpty().withMessage('Branch ID is required')
+  ],
+  registrationController.assignCabinet
+);
+
 // ==================== DRAWER ASSIGNMENT ROUTES ====================
 router.post('/assign-drawer',
   authorize('Admin'),
@@ -76,6 +86,11 @@ router.post('/assign-drawer',
 router.get('/drawer-assignments',
   authorize('Admin'),
   registrationController.getDrawerAssignments
+);
+
+router.get('/drawer-history',
+  authorize('Admin'),
+  registrationController.getDrawerHistory
 );
 
 // ==================== BOX ASSIGNMENT ROUTES ====================

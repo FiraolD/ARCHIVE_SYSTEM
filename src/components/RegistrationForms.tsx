@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
+import { registrationApi } from '../services/api';
 import { DrawerAssignment } from './DrawerAssignment';
 import { AddFileToBox } from './AddFileToBox';
 type RegistrationTab = 'branch' | 'department' | 'product' | 'box' | 'cabinet' | 'drawer-assignment' | 'add-to-box';

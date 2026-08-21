@@ -44,6 +44,18 @@ router.post('/', authenticate, authorize('Admin'), async (req, res) => {
   try {
     const { name, email, password, role, avatar } = req.body;
 
+    // Validate input
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email and password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Whitelist role - never trust client-supplied values
+    const VALID_ROLES = ['Admin', 'Manager', 'Agent', 'Viewer'];
+    const safeRole = VALID_ROLES.includes(role) ? role : 'Agent';
+
     // Check if user exists
     const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
@@ -57,7 +69,7 @@ router.post('/', authenticate, authorize('Admin'), async (req, res) => {
       `INSERT INTO users (name, email, password_hash, role, avatar, created_at)
        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
        RETURNING id, name, email, role, avatar, created_at`,
-      [name, email, hashedPassword, role, avatar]
+      [name, email, hashedPassword, safeRole, avatar]
     );
 
     res.status(201).json(result.rows[0]);
@@ -73,6 +85,10 @@ router.patch('/:id', authenticate, authorize('Admin'), async (req, res) => {
     const { id } = req.params;
     const { name, email, role, isActive } = req.body;
 
+    // Whitelist role on update as well
+    const VALID_ROLES = ['Admin', 'Manager', 'Agent', 'Viewer'];
+    const safeRole = role && VALID_ROLES.includes(role) ? role : undefined;
+
     const result = await query(
       `UPDATE users 
        SET name = COALESCE($1, name),
@@ -80,7 +96,7 @@ router.patch('/:id', authenticate, authorize('Admin'), async (req, res) => {
            role = COALESCE($3, role)
        WHERE id = $4
        RETURNING id, name, email, role, avatar, created_at, last_login`,
-      [name, email, role, id]
+      [name, email, safeRole, id]
     );
 
     if (result.rows.length === 0) {

@@ -1,4 +1,4 @@
-const { query } = require('../config/database');
+const { query, withTransaction } = require('../config/database');
 
 // ==================== BRANCH CONTROLLERS ====================
 
@@ -247,26 +247,37 @@ const createCabinet = async (req, res) => {
   }
 };
 
+// ==================== CABINET ASSIGNMENT CONTROLLERS ====================
+
+const assignCabinet = async (req, res) => {
+  try {
+    const { cabinetId, branchId } = req.body;
+
+    const result = await query(
+      'UPDATE cabinets SET branch_id = $1 WHERE id = $2 RETURNING *',
+      [branchId, cabinetId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Cabinet not found' });
+    }
+
+    res.json({
+      message: 'Cabinet assigned successfully',
+      cabinet: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Assign cabinet error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // ==================== DRAWER ASSIGNMENT CONTROLLERS ====================
 
 const assignDrawer = async (req, res) => {
   try {
     const { cabinetId, branchId, drawerNumber } = req.body;
-    
-    // First, ensure the drawer_assignments table exists
-    await query(`
-      CREATE TABLE IF NOT EXISTS drawer_assignments (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        cabinet_id UUID NOT NULL REFERENCES cabinets(id) ON DELETE CASCADE,
-        drawer_number VARCHAR(10) NOT NULL,
-        branch_id UUID NOT NULL REFERENCES branches(id),
-        assigned_by UUID REFERENCES users(id),
-        assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        ended_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
+
     // Check if drawer exists in cabinet
     const cabinetCheck = await query(
       'SELECT drawers FROM cabinets WHERE id = $1',
@@ -281,31 +292,36 @@ const assignDrawer = async (req, res) => {
     if (!drawers.includes(drawerNumber)) {
       return res.status(400).json({ error: 'Drawer number does not exist in this cabinet' });
     }
-    
-    // End any existing active assignment for this drawer
-    await query(
-      `UPDATE drawer_assignments 
-       SET ended_at = CURRENT_TIMESTAMP 
-       WHERE cabinet_id = $1 
-       AND drawer_number = $2 
-       AND ended_at IS NULL`,
-      [cabinetId, drawerNumber]
-    );
-    
-    // Create new assignment
-    const result = await query(
-      `INSERT INTO drawer_assignments (cabinet_id, drawer_number, branch_id, assigned_by)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [cabinetId, drawerNumber, branchId, req.user.id]
-    );
-    
-    // Update cabinet's branch_id if not set
-    await query(
-      'UPDATE cabinets SET branch_id = COALESCE(branch_id, $1) WHERE id = $2 AND branch_id IS NULL',
-      [branchId, cabinetId]
-    );
-    
+
+    // End previous assignment, create new one and link cabinet atomically
+    const result = await withTransaction(async (client) => {
+      // End any existing active assignment for this drawer
+      await client.query(
+        `UPDATE drawer_assignments 
+         SET ended_at = CURRENT_TIMESTAMP 
+         WHERE cabinet_id = $1 
+         AND drawer_number = $2 
+         AND ended_at IS NULL`,
+        [cabinetId, drawerNumber]
+      );
+
+      // Create new assignment
+      const assignmentResult = await client.query(
+        `INSERT INTO drawer_assignments (cabinet_id, drawer_number, branch_id, assigned_by)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [cabinetId, drawerNumber, branchId, req.user.id]
+      );
+
+      // Update cabinet's branch_id if not set
+      await client.query(
+        'UPDATE cabinets SET branch_id = COALESCE(branch_id, $1) WHERE id = $2 AND branch_id IS NULL',
+        [branchId, cabinetId]
+      );
+
+      return assignmentResult;
+    });
+
     res.json({ 
       message: 'Drawer assigned successfully',
       assignment: result.rows[0]
@@ -332,6 +348,35 @@ const getDrawerAssignments = async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Get drawer assignments error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+const getDrawerHistory = async (req, res) => {
+  try {
+    const { cabinetId, drawerNumber } = req.query;
+
+    if (!cabinetId || !drawerNumber) {
+      return res.status(400).json({ error: 'cabinetId and drawerNumber are required' });
+    }
+
+    const result = await query(`
+      SELECT da.*, 
+             c.number as cabinet_number,
+             b.name as branch_name,
+             b.code as branch_code,
+             u.full_name as assigned_by_name
+      FROM drawer_assignments da
+      JOIN cabinets c ON da.cabinet_id = c.id
+      JOIN branches b ON da.branch_id = b.id
+      LEFT JOIN users u ON da.assigned_by = u.id
+      WHERE da.cabinet_id = $1 AND da.drawer_number = $2
+      ORDER BY da.assigned_at DESC
+    `, [cabinetId, drawerNumber]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get drawer history error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -378,10 +423,12 @@ module.exports = {
   // Cabinets
   getCabinets,
   createCabinet,
+  assignCabinet,
   
   // Drawer Assignments
   assignDrawer,
   getDrawerAssignments,
+  getDrawerHistory,
   
   // Box Assignments
   assignBox

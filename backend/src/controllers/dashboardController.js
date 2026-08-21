@@ -10,8 +10,6 @@ const getUserDashboard = async (req, res) => {
 
     if (userRole === 'Admin') {
       // Admin sees everything
-      console.log('Fetching admin dashboard data...');
-      
       const [
         totalDocs,
         activeDocs,
@@ -68,13 +66,8 @@ const getUserDashboard = async (req, res) => {
         recentActivity: recentActivity.rows,
         recentDocuments: recentDocuments.rows
       };
-      
-      console.log('Admin dashboard stats:', stats);
-      
     } else {
       // Regular user sees only their own data
-      console.log('Fetching user dashboard data for user:', userId);
-      
       const [
         myRequests,
         myActiveRequests,
@@ -110,8 +103,6 @@ const getUserDashboard = async (req, res) => {
         myOverdueRequests: parseInt(myOverdueRequests.rows[0].count),
         recentActivity: recentActivity.rows
       };
-      
-      console.log('User dashboard stats:', stats);
     }
 
     res.json(stats);

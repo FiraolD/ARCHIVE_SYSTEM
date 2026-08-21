@@ -8,7 +8,7 @@ import { documentApi, registrationApi } from '../services/api';
 interface Document {
   id: string;
   title: string;
-  archive_reference_number: string;
+  archive_reference_number?: string;
   claim_number?: string;
   policy_number?: string;
   insured_name?: string;
@@ -109,14 +109,12 @@ export const AddFileToBox: React.FC = () => {
 
   try {
     setIsSubmitting(true);
-    console.log('Assigning to box:', { documentId: selectedFile, boxId: selectedBox });
     
-    const response = await documentApi.assignToBox({
+    await documentApi.assignToBox({
       documentId: selectedFile,
       boxId: selectedBox
     });
     
-    console.log('Assign response:', response);
     toast.success('File assigned to box successfully');
     
     setSelectedFile('');

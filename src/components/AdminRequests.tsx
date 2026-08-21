@@ -29,6 +29,7 @@ interface Request {
   archive_reference_number: string;
   requester_name: string;
   requester_email: string;
+  requester_department_name?: string;
   request_date: string;
   expected_return_date: string;
   status: 'Pending' | 'Approved' | 'Rejected' | 'Returned';
@@ -63,13 +64,10 @@ export const AdminRequests: React.FC = () => {
 const loadRequests = async () => {
   try {
     setIsLoading(true);
-    console.log('Loading requests...');
     
     const params = statusFilter !== 'all' ? { status: statusFilter } : {};
-    console.log('Request params:', params);
     
     const response = await requestApi.getAllRequests(params);
-    console.log('Requests loaded:', response.data);
     setRequests(response.data);
   } catch (error: any) {
     console.error('Failed to load requests:', error);
@@ -151,22 +149,10 @@ const handleReject = async () => {
   try {
     setProcessingId(selectedRequest.id);
     
-    console.log('🔄 Rejecting request:', {
-      requestId: selectedRequest.id,
-      reason: rejectReason,
-      requestRef: selectedRequest.request_reference
-    });
-    
-    // Log the API method to verify it exists
-    console.log('API Methods available:', Object.keys(requestApi));
-    console.log('rejectRequest method:', requestApi.rejectRequest);
-    
     // Make the API call
-    const response = await requestApi.rejectRequest(selectedRequest.id, { 
+    await requestApi.rejectRequest(selectedRequest.id, { 
       reason: rejectReason 
     });
-    
-    console.log('✅ Reject response:', response.data);
     
     toast.success('Request rejected successfully');
     setShowRejectModal(false);
@@ -230,7 +216,7 @@ const handleReject = async () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-black text-slate-900">Request Management</h2>
+          <h2 className="text-3xl font-black text-slate-900	dark:text-white dark:text-white">Request Management</h2>
           <p className="text-slate-500 font-medium mt-1">
             Approve or reject file requests from users
           </p>

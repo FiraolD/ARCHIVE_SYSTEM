@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Environment files (secrets) - never commit
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# Build output
+dist/
+build/
+
+# Backend uploads (user documents & generated reports)
+backend/uploads/
+
+# Database backups
+backend/backups/
+backups/
+
+# Logs
+*.log
+build.log
+logs/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Misc
+*.tsbuildinfo

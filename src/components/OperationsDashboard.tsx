@@ -58,7 +58,6 @@ export const OperationsDashboard: React.FC = () => {
     try {
       setIsLoading(true);
       const response = await dashboardApi.getStats();
-      console.log('Dashboard data:', response.data);
       setStats(response.data);
     } catch (error) {
       console.error('Failed to load dashboard:', error);
@@ -72,12 +71,10 @@ export const OperationsDashboard: React.FC = () => {
     try {
       // Load claim files
       const claimResponse = await documentApi.getDocuments({ type: 'Claim File', limit: 10 });
-      console.log('Claim documents:', claimResponse.data.documents);
       setClaimDocuments(claimResponse.data.documents || []);
 
       // Load policy documents
       const policyResponse = await documentApi.getDocuments({ type: 'Policy', limit: 10 });
-      console.log('Policy documents:', policyResponse.data.documents);
       setPolicyDocuments(policyResponse.data.documents || []);
     } catch (error) {
       console.error('Failed to load documents by type:', error);
@@ -115,7 +112,7 @@ export const OperationsDashboard: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-black text-slate-900">Admin Dashboard</h2>
+            <h2 className="text-3xl font-black text-slate-900	dark:text-white dark:text-white">Admin Dashboard</h2>
             <p className="text-slate-500 font-medium mt-1">
               Overview of archive system statistics
             </p>
@@ -227,7 +224,7 @@ export const OperationsDashboard: React.FC = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-black text-slate-900">My Dashboard</h2>
+          <h2 className="text-3xl font-black text-slate-900	dark:text-white dark:text-white">My Dashboard</h2>
           <p className="text-slate-500 font-medium mt-1">
             Track your file requests and activity
           </p>
@@ -354,7 +351,7 @@ const StatCard: React.FC<{
   icon: any; 
   color: string;
   subtitle?: string;
-}> = ({ title, value, icon: Icon, color, subtitle, claim_number, policy_number, insured_name}) => (
+}> = ({ title, value, icon: Icon, color, subtitle }) => (
   <motion.div
     whileHover={{ scale: 1.02 }}
     className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm"
@@ -366,9 +363,6 @@ const StatCard: React.FC<{
       <span className="text-3xl font-black text-slate-900">{value}</span>
     </div>
     <p className="text-sm font-bold text-slate-700 mt-4">{title}</p>
-    <p className="text-sm font-bold text-slade-700 mt-4">{claim_number}</p>
-    <p className="text-sm font-bold text-slade-700 mt-4">{policy_number}</p>
-    <p className="text-sm font-bold text-slade-700 mt-4">{insured_name}</p>
     {subtitle && (
       <p className="text-xs text-slate-400 mt-1">{subtitle}</p>
     )}

@@ -615,6 +615,19 @@ static async deleteReport(req, res) {
     `, [claimIds]);
   }
 
+  // Get claims grouped by month (last 12 months)
+  const claimsByMonth = await query(`
+    SELECT 
+      TO_CHAR(created_at, 'YYYY-MM') as month,
+      COUNT(*) as claim_count,
+      COALESCE(SUM(estimated_loss::numeric), 0) as monthly_loss
+    FROM documents
+    WHERE type = 'Claim File'
+      AND created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '12 months')
+    GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+    ORDER BY month DESC
+  `);
+
   // Create a map of request counts
   const requestCountMap = {};
   requestCounts.rows.forEach(r => {
@@ -649,6 +662,11 @@ static async deleteReport(req, res) {
       total_loss: parseFloat(row.total_loss || 0)
     })),
     recentClaims: claimsWithCounts.slice(0, 50),
+    claimsByMonth: claimsByMonth.rows.map(row => ({
+      month: row.month,
+      claim_count: parseInt(row.claim_count),
+      monthly_loss: parseFloat(row.monthly_loss || 0)
+    })),
     topRequestedClaims: claimsWithCounts
       .filter(c => c.request_count > 0)
       .sort((a, b) => b.request_count - a.request_count)
@@ -678,7 +696,8 @@ static async deleteReport(req, res) {
         COUNT(DISTINCT CASE WHEN fr.status = 'Pending' THEN fr.id END) as pending_requests,
         COUNT(DISTINCT CASE WHEN fr.status = 'Approved' THEN fr.id END) as approved_requests,
         COUNT(DISTINCT CASE WHEN fr.status = 'Returned' THEN fr.id END) as returned_requests,
-        COUNT(DISTINCT CASE WHEN fr.status = 'Rejected' THEN fr.id END) as rejected_requests
+        COUNT(DISTINCT CASE WHEN fr.status = 'Rejected' THEN fr.id END) as rejected_requests,
+        COUNT(DISTINCT CASE WHEN fr.status = 'Overdue' THEN fr.id END) as overdue_requests
       FROM departments d
       LEFT JOIN users u ON u.department_name = d.name  -- Join on name, not ID
       LEFT JOIN file_requests fr ON fr.requested_by = u.id
@@ -739,7 +758,8 @@ static async deleteReport(req, res) {
         totalDepartments: departmentStats.rows.length,
         totalRequests: departmentStats.rows.reduce((sum, dept) => sum + parseInt(dept.request_count || 0), 0),
         totalUsers: departmentStats.rows.reduce((sum, dept) => sum + parseInt(dept.user_count || 0), 0),
-        activeDepartments: departmentStats.rows.filter(d => d.request_count > 0).length
+        activeDepartments: departmentStats.rows.filter(d => d.request_count > 0).length,
+        departmentsWithOverdue: departmentStats.rows.filter(d => parseInt(d.overdue_requests || 0) > 0).length
       },
       departments: departmentStats.rows.map(dept => ({
         name: dept.department_name,
@@ -749,7 +769,8 @@ static async deleteReport(req, res) {
         pending_requests: parseInt(dept.pending_requests || 0),
         approved_requests: parseInt(dept.approved_requests || 0),
         returned_requests: parseInt(dept.returned_requests || 0),
-        rejected_requests: parseInt(dept.rejected_requests || 0)
+        rejected_requests: parseInt(dept.rejected_requests || 0),
+        overdue_requests: parseInt(dept.overdue_requests || 0)
       })),
       documentTypesByDept: documentTypesByDept.rows.map(row => ({
         department: row.department,
@@ -1172,7 +1193,7 @@ static async deleteReport(req, res) {
       { header: 'Count', key: 'count', width: 10 }
     ];
 
-    data.documentTypesBydepartment.forEach(item => {
+    data.documentTypesByDept.forEach(item => {
       docTypeSheet.addRow({
         department: item.department,
         type: item.document_type,
@@ -1191,7 +1212,7 @@ static async deleteReport(req, res) {
       { header: 'Last Request', key: 'last', width: 20 }
     ];
 
-    data.usersBydepartment.forEach(user => {
+    data.usersByDept.forEach(user => {
       usersSheet.addRow({
         department: user.department,
         user: user.name,

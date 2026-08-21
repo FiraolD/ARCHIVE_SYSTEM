@@ -4,7 +4,11 @@ const jwt = require('jsonwebtoken');
 
 class User {
   static async create(userData) {
-    const { name, email, password, role = 'Agent', avatar } = userData;
+    const { name, email, password, role, avatar } = userData;
+    
+    // Whitelist role - never trust client-supplied values
+    const VALID_ROLES = ['Admin', 'Manager', 'Agent', 'Viewer'];
+    const safeRole = VALID_ROLES.includes(role) ? role : 'Agent';
     
     const hashedPassword = await bcrypt.hash(password, 10);
     
@@ -12,7 +16,7 @@ class User {
       `INSERT INTO users (name, email, password_hash, role, avatar)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, name, email, role, avatar, created_at`,
-      [name, email, hashedPassword, role, avatar]
+      [name, email, hashedPassword, safeRole, avatar]
     );
     
     return result.rows[0];

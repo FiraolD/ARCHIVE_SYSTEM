@@ -30,7 +30,9 @@ interface User {
   department_name?: string;
   avatar?: string;
   createdAt: string;
+  created_at?: string;
   lastLogin?: string;
+  last_login?: string;
   is_active: boolean;
 }
 
@@ -69,9 +71,7 @@ export const UserManagement: React.FC = () => {
 
   const fetchDepartments = async () => {
     try {
-      console.log('Fetching departments...');
       const response = await registrationApi.getDepartments();
-      console.log('Departments fetched:', response.data);
       setDepartments(response.data);
     } catch (error) {
       console.error('Failed to fetch departments:', error);
@@ -112,7 +112,7 @@ export const UserManagement: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black text-slate-900">User Management</h2>
+          <h2 className="text-3xl font-black text-slate-900	dark:text-white dark:text-white">User Management</h2>
           <p className="text-slate-500 font-medium">Create and manage system users with department assignment</p>
         </div>
         <button
@@ -451,7 +451,9 @@ const UserFormModal: React.FC<{
             </button>
           </div>
         </form>
+        
       </motion.div>
+      
     </motion.div>
   );
 };

@@ -11,22 +11,47 @@ import {
   Clock,
   Filter,
   Loader2,
-  X
+  X,
+  History,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
-import { documentApi } from '../services/api';
+import { documentApi, requestApi } from '../services/api';
 import { Document } from '../types';
+import { format } from 'date-fns';
 
 export const FileRequestPage: React.FC = () => {
   const { user, addFileRequest } = useArchive();
-  const [searchQuery, setSearchQuery] = useState('');      // ✅ Declared here
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [returnDate, setReturnDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Document[]>([]);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  
+  // State for My Requests
+  const [myRequests, setMyRequests] = useState<any[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [returningId, setReturningId] = useState<string | null>(null);
+
+  // Fetch user's requests on mount
+  useEffect(() => {
+    fetchMyRequests();
+  }, []);
+
+  const fetchMyRequests = async () => {
+    try {
+      setLoadingRequests(true);
+      const response = await requestApi.getMyRequests();
+      setMyRequests(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch requests:', error);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
 
   // Handle search when query changes
   useEffect(() => {
@@ -41,10 +66,7 @@ export const FileRequestPage: React.FC = () => {
       setDebugInfo(`Searching for: "${searchQuery}"`);
 
       try {
-        // Call API with search parameter
         const response = await documentApi.getDocuments({ search: searchQuery });
-        console.log('Search response:', response.data);
-        
         setSearchResults(response.data.documents);
         setDebugInfo(`Found ${response.data.documents.length} documents`);
       } catch (error: any) {
@@ -56,7 +78,6 @@ export const FileRequestPage: React.FC = () => {
       }
     };
 
-    // Debounce search to avoid too many requests
     const timeoutId = setTimeout(performSearch, 500);
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
@@ -81,10 +102,27 @@ export const FileRequestPage: React.FC = () => {
       setReturnDate('');
       setSearchQuery('');
       toast.success('File request submitted successfully');
+      fetchMyRequests(); // Refresh the list
     } catch (error) {
       // Error is handled in context
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleReturn = async (requestId: string) => {
+    if (!confirm('Are you sure you want to return this document?')) return;
+    
+    try {
+      setReturningId(requestId);
+      await requestApi.returnByRequester(requestId);
+      toast.success('Document returned. Awaiting admin verification.');
+      fetchMyRequests(); // Refresh the list
+    } catch (error: any) {
+      console.error('Return error:', error);
+      toast.error(error.response?.data?.error || 'Failed to return document');
+    } finally {
+      setReturningId(null);
     }
   };
 
@@ -95,7 +133,7 @@ export const FileRequestPage: React.FC = () => {
         <div className="relative z-10 max-w-2xl">
           <h1 className="text-4xl font-black tracking-tighter mb-4">File Recovery Request</h1>
           <p className="text-blue-100 text-lg font-medium leading-relaxed">
-            Search and request physical files from the archive. Specify an expected return date for tracking.
+            Search and request physical files from the archive. Track and return your checked-out files.
           </p>
         </div>
         <div className="absolute top-0 right-0 p-10 opacity-10">
@@ -111,10 +149,10 @@ export const FileRequestPage: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Search Section */}
+        {/* Left Column: Search and My Requests */}
         <div className="lg:col-span-2 space-y-6">
           {/* Search Input */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+          <div className="dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
               <input 
@@ -122,7 +160,7 @@ export const FileRequestPage: React.FC = () => {
                 placeholder="Search by Claim #, Policy #, Insured Name, or Reference..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800"
+                className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800 dark:text-white dark:text-white"
               />
               {searchQuery && (
                 <button
@@ -137,7 +175,7 @@ export const FileRequestPage: React.FC = () => {
 
           {/* Results Header */}
           <div className="flex items-center justify-between px-2">
-            <h3 className="text-xl font-black text-slate-900">Search Results</h3>
+            <h3 className="text-xl font-black text-slate-900	dark:text-white dark:text-white">Search Results</h3>
             <div className="flex items-center gap-2 text-slate-400 text-sm font-bold uppercase tracking-widest">
               <Filter className="w-4 h-4" />
               <span>{searchResults.length} Found</span>
@@ -164,8 +202,8 @@ export const FileRequestPage: React.FC = () => {
                       selectedDoc?.id === doc.id 
                         ? 'border-blue-600 bg-blue-50/50 shadow-lg shadow-blue-500/10' 
                         : doc.status === 'Active'
-                        ? 'border-slate-100 bg-white hover:border-blue-200 hover:shadow-md'
-                        : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed'
+                        ? 'border-slate-100 dark:bg-slate-800 hover:border-blue-200 hover:shadow-md'
+                        : 'border-slate-100 bg-slate-50 dark:bg-slate-800/50 opacity-60 cursor-not-allowed'
                     }`}
                   >
                     <div className="flex items-start justify-between">
@@ -174,13 +212,13 @@ export const FileRequestPage: React.FC = () => {
                           selectedDoc?.id === doc.id 
                             ? 'bg-blue-600 text-white' 
                             : doc.status === 'Active'
-                            ? 'bg-slate-100 text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600'
+                            ? 'bg-slate-100 text-slate-500 dark:text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600'
                             : 'bg-slate-100 text-slate-400'
                         }`}>
                           <FileText className="w-7 h-7" />
                         </div>
                         <div>
-                          <h4 className="font-black text-slate-900 group-hover:text-blue-700 transition-colors">
+                          <h4 className="font-black text-slate-900	dark:text-white dark:text-white group-hover:text-blue-700 transition-colors">
                             {doc.claim_number || doc.policy_number || doc.insured_name || 'Untitled Document'}
                           </h4>
                           <div className="flex items-center gap-3 mt-1">
@@ -226,34 +264,106 @@ export const FileRequestPage: React.FC = () => {
                   </motion.div>
                 ))
               ) : searchQuery ? (
-                <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
+                <div className="dark:bg-slate-800 p-12 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center text-center">
+                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-4">
                     <Search className="w-8 h-8 text-slate-300" />
                   </div>
-                  <h4 className="text-lg font-bold text-slate-900">No matching files found</h4>
-                  <p className="text-slate-500 text-sm mt-1">
+                  <h4 className="text-lg font-bold text-slate-900	dark:text-white dark:text-white">No matching files found</h4>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                     Try a different claim number, policy number, or insured name.
                   </p>
                 </div>
               ) : (
-                <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 flex flex-col items-center text-center">
+                <div className="dark:bg-slate-800 p-12 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center text-center">
                   <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
                     <Search className="w-8 h-8 text-blue-300" />
                   </div>
-                  <h4 className="text-lg font-bold text-slate-900">Start searching</h4>
-                  <p className="text-slate-500 text-sm mt-1">
+                  <h4 className="text-lg font-bold text-slate-900	dark:text-white dark:text-white">Start searching</h4>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                     Enter claim number, policy number, or insured name above
                   </p>
                 </div>
               )}
             </AnimatePresence>
           </div>
+
+          {/* --- NEW: My Requests Section --- */}
+          <div className="dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-black text-slate-900	dark:text-white dark:text-white flex items-center gap-2">
+                <History className="w-5 h-5 text-blue-600" />
+                My Requests
+              </h3>
+              <button
+                onClick={fetchMyRequests}
+                disabled={loadingRequests}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-blue-600 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingRequests ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            {loadingRequests ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+              </div>
+            ) : myRequests.length > 0 ? (
+              <div className="space-y-4">
+                {myRequests.map((req) => (
+                  <div key={req.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-slate-900	dark:text-white dark:text-white">{req.document_title || 'Untitled'}</p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            req.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
+                            req.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                            req.status === 'Returned' ? 'bg-blue-100 text-blue-700' :
+                            req.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                            'bg-slate-100 text-slate-700'
+                          }`}>
+                            {req.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-blue-600 font-mono mt-1">Request Ref: {req.request_reference}</p>
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          <span>Expected: {format(new Date(req.expected_return_date), 'MMM dd, yyyy')}</span>
+                          {req.actual_return_date && (
+                            <span>Returned: {format(new Date(req.actual_return_date), 'MMM dd, yyyy')}</span>
+                          )}
+                        </div>
+                      </div>
+                      {req.status === 'Approved' && !req.actual_return_date && (
+                        <button
+                          onClick={() => handleReturn(req.id)}
+                          disabled={returningId === req.id}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2 text-sm whitespace-nowrap"
+                        >
+                          {returningId === req.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            'Return Document'
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-slate-400">
+                <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>You have no requests yet.</p>
+              </div>
+            )}
+          </div>
+          {/* --- End of My Requests Section --- */}
         </div>
 
-        {/* Request Form */}
+        {/* Right Column: Request Form */}
         <div className="space-y-6">
-          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl sticky top-24">
-            <h3 className="text-xl font-black text-slate-900 mb-6">Request Details</h3>
+          <div className="dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl sticky top-24">
+            <h3 className="text-xl font-black text-slate-900	dark:text-white dark:text-white mb-6">Request Details</h3>
             
             <AnimatePresence mode="wait">
               {selectedDoc ? (
@@ -280,7 +390,7 @@ export const FileRequestPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-xs font-black text-slate-500 uppercase tracking-widest">
+                    <label className="flex items-center gap-2 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                       <Calendar className="w-3 h-3" /> Expected Return Date
                     </label>
                     <input 
@@ -289,7 +399,7 @@ export const FileRequestPage: React.FC = () => {
                       min={new Date().toISOString().split('T')[0]}
                       value={returnDate}
                       onChange={(e) => setReturnDate(e.target.value)}
-                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800"
                     />
                   </div>
 
@@ -315,7 +425,7 @@ export const FileRequestPage: React.FC = () => {
                     <button 
                       type="button"
                       onClick={() => setSelectedDoc(null)}
-                      className="w-full mt-3 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors text-sm"
+                      className="w-full mt-3 py-3 text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-50 dark:bg-slate-800/50 rounded-xl transition-colors text-sm"
                     >
                       Cancel Selection
                     </button>
@@ -328,7 +438,7 @@ export const FileRequestPage: React.FC = () => {
                   animate={{ opacity: 1 }}
                   className="flex flex-col items-center text-center py-10"
                 >
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
                     <FileText className="w-8 h-8 text-slate-200" />
                   </div>
                   <p className="text-slate-400 text-sm font-medium">

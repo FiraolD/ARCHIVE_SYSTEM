@@ -11,6 +11,7 @@ import {
   User,
   ExternalLink,
   ChevronRight,
+  ArrowLeft,
   Loader2
 } from 'lucide-react';
 import { Document, FileStatus } from '../types';
@@ -56,18 +57,20 @@ export const StatusUpdatePage: React.FC = () => {
     }
   };
 
-  const statusOptions: { status: FileStatus; icon: any; color: string; label: string }[] = [
-    { status: 'Active', icon: History, color: 'text-green-600 bg-green-50 border-green-200', label: 'Set as Active (Available)' },
-    { status: 'Checked-out', icon: Package, color: 'text-amber-600 bg-amber-50 border-amber-200', label: 'Mark as Checked-out' },
-    { status: 'Settled Claims', icon: CheckCircle, color: 'text-blue-600 bg-blue-50 border-blue-200', label: 'Mark as Settled Claims' },
-  ];
+// In StatusUpdatePage.tsx, update statusOptions array
+const statusOptions: Array<{ status: FileStatus; icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = [
+  { status: 'Active', icon: History, color: 'text-green-600 bg-green-50 border-green-200', label: 'Set as Active (Available)' },
+  { status: 'Checked-out', icon: Package, color: 'text-amber-600 bg-amber-50 border-amber-200', label: 'Mark as Checked-out' },
+  { status: 'Settled Claims', icon: CheckCircle, color: 'text-blue-600 bg-blue-50 border-blue-200', label: 'Mark as Settled Claims' },
+  { status: 'Returned', icon: ArrowLeft, color: 'text-purple-600 bg-purple-50 border-purple-200', label: 'Mark as Returned (Pending Active)' },
+];
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black text-slate-900">Status Management</h2>
-          <p className="text-slate-500 font-medium">Update document lifecycle states and transitions.</p>
+          <h2 className="text-3xl font-black text-slate-900	dark:text-white dark:text-white">Status Management</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Update document lifecycle states and transitions.</p>
         </div>
         
         <div className="relative group w-full md:w-96">
@@ -77,7 +80,7 @@ export const StatusUpdatePage: React.FC = () => {
             placeholder="Search by Reference # or Title..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 outline-none font-medium transition-all"
+            className="w-full pl-12 pr-4 py-4 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 outline-none font-medium transition-all"
           />
         </div>
       </div>
@@ -96,7 +99,7 @@ export const StatusUpdatePage: React.FC = () => {
                 className={`w-full p-6 flex items-center gap-6 rounded-2xl border transition-all text-left ${
                   selectedDoc?.id === doc.id 
                     ? 'bg-blue-50 border-blue-500 shadow-md ring-4 ring-blue-500/5' 
-                    : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm'
+                    : 'dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:shadow-sm'
                 }`}
               >
                 <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center shrink-0">
@@ -108,14 +111,14 @@ export const StatusUpdatePage: React.FC = () => {
                       {doc.archiveReferenceNumber}
                     </span>
                     <span className="text-xs font-bold text-slate-400">•</span>
-                    <span className="text-xs font-bold text-slate-500">{doc.type}</span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{doc.type}</span>
                   </div>
-                  <h4 className="font-bold text-slate-900 truncate">{doc.archive_reference_number}</h4>
+                  <h4 className="font-bold text-slate-900	dark:text-white dark:text-white truncate">{doc.archive_reference_number}</h4>
                   <div className="flex items-center gap-4 mt-2">
-                    <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
+                    <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
                       <Calendar className="w-3 h-3" /> {new Date(doc.createdAt).toLocaleDateString()}
                     </span>
-                    <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
+                    <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
                       <User className="w-3 h-3" /> {doc.owner}
                     </span>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded ${
@@ -132,18 +135,18 @@ export const StatusUpdatePage: React.FC = () => {
             ))}
             
             {!searchQuery && (
-              <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-16 text-center">
-                <div className="w-20 h-20 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-6">
+              <div className="bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-16 text-center">
+                <div className="w-20 h-20 dark:bg-slate-800 rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-6">
                   <Search className="w-10 h-10 text-slate-300" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-800">Ready for lookup</h3>
-                <p className="text-slate-500 mt-2 max-w-sm mx-auto">Start typing a reference number or file name to update its status.</p>
+                <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-sm mx-auto">Start typing a reference number or file name to update its status.</p>
               </div>
             )}
 
             {searchQuery && filteredDocs.length === 0 && (
               <div className="p-12 text-center">
-                <p className="text-slate-500 font-medium">No documents found matching "{searchQuery}"</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">No documents found matching "{searchQuery}"</p>
               </div>
             )}
           </AnimatePresence>
@@ -158,21 +161,21 @@ export const StatusUpdatePage: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden sticky top-8"
+                className="dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden sticky top-8"
               >
-                <div className="p-8 border-b border-slate-100 bg-slate-50/50">
-                  <h3 className="text-xl font-black text-slate-900 mb-6">Action Center</h3>
+                <div className="p-8 border-b border-slate-100 bg-slate-50 dark:bg-slate-800/50/50">
+                  <h3 className="text-xl font-black text-slate-900	dark:text-white dark:text-white mb-6">Action Center</h3>
                   <div className="space-y-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center border border-slate-200 shadow-sm">
+                      <div className="w-12 h-12 dark:bg-slate-800 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
                         <FileText className="w-6 h-6 text-blue-600" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Selected File</p>
-                        <p className="font-bold text-slate-900 truncate">{selectedDoc.archiveReferenceNumber}</p>
+                        <p className="font-bold text-slate-900	dark:text-white dark:text-white truncate">{selectedDoc.archiveReferenceNumber}</p>
                       </div>
                     </div>
-                    <div className="p-4 bg-white border border-slate-200 rounded-xl">
+                    <div className="p-4 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
                       <p className="text-xs font-bold text-slate-400 mb-1 uppercase tracking-widest">Current Status</p>
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full animate-pulse ${
@@ -191,7 +194,7 @@ export const StatusUpdatePage: React.FC = () => {
                 </div>
 
                 <div className="p-8 space-y-3">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Select New State</p>
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Select New State</p>
                   {statusOptions.map((opt) => (
                     <button
                       key={opt.status}
@@ -222,10 +225,10 @@ export const StatusUpdatePage: React.FC = () => {
                 key="empty"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="h-full bg-slate-50/30 border-2 border-dashed border-slate-200 rounded-3xl p-12 flex flex-col items-center justify-center text-center opacity-60"
+                className="h-full bg-slate-50 dark:bg-slate-800/50/30 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-12 flex flex-col items-center justify-center text-center opacity-60"
               >
                 <RefreshCcw className="w-12 h-12 text-slate-300 mb-4" />
-                <p className="text-slate-500 font-bold">Select a document to modify its status</p>
+                <p className="text-slate-500 dark:text-slate-400 font-bold">Select a document to modify its status</p>
               </motion.div>
             )}
           </AnimatePresence>

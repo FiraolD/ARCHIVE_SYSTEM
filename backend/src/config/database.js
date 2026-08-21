@@ -18,11 +18,31 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
-  process.exit(-1);
 });
+
+/**
+ * Run a set of queries inside a transaction.
+ * @param {(client) => Promise<any>} fn - receives a dedicated client; use client.query(...)
+ * @returns {Promise<any>} the value returned by fn
+ */
+const withTransaction = async (fn) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
 
 module.exports = {
   query: (text, params) => pool.query(text, params),
+  withTransaction,
   pool
 };
 
@@ -45,16 +65,3 @@ pool.connect((err, client, release) => {
     release();
   }
 });
-
-pool.on('connect', () => {
-  console.log('🔄 New database connection established');
-});
-
-pool.on('error', (err) => {
-  console.error('❌ Unexpected database error:', err);
-});
-
-module.exports = {
-  query: (text, params) => pool.query(text, params),
-  pool
-};
