@@ -8,6 +8,7 @@ const requestController = require('../controllers/requestController');
 
 const requestValidation = [
   body('documentId').notEmpty().withMessage('Document ID is required'),
+  body('requesterName').notEmpty().withMessage('Requester name is required'),
   body('expectedReturnDate').isDate().withMessage('Valid return date is required'),
   body('notes').optional()
 ];
@@ -39,13 +40,13 @@ router.get('/all',
 
 router.patch('/:id/approve', 
   authenticate,
-  authorize('Admin'),  // Only Admin can approve
+  authorize('Admin', 'Manager'),
   requestController.approveRequest
 );
 
 router.patch('/:id/reject', 
   authenticate,
-  authorize('Admin'),  // Only Admin can reject
+  authorize('Admin', 'Manager'),
   [
     body('reason').notEmpty().withMessage('Rejection reason is required')
   ],
@@ -60,7 +61,7 @@ router.patch('/:id/return-by-requester',
 
 router.patch('/:id/return', 
   authenticate,
-  authorize('Admin'),  // Only Admin can mark as returned
+  authorize('Admin', 'Manager'),
   requestController.returnDocument
 );
 

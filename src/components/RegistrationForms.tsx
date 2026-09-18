@@ -343,48 +343,43 @@ const BoxRegistrationForm: React.FC = () => {
 const CabinetRegistrationForm: React.FC = () => {
   const { addCabinet } = useArchive();
   const [formData, setFormData] = useState({ number: '', drawers: '' });
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const drawersRaw = formData.drawers;
-      const drawers = drawersRaw.split(',').map(d => d.trim()).filter(d => d.length > 0);
-      await addCabinet({
-        number: formData.number,
-        drawers: drawers,
-      });
-      setFormData({ number: '', drawers: '' });
-      toast.success('Cabinet registered successfully');
+      await addCabinet();
+      toast.success('File Box registered successfully with 12 drawers');
     } catch (error) {
-      toast.error('Failed to register cabinet');
+      toast.error('Failed to register File Box');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <FormSection title="Cabinet Registration" onSubmit={handleSubmit}>
+    <FormSection title="File Box Registration" onSubmit={handleSubmit}>
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">Cabinet Number</label>
+        <label className="text-sm font-bold text-slate-700">File Box Name</label>
         <input 
           name="number" 
           value={formData.number}
           onChange={(e) => setFormData({ ...formData, number: e.target.value })}
           required 
-          placeholder="e.g. CAB-101" 
+          placeholder="Assigned automatically: FILEBOX + sequence" 
           className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
         />
       </div>
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">Drawer Numbers (comma separated)</label>
+        <label className="text-sm font-bold text-slate-700">Drawers</label>
         <input 
           name="drawers" 
           value={formData.drawers}
           onChange={(e) => setFormData({ ...formData, drawers: e.target.value })}
           required 
-          placeholder="e.g. 1, 2, 3, 4" 
+          placeholder="12 drawers are created automatically" 
           className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
         />
       </div>
@@ -431,7 +426,7 @@ export const RegistrationPage: React.FC = () => {
     { id: 'department', label: 'Department', icon: Layers },
     { id: 'product', label: 'Product', icon: Package },
     { id: 'box', label: 'Box', icon: BoxIcon },
-    { id: 'cabinet', label: 'Cabinet', icon: Archive },
+    { id: 'cabinet', label: 'File Box', icon: Archive },
     { id: 'drawer-assignment', label: 'Drawer Assignment', icon: Grid },
     { id: 'add-to-box', label: 'Add File to Box', icon: FolderOpen },
   ];

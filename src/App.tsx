@@ -105,7 +105,7 @@ const AppContent: React.FC = () => {
       id: 'registration', 
       label: 'Registration', 
       icon: Building2, 
-      roles: ['Admin'],
+      roles: ['Admin', 'Manager'],
       subItems: [
         { id: 'branch', label: 'Branch Registration', icon: Building2 },
         { id: 'department', label: 'Department', icon: Layers },
@@ -116,9 +116,9 @@ const AppContent: React.FC = () => {
       ]
     },
     { id: 'status-update', label: UI_LABELS.SIDEBAR.STATUS_UPDATE, icon: RefreshCcw, roles: ['Admin', 'Manager'] },
-    { id: 'upload', label: UI_LABELS.SIDEBAR.UPLOAD, icon: UploadCloud, roles: ['Admin'] },
+    { id: 'upload', label: UI_LABELS.SIDEBAR.UPLOAD, icon: UploadCloud, roles: ['Admin', 'Manager'] },
     { id: 'user-management', label: 'User Management', icon: Users, roles: ['Admin'] },
-    { id: 'request-management', label: 'Request Management', icon: CheckCircle2, roles: ['Admin'] },
+    { id: 'request-management', label: 'Request Management', icon: CheckCircle2, roles: ['Admin', 'Manager'] },
     { id: 'reports', label: 'Reports', icon: Grid, roles: ['Admin', 'Manager'] }
   ];
 
@@ -195,7 +195,7 @@ const AppContent: React.FC = () => {
               animate={{ opacity: 1 }}
               className="text-white font-black tracking-tighter text-2xl truncate dark:text-slate-200"
             >
-              AWAISH<span className="text-blue-400 dark:text-blue-400">ARCH</span>
+              AWASH<span className="text-blue-400 dark:text-blue-400">ARCH</span>
             </motion.span>
           )}
         </div>
@@ -383,7 +383,7 @@ const AppContent: React.FC = () => {
                 </motion.div>
               )}
 
-              {activeTab === 'registration' && user?.role === 'Admin' && (
+              {activeTab === 'registration' && (user?.role === 'Admin' || user?.role === 'Manager') && (
                 <motion.div
                   key="registration"
                   initial={{ opacity: 0, y: 10 }}
@@ -405,7 +405,7 @@ const AppContent: React.FC = () => {
                 </motion.div>
               )}
 
-              {activeTab === 'upload' && user?.role === 'Admin' && (
+              {activeTab === 'upload' && (user?.role === 'Admin' || user?.role === 'Manager') && (
                 <motion.div
                   key="upload"
                   initial={{ opacity: 0, y: 10 }}
@@ -415,7 +415,7 @@ const AppContent: React.FC = () => {
                   <AddIngestFileForm userRole={user.role} />
                 </motion.div>
               )}
-              {activeTab === 'request-management' && user?.role === 'Admin' && (
+              {activeTab === 'request-management' && (user?.role === 'Admin' || user?.role === 'Manager') && (
                 <motion.div
                 key="request-management"
                 initial={{ opacity: 0, y: 10 }}
@@ -425,7 +425,7 @@ const AppContent: React.FC = () => {
                   <AdminRequests />
                 </motion.div>
 )}
-              {activeTab === 'user-management' && user?.role === 'Admin' && (
+              {activeTab === 'user-management' && (user?.role === 'Admin' || user?.role === 'Manager') && (
                 <motion.div
                   key="user-management"
                   initial={{ opacity: 0, y: 10 }}

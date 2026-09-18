@@ -12,14 +12,14 @@ router.get('/stats', authenticate, ReportsController.getReportStats);
 // Get list of generated reports (admin only)
 router.get('/generated', 
   authenticate, 
-  authorize('Admin'), 
+  authorize('Admin', 'Manager'), 
   ReportsController.getGeneratedReports
 );
 
 // Generate a new report (admin only)
 router.post('/generate',
   authenticate,
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   [
     body('type').isIn(['Monthly Summary', 'Claims Analysis', 'Department Usage']),
     body('format').optional().isIn(['PDF', 'EXCEL', 'CSV'])
@@ -30,14 +30,14 @@ router.post('/generate',
 // Download a specific report (admin only)
 router.get('/download/:id',
   authenticate,
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   ReportsController.downloadReport
 );
 
 // Delete a specific report (admin only)
 router.delete('/:id',
   authenticate,
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   ReportsController.deleteReport  // This line was causing the error
 );
 

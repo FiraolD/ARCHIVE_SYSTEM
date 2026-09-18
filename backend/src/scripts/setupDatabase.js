@@ -157,6 +157,7 @@ async function createTables(client) {
       branch_id UUID REFERENCES branches(id),
       department_id UUID REFERENCES departments(id),
       product_id UUID REFERENCES products(id),
+      product_custom_fields JSONB,
 
       -- Circular specific fields
       circular_date DATE,
@@ -263,6 +264,7 @@ async function upgradeExistingTables(client) {
   // Columns required by current code, added if a database predates them.
   const columnUpgrades = [
     { table: 'users', column: 'department_name', type: 'VARCHAR(100)' },
+    { table: 'documents', column: 'product_custom_fields', type: 'JSONB' },
     { table: 'file_requests', column: 'request_reference', type: 'VARCHAR(50)' },
     { table: 'file_requests', column: 'rejection_reason', type: 'TEXT' },
     { table: 'file_requests', column: 'approved_by', type: 'UUID REFERENCES users(id)' },
@@ -293,6 +295,8 @@ async function createIndexes(client) {
     CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
     CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, read);
     CREATE INDEX IF NOT EXISTS idx_drawer_assignments_active ON drawer_assignments(cabinet_id) WHERE ended_at IS NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_drawer_assignments_active_branch
+      ON drawer_assignments(cabinet_id, drawer_number, branch_id) WHERE ended_at IS NULL;
     CREATE INDEX IF NOT EXISTS idx_generated_reports_created ON generated_reports(created_at DESC);
   `);
 }

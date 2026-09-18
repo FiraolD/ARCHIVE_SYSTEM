@@ -25,7 +25,7 @@ api.interceptors.response.use(
 );
 // Auth API
 export const authApi = {
-  login: (email: string, password: string) => 
+  login: (email, password) => 
     api.post('/auth/login', { email, password }),
   getProfile: () => 
     api.get('/auth/profile'),
@@ -35,31 +35,31 @@ export const authApi = {
 export const userApi = {
   getUsers: () => 
     api.get('/users'),
-  getUser: (id: string) => 
+  getUser: (id) => 
     api.get(`/users/${id}`),
-  createUser: (userData: any) => 
+  createUser: (userData) => 
     api.post('/users', userData),
-  updateUser: (id: string, userData: any) => 
+  updateUser: (id, userData) => 
     api.patch(`/users/${id}`, userData),
-  deleteUser: (id: string) => 
+  deleteUser: (id) => 
     api.delete(`/users/${id}`),
 };
 
 
 export const documentApi = {
-  getDocuments: (params?: any) => api.get('/documents', { params }),
-  getDocument: (id: string) => api.get(`/documents/${id}`),
-  ingestDocument: (formData: FormData) => 
+  getDocuments: (params) => api.get('/documents', { params }),
+  getDocument: (id) => api.get(`/documents/${id}`),
+  ingestDocument: (formData) => 
     api.post('/documents/ingest', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  updateStatus: (id: string, status: string) => 
+  updateStatus: (id, status) => 
     api.patch(`/documents/${id}/status`, { status }),
-  updatePlacement: (id: string, physicalPlacement: string) => 
+  updatePlacement: (id, physicalPlacement) => 
     api.patch(`/documents/${id}/placement`, { physicalPlacement }),
   
   // This should match the backend route
-  assignToBox: (data: { documentId: string; boxId: string }) => 
+  assignToBox: (data) => 
     api.post('/documents/assign-to-box', data), // Make sure this is POST, not GET
 };
 
@@ -68,31 +68,31 @@ export const documentApi = {
 
 export const requestApi = {
   // Create a new request
-  createRequest: (data: any) => api.post('/requests', data),
+  createRequest: (data) => api.post('/requests', data),
   
   // Get current user's requests
   getMyRequests: () => api.get('/requests/my-requests'),
   
   // Get all requests (admin only)
-  getAllRequests: (params?: any) => api.get('/requests/all', { params }),
+  getAllRequests: (params) => api.get('/requests/all', { params }),
   
   // Get pending requests (admin only)
   getPendingRequests: () => api.get('/requests/pending'),
 
-  returnByRequester: (id: string) => api.patch(`/requests/${id}/return-by-requester`),
+  returnByRequester: (id) => api.patch(`/requests/${id}/return-by-requester`),
   
   // Approve a request (admin only)
-  approveRequest: (id: string) => api.patch(`/requests/${id}/approve`),
+  approveRequest: (id) => api.patch(`/requests/${id}/approve`),
   
   // REJECT a request (admin only) - ADD THIS
-  rejectRequest: (id: string, data: { reason: string }) => 
+  rejectRequest: (id, data) => 
     api.patch(`/requests/${id}/reject`, data),
   
   // Return a document (admin only)
-  returnDocument: (id: string) => api.patch(`/requests/${id}/return`),
+  returnDocument: (id) => api.patch(`/requests/${id}/return`),
   
   // Get request by reference number
-  getRequestByReference: (reference: string) => 
+  getRequestByReference: (reference) => 
     api.get(`/requests/reference/${reference}`),
 };
 
@@ -102,53 +102,51 @@ export const requestApi = {
 export const registrationApi = {
   // Branches
   getBranches: () => api.get('/registration/branches'),
-  createBranch: (data: { name: string; code: string }) => 
+  createBranch: (data) => 
     api.post('/registration/branches', data),
   
   // Departments
   getDepartments: () => api.get('/registration/departments'),
-  createDepartment: (data: { name: string; code: string }) => 
+  createDepartment: (data) => 
     api.post('/registration/departments', data),
   
   // Products
   getProducts: () => api.get('/registration/products'),
-  createProduct: (data: { name: string }) => 
+  createProduct: (data) => 
     api.post('/registration/products', data),
-  getProductCustomFields: (productId: string) =>
-    api.get(/registration/products//fields),
   
   // Boxes
   getBoxes: () => api.get('/registration/boxes'),
-  createBox: (data: { branchCode: string; fileType: string }) => 
+  createBox: (data) => 
     api.post('/registration/boxes', data),
   
-  // File Boxes
-  getCabinets: (branchId?: string) => 
+  // Cabinets
+  getCabinets: (branchId) => 
     api.get(branchId ? `/registration/cabinets?branchId=${branchId}` : '/registration/cabinets'),
-  createCabinet: () => 
-    api.post('/registration/cabinets'),
+  createCabinet: (data) => 
+    api.post('/registration/cabinets', data),
   
   // Drawer Assignments - THIS IS THE KEY PART
-  assignDrawer: (data: { cabinetId: string; branchId: string; drawerNumber: string }) => 
+  assignDrawer: (data) => 
     api.post('/registration/assign-drawer', data),
   
   getDrawerAssignments: () => 
     api.get('/registration/drawer-assignments'),
   
-  getDrawerHistory: (cabinetId: string, drawerNumber: string) => 
+  getDrawerHistory: (cabinetId, drawerNumber) => 
     api.get('/registration/drawer-history', { params: { cabinetId, drawerNumber } }),
   
   // Cabinet Assignment - link a cabinet to a branch
-  assignCabinet: (data: { cabinetId: string; branchId: string }) => 
+  assignCabinet: (data) => 
     api.post('/registration/assign-cabinet', data),
   
   // Box Assignments
-  assignBox: (data: { boxId: string; cabinetId: string; drawerNumber: string }) => 
+  assignBox: (data) => 
     api.post('/registration/assign-box', data),
 };
   export const notificationApi = {
     getNotifications: () => api.get('/notifications'),
-    markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+    markAsRead: (id) => api.patch(`/notifications/${id}/read`),
     markAllAsRead: () => api.patch('/notifications/read-all'),
   };
 export default api;
@@ -162,7 +160,7 @@ export const dashboardApi = {
 
 export const reportsApi = {
   // Get report statistics/dashboard data
-  getStats: (params?: { period?: '6months' | '1year' | 'all' }) => 
+  getStats: (params) => 
     api.get('/reports/stats', { params }),
   
   // Get list of previously generated reports
@@ -170,19 +168,19 @@ export const reportsApi = {
     api.get('/reports/generated'),
   
   // Generate a new report
-  generateReport: (data: { 
-    type: 'Monthly Summary' | 'Claims Analysis' | 'Department Usage'; 
-    format?: 'PDF' | 'EXCEL' | 'CSV'
-  }) => 
+  generateReport: (data
+
+
+) => 
     api.post('/reports/generate', data),
   
   // Download a specific report by ID
-  downloadReport: (id: string) => 
+  downloadReport: (id) => 
     api.get(`/reports/download/${id}`, {
       responseType: 'blob'
     }),
   
   // Delete a report
-  deleteReport: (id: string) => 
+  deleteReport: (id) => 
     api.delete(`/reports/${id}`)
 };

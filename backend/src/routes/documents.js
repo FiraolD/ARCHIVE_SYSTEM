@@ -18,7 +18,7 @@ const documentValidation = [
 // Routes
 router.post('/ingest', 
   authenticate,
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   upload.single('file'),
   documentValidation,
   documentController.ingestDocument
@@ -44,7 +44,7 @@ router.patch('/:id/status',
 
 router.patch('/:id/placement', 
   authenticate,
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   body('physicalPlacement').notEmpty().withMessage('Physical placement is required'),
   documentController.updatePhysicalPlacement
 );
@@ -52,7 +52,7 @@ router.patch('/:id/placement',
 // NEW ROUTE - Make sure this is line 51 and that documentController.assignToBox exists
 router.post('/assign-to-box', 
   authenticate,
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   [
     body('documentId').notEmpty().withMessage('Document ID is required'),
     body('boxId').notEmpty().withMessage('Box ID is required')

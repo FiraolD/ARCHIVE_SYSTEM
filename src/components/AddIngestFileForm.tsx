@@ -25,6 +25,7 @@ import { DocumentUploader } from './DocumentUploader';
 import { FILE_TYPES } from '../lib/constants';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi } from '../services/api';
+import { getProductCustomFields } from '../config/productCustomFields';
 
 interface Cabinet {
   id: string;
@@ -51,6 +52,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [selectedProductCode, setSelectedProductCode] = useState<string>('');
+  const [productCustomValues, setProductCustomValues] = useState<Record<string, string>>({});
   const [selectedCabinet, setSelectedCabinet] = useState<string>('');
   const [selectedDrawer, setSelectedDrawer] = useState<string>('');
   const [availableCabinets, setAvailableCabinets] = useState<Cabinet[]>([]);
@@ -64,16 +66,11 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
     insuredName: '',
     policyNumber: '',
     claimNumber: '',
-    estimatedLoss: '',
     dateAdded: new Date().toISOString().split('T')[0],
     receivedBy: '',
     deliveredBy: '',
     receiverRemark: '',
     title: '',
-    plateNumber: '',
-    vehicleRegistration: '',
-    make: '',
-    model: ''
   });
 
   const { branches, departments, products, fetchBranches, fetchDepartments, fetchProducts, ingestDocument } = useArchive();
@@ -105,6 +102,13 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       }
     }
   }, [selectedProduct, products]);
+
+  const selectedProductName = products?.find(product => product.id === selectedProduct)?.name;
+  const selectedProductFields = getProductCustomFields(selectedProductName);
+
+  useEffect(() => {
+    setProductCustomValues({});
+  }, [selectedProduct]);
 
   // Fetch cabinets assigned to the selected branch
   useEffect(() => {
@@ -154,9 +158,9 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
   const getReferencePreview = (): string => {
     if (!selectedBranchCode || !selectedProductCode) return '';
     const year = new Date().getFullYear().toString().slice(-2);
-    return `FL/${selectedBranchCode}/${selectedProductCode}/######/${year}`;
+    return `AI/${selectedBranchCode}/###/${year}`;
   };
-
+ 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -222,6 +226,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       
       if (selectedProduct) {
         formDataToSend.append('productId', selectedProduct);
+        formDataToSend.append('productCustomFields', JSON.stringify(productCustomValues));
       }
       
       if (selectedCabinet) {
@@ -232,17 +237,10 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
         formDataToSend.append('drawerNumber', selectedDrawer);
       }
       
-      // Claim File specific fields
-      if (fileType === 'Claim File') {
-        formDataToSend.append('insuredName', formData.insuredName || '');
-        formDataToSend.append('policyNumber', formData.policyNumber || '');
-        formDataToSend.append('claimNumber', formData.claimNumber || '');
-        formDataToSend.append('estimatedLoss', formData.estimatedLoss || '0');
-        formDataToSend.append('plateNumber', formData.plateNumber || '');
-        formDataToSend.append('vehicleRegistration', formData.vehicleRegistration || '');
-        formDataToSend.append('make', formData.make || '');
-        formDataToSend.append('model', formData.model || '');
-      }
+      // Common document fields
+      formDataToSend.append('insuredName', formData.insuredName || '');
+      formDataToSend.append('policyNumber', formData.policyNumber || '');
+      formDataToSend.append('claimNumber', formData.claimNumber || '');
       
       // File is optional
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -271,16 +269,11 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
         insuredName: '',
         policyNumber: '',
         claimNumber: '',
-        estimatedLoss: '',
         dateAdded: new Date().toISOString().split('T')[0],
         receivedBy: '',
         deliveredBy: '',
         receiverRemark: '',
         title: '',
-        plateNumber: '',
-        vehicleRegistration: '',
-        make: '',
-        model: ''
       });
       setSelectedCabinet('');
       setSelectedDrawer('');
@@ -308,16 +301,11 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       insuredName: '',
       policyNumber: '',
       claimNumber: '',
-      estimatedLoss: '',
       dateAdded: new Date().toISOString().split('T')[0],
       receivedBy: '',
       deliveredBy: '',
       receiverRemark: '',
       title: '',
-      plateNumber: '',
-      vehicleRegistration: '',
-      make: '',
-      model: ''
     });
     setSelectedBranchId(branches?.[0]?.id || '');
     setSelectedBranchCode(branches?.[0]?.code || '');
@@ -447,7 +435,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
     
     <div className="bg-white p-4 rounded-lg border border-blue-100 mb-3">
       <p className="text-2xl font-mono font-black text-blue-900 break-all text-center">
-        FL/{selectedBranchCode}/{selectedProductCode}/<span className="text-green-600">000001</span>/{new Date().getFullYear().toString().slice(-2)}
+        AI/{selectedBranchCode}/<span className="text-green-600">001</span>/{new Date().getFullYear().toString().slice(-2)}
       </p>
     </div>
     
@@ -462,7 +450,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       </div>
       <div className="p-2 bg-green-50 rounded">
         <span className="font-bold text-green-700">Sequence:</span>
-        <span className="ml-2 font-mono">000001 (auto-increments)</span>
+        <span className="ml-2 font-mono">001 (auto-increments)</span>
       </div>
       <div className="p-2 bg-purple-50 rounded">
         <span className="font-bold text-purple-700">Year:</span>
@@ -524,23 +512,23 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    <Archive className="w-3 h-3" /> Select Cabinet
+                    <Archive className="w-3 h-3" /> Select File Box
                   </label>
                   <select
                     value={selectedCabinet}
                     onChange={(e) => setSelectedCabinet(e.target.value)}
                     className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                   >
-                    <option value="">Choose cabinet...</option>
+                    <option value="">Choose File Box...</option>
                     {availableCabinets?.map(cabinet => (
                       <option key={cabinet.id} value={cabinet.id}>
-                        Cabinet {cabinet.number}
+                        File Box {cabinet.number}
                       </option>
                     ))}
                   </select>
                   {availableCabinets.length === 0 && (
                     <p className="text-xs text-amber-600 mt-1">
-                      No cabinets with drawers assigned to this branch
+                      No File Boxes with drawers assigned to this branch
                     </p>
                   )}
                 </div>
@@ -578,119 +566,57 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                 exit={{ opacity: 0, y: -10 }}
                 className="grid grid-cols-1 md:grid-cols-2 gap-6"
               >
-                {fileType === 'Claim File' && (
-                  <>
-                    <InputField 
-                      label="Insured Name" 
-                      name="insuredName"
-                      icon={User} 
-                      placeholder="Full name of insured"
-                      value={formData.insuredName}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <InputField 
-                      label="Policy Number" 
-                      name="policyNumber"
-                      icon={Hash} 
-                      placeholder="POL-123-456"
-                      value={formData.policyNumber}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <InputField 
-                      label="Claim Number" 
-                      name="claimNumber"
-                      icon={FileText} 
-                      placeholder="CLM-2024-001"
-                      value={formData.claimNumber}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <InputField 
-                      label="Estimated Loss" 
-                      name="estimatedLoss"
-                      icon={ShieldCheck} 
-                      placeholder="e.g. 5,000,000 NGN"
-                      value={formData.estimatedLoss}
-                      onChange={handleInputChange}
-                    />
-                    
-                    <SelectField 
-                      label="Department" 
-                      name="departmentId"
-                      icon={Building2} 
-                      options={departments?.map(d => ({ value: d.id, label: d.name })) || []} 
-                    />
-                    
-                    <SelectField 
-                      label="Product Name" 
-                      name="productId"
-                      icon={Package} 
-                      options={products?.map(p => ({ value: p.id, label: p.name })) || []}
-                      value={selectedProduct}
-                      onChange={(e) => setSelectedProduct(e.target.value)}
-                      required
-                    />
+                <SelectField 
+                  label="Product Name" 
+                  name="productId"
+                  icon={Package} 
+                  options={products?.map(p => ({ value: p.id, label: p.name })) || []}
+                  value={selectedProduct}
+                  onChange={(e) => setSelectedProduct(e.target.value)}
+                  required={fileType === 'Claim File'}
+                />
 
-                    {/* Vehicle Information */}
-                    <InputField 
-                      label="Plate Number" 
-                      name="plateNumber"
-                      icon={Hash} 
-                      placeholder="ABC-123-XY"
-                      value={formData.plateNumber}
-                      onChange={handleInputChange}
-                    />
-                    <InputField 
-                      label="Vehicle Registration" 
-                      name="vehicleRegistration"
-                      icon={FileText} 
-                      placeholder="Registration number"
-                      value={formData.vehicleRegistration}
-                      onChange={handleInputChange}
-                    />
-                    <InputField 
-                      label="Make" 
-                      name="make"
-                      icon={Building2} 
-                      placeholder="e.g. Toyota"
-                      value={formData.make}
-                      onChange={handleInputChange}
-                    />
-                    <InputField 
-                      label="Model" 
-                      name="model"
-                      icon={Building2} 
-                      placeholder="e.g. Corolla"
-                      value={formData.model}
-                      onChange={handleInputChange}
-                    />
-                  </>
-                )}
+                <InputField 
+                  label="Insured Name" 
+                  name="insuredName"
+                  icon={User} 
+                  placeholder="Full name of insured"
+                  value={formData.insuredName}
+                  onChange={handleInputChange}
+                  required
+                />
+                <InputField 
+                  label="Claim Number" 
+                  name="claimNumber"
+                  icon={FileText} 
+                  placeholder="CLM-2026-001"
+                  value={formData.claimNumber}
+                  onChange={handleInputChange}
+                  required
+                />
+                <InputField 
+                  label="Policy Number" 
+                  name="policyNumber"
+                  icon={Hash} 
+                  placeholder="POL-123-456"
+                  value={formData.policyNumber}
+                  onChange={handleInputChange}
+                  required
+                />
 
-                {fileType === 'Circular' && (
-                  <>
-                    <InputField 
-                      label="Title" 
-                      name="title"
-                      icon={FileText} 
-                      placeholder="Circular Title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <InputField 
-                      label="Date" 
-                      name="circularDate"
-                      icon={Calendar} 
-                      type="date" 
-                      value={formData.dateAdded}
-                      onChange={handleInputChange}
-                    />
-                  </>
-                )}
-
+                {selectedProductFields.map(field => (
+                  <InputField
+                    key={field.key}
+                    label={field.label}
+                    name={`product_${field.key}`}
+                    icon={Package}
+                    type={field.type || 'text'}
+                    placeholder={field.placeholder}
+                    value={productCustomValues[field.key] || ''}
+                    onChange={(e) => setProductCustomValues(values => ({ ...values, [field.key]: e.target.value }))}
+                    required={field.required}
+                  />
+                ))}
                 {/* Common Fields */}
                 <InputField 
                   label="Date Added" 
@@ -746,7 +672,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                   </span>
                 </div>
                 <p className="text-sm text-green-800 font-medium">
-                  Cabinet {availableCabinets.find(c => c.id === selectedCabinet)?.number} • 
+                  File Box {availableCabinets.find(c => c.id === selectedCabinet)?.number} • 
                   Drawer {selectedDrawer}
                 </p>
               </div>

@@ -15,7 +15,7 @@ const createFileRequest = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { documentId, expectedReturnDate, notes } = req.body;
+    const { documentId, requesterName, expectedReturnDate, notes } = req.body;
 
     // Get document details including policy and claim numbers
     const docResult = await query(
@@ -59,16 +59,17 @@ const createFileRequest = async (req, res) => {
     const newRequest = await withTransaction(async (client) => {
       const requestResult = await client.query(
         `INSERT INTO file_requests (
-          document_id, requested_by, request_date, expected_return_date, 
+          document_id, requested_by, request_date, requester_name, expected_return_date, 
           status, notes, request_reference,
           policy_number, claim_number, insured_name,
-          requester_department, requester_department_name
+          requester_department
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *`,
         [
           documentId, 
           req.user.id, 
           new Date().toISOString().split('T')[0], 
+          requesterName,
           expectedReturnDate, 
           'Pending', 
           notes, 
@@ -77,7 +78,6 @@ const createFileRequest = async (req, res) => {
           document.claim_number || null,
           document.insured_name || null,
           user?.department_name || null,
-          user?.department_name || null
         ]
       );
 
@@ -316,6 +316,7 @@ const getAllRequests = async (req, res) => {
       SELECT 
         fr.id,
         fr.request_reference,
+        fr.requested_by,
         fr.status,
         fr.request_date,
         fr.expected_return_date,

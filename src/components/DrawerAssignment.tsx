@@ -229,7 +229,6 @@ export const DrawerAssignment: React.FC = () => {
                         <option 
                           key={drawer} 
                           value={drawer}
-                          disabled={!!assignment && assignment.branch_id !== selectedBranch}
                           className={assignment ? 'text-green-600' : ''}
                         >
                           Drawer {drawer} 

@@ -3,24 +3,24 @@ const { query } = require('../config/database');
 class ReferenceGenerator {
   /**
    * Generate a sequential file reference number
-   * Format: FL/BRANCH_CODE/PRODUCT_CODE/SEQUENCE/YY
+   * Format: BRANCH_CODE/SEQUENCE/YY
    */
   static async generateFileReference(branchCode, productCode) {
     const year = new Date().getFullYear().toString().slice(-2);
     
     // Get the next sequence number for this branch and year
     const result = await query(
-      `SELECT COALESCE(MAX(CAST(SUBSTRING(archive_reference_number FROM 'FL/[^/]+/[^/]+/([0-9]+)/') AS INTEGER)), 0) + 1 as next_number
+      `SELECT COALESCE(MAX(CAST(SUBSTRING(archive_reference_number FROM '[^/]+/[^/]+/([0-9]+)/') AS INTEGER)), 0) + 1 as next_number
        FROM documents 
        WHERE archive_reference_number LIKE $1
        AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)`,
-      [`FL/${branchCode}/%`]
+      [`${branchCode}/%`]
     );
     
     const nextNumber = parseInt(result.rows[0].next_number);
     const formattedNumber = nextNumber.toString().padStart(6, '0');
     
-    return `FL/${branchCode}/${productCode}/${formattedNumber}/${year}`;
+    return `${branchCode}/${productCode}/${formattedNumber}/${year}`;
   }
 
   /**
@@ -46,7 +46,7 @@ class ReferenceGenerator {
 
   /**
    * Generate a box identifier
-   * Format: AIC/BRANCH_CODE/SEQUENCE/YY
+   * Format: AI/BRANCH_CODE/SEQUENCE/YY
    */
   static async generateBoxIdentifier(branchCode) {
     const year = new Date().getFullYear().toString().slice(-2);
@@ -61,7 +61,7 @@ class ReferenceGenerator {
     const nextNumber = parseInt(result.rows[0].next_number);
     const formattedNumber = nextNumber.toString().padStart(4, '0');
     
-    return `AIC/${branchCode}/${formattedNumber}/${year}`;
+    return `AI/${branchCode}/${formattedNumber}/${year}`;
   }
 }
 

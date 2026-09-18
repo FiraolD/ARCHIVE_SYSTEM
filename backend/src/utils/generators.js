@@ -11,7 +11,7 @@ const generateBoxIdentifier = async (branchCode) => {
   const count = parseInt(result.rows[0].count);
   const nextSequence = (count + 1).toString().padStart(4, '0');
   
-  return `AIC/${branchCode}/${nextSequence}/${year}`;
+  return `AI/${branchCode}/${nextSequence}/${year}`;
 };
 
 const generateArchiveReferenceNumber = async () => {

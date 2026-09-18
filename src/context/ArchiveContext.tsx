@@ -41,7 +41,7 @@ interface ArchiveContextType {
   fetchBoxes: () => Promise<void>;
   addBox: (box: any) => Promise<void>;
   fetchCabinets: () => Promise<void>;
-  addCabinet: (cabinet: Omit<Cabinet, 'id'>) => Promise<void>;
+  addCabinet: () => Promise<void>;
   assignCabinet: (assignment: any) => Promise<void>;
   assignBox: (assignment: any) => Promise<void>;
   
@@ -293,10 +293,10 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const addCabinet = async (cabinet: Omit<Cabinet, 'id'>) => {
+  const addCabinet = async () => {
     try {
       setIsLoading(true);
-      const response = await registrationApi.createCabinet(cabinet);
+      const response = await registrationApi.createCabinet();
       setCabinets(prev => [...prev, response.data]);
       toast.success('Cabinet added successfully');
     } catch (error: any) {
@@ -447,7 +447,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     const existingInBranchAndYear = boxes.filter(b => b.branchCode === branchCode && b.year === year);
     const nextSequence = existingInBranchAndYear.length + 1;
     const formattedSequence = nextSequence.toString().padStart(4, '0');
-    return `AIC/${branchCode}/${formattedSequence}/${year}`;
+    return `AI/${branchCode}/${formattedSequence}/${year}`;
   };
 
   // Initial data fetch

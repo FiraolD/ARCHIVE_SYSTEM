@@ -108,6 +108,23 @@ const createProduct = async (req, res) => {
   }
 };
 
+// ==================== PRODUCT CUSTOM FIELD CONTROLLERS ====================
+
+const getProductCustomFields = async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT id, product_id, field_key, label, data_type, placeholder, required, display_order
+       FROM product_custom_fields
+       WHERE product_id = $1 AND active = TRUE
+       ORDER BY display_order, label`,
+      [req.params.productId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get product custom fields error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
 // ==================== BOX CONTROLLERS ====================
 
 const getBoxes = async (req, res) => {
@@ -230,8 +247,13 @@ const getCabinets = async (req, res) => {
 };
 const createCabinet = async (req, res) => {
   try {
-    const { number, drawers } = req.body;
-    
+    const nextNumberResult = await query(`
+      SELECT COALESCE(MAX(CAST(SUBSTRING(number FROM '^FILEBOX([0-9]+)$') AS INTEGER)), 0) + 1 AS next_number
+      FROM cabinets
+    `);
+    const number = `FILEBOX${nextNumberResult.rows[0].next_number}`;
+    const drawers = Array.from({ length: 12 }, (_, index) => String(index + 1));
+
     const result = await query(
       'INSERT INTO cabinets (number, drawers, created_by) VALUES ($1, $2, $3) RETURNING *',
       [number, drawers, req.user.id]
@@ -241,7 +263,7 @@ const createCabinet = async (req, res) => {
   } catch (error) {
     console.error('Create cabinet error:', error);
     if (error.code === '23505') {
-      return res.status(400).json({ error: 'Cabinet number already exists' });
+      return res.status(400).json({ error: 'File Box number already exists. Please try again.' });
     }
     res.status(500).json({ error: 'Server error' });
   }
@@ -293,31 +315,31 @@ const assignDrawer = async (req, res) => {
       return res.status(400).json({ error: 'Drawer number does not exist in this cabinet' });
     }
 
-    // End previous assignment, create new one and link cabinet atomically
+    // A drawer can be assigned to several branches at the same time. Repeating
+    // the same active assignment is intentionally idempotent.
     const result = await withTransaction(async (client) => {
-      // End any existing active assignment for this drawer
-      await client.query(
-        `UPDATE drawer_assignments 
-         SET ended_at = CURRENT_TIMESTAMP 
-         WHERE cabinet_id = $1 
-         AND drawer_number = $2 
-         AND ended_at IS NULL`,
-        [cabinetId, drawerNumber]
+      const existing = await client.query(
+        `SELECT id FROM drawer_assignments
+         WHERE cabinet_id = $1 AND drawer_number = $2 AND branch_id = $3
+           AND ended_at IS NULL
+         LIMIT 1`, 
+        [cabinetId, drawerNumber, branchId]
       );
 
-      // Create new assignment
-      const assignmentResult = await client.query(
-        `INSERT INTO drawer_assignments (cabinet_id, drawer_number, branch_id, assigned_by)
-         VALUES ($1, $2, $3, $4)
-         RETURNING *`,
-        [cabinetId, drawerNumber, branchId, req.user.id]
-      );
-
-      // Update cabinet's branch_id if not set
-      await client.query(
-        'UPDATE cabinets SET branch_id = COALESCE(branch_id, $1) WHERE id = $2 AND branch_id IS NULL',
-        [branchId, cabinetId]
-      );
+      const assignmentResult = existing.rows.length > 0
+        ? await client.query(
+          `UPDATE drawer_assignments
+           SET assigned_by = $1, assigned_at = CURRENT_TIMESTAMP
+           WHERE id = $2
+           RETURNING *`, 
+          [req.user.id, existing.rows[0].id]
+        )
+        : await client.query(
+          `INSERT INTO drawer_assignments (cabinet_id, drawer_number, branch_id, assigned_by)
+           VALUES ($1, $2, $3, $4)
+           RETURNING *`, 
+          [cabinetId, drawerNumber, branchId, req.user.id]
+        );
 
       return assignmentResult;
     });
@@ -342,6 +364,7 @@ const getDrawerAssignments = async (req, res) => {
       FROM drawer_assignments cd
       JOIN cabinets c ON cd.cabinet_id = c.id
       JOIN branches b ON cd.branch_id = b.id
+      WHERE cd.ended_at IS NULL
       ORDER BY c.number, cd.drawer_number
     `);
     
@@ -415,6 +438,7 @@ module.exports = {
   // Products
   getProducts,
   createProduct,
+  getProductCustomFields,
   
   // Boxes
   getBoxes,

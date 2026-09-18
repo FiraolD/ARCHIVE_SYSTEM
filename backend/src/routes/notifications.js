@@ -11,7 +11,7 @@ router.get('/unread/count', notificationsController.getUnreadCount);
 router.patch('/:id/read', notificationsController.markAsRead);
 router.patch('/read-all', notificationsController.markAllAsRead);
 router.delete('/:id', 
-  require('../middleware/auth').authorize('Admin'),
+  require('../middleware/auth').authorize('Admin', 'Manager'),
   notificationsController.deleteNotification
 );
 

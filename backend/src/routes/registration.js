@@ -10,7 +10,7 @@ router.use(authenticate);
 // ==================== BRANCH ROUTES ====================
 router.get('/branches', registrationController.getBranches);
 router.post('/branches', 
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   [
     body('name').notEmpty().withMessage('Branch name is required'),
     body('code').notEmpty().withMessage('Branch code is required')
@@ -21,7 +21,7 @@ router.post('/branches',
 // ==================== DEPARTMENT ROUTES ====================
 router.get('/departments', registrationController.getDepartments);
 router.post('/departments',
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   [
     body('name').notEmpty().withMessage('Department name is required'),
     body('code').notEmpty().withMessage('Department code is required')
@@ -31,8 +31,9 @@ router.post('/departments',
 
 // ==================== PRODUCT ROUTES ====================
 router.get('/products', registrationController.getProducts);
+router.get('/products/:productId/fields', registrationController.getProductCustomFields);
 router.post('/products',
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   [
     body('name').notEmpty().withMessage('Product name is required')
   ],
@@ -42,7 +43,7 @@ router.post('/products',
 // ==================== BOX ROUTES ====================
 router.get('/boxes', registrationController.getBoxes);
 router.post('/boxes',
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   [
     body('branchCode').notEmpty().withMessage('Branch code is required'),
     body('fileType').isIn(['Claim File', 'Circular', 'Policy', 'Billing', 'Correspondence'])
@@ -54,17 +55,13 @@ router.post('/boxes',
 // ==================== CABINET ROUTES ====================
 router.get('/cabinets', registrationController.getCabinets);
 router.post('/cabinets',
-  authorize('Admin'),
-  [
-    body('number').notEmpty().withMessage('Cabinet number is required'),
-    body('drawers').isArray().withMessage('Drawers must be an array')
-  ],
+  authorize('Admin', 'Manager'),
   registrationController.createCabinet
 );
 
 // ==================== CABINET ASSIGNMENT ROUTES ====================
 router.post('/assign-cabinet',
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   [
     body('cabinetId').notEmpty().withMessage('Cabinet ID is required'),
     body('branchId').notEmpty().withMessage('Branch ID is required')
@@ -74,7 +71,7 @@ router.post('/assign-cabinet',
 
 // ==================== DRAWER ASSIGNMENT ROUTES ====================
 router.post('/assign-drawer',
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   [
     body('cabinetId').notEmpty().withMessage('Cabinet ID is required'),
     body('branchId').notEmpty().withMessage('Branch ID is required'),
@@ -84,18 +81,18 @@ router.post('/assign-drawer',
 );
 
 router.get('/drawer-assignments',
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   registrationController.getDrawerAssignments
 );
 
 router.get('/drawer-history',
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   registrationController.getDrawerHistory
 );
 
 // ==================== BOX ASSIGNMENT ROUTES ====================
 router.post('/assign-box',
-  authorize('Admin'),
+  authorize('Admin', 'Manager'),
   [
     body('boxId').notEmpty().withMessage('Box ID is required'),
     body('cabinetId').notEmpty().withMessage('Cabinet ID is required'),

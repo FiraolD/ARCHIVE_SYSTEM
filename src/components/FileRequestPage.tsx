@@ -19,13 +19,14 @@ import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
 import { documentApi, requestApi } from '../services/api';
 import { Document } from '../types';
-import { format } from 'date-fns';
+import { format, set } from 'date-fns';
 
 export const FileRequestPage: React.FC = () => {
   const { user, addFileRequest } = useArchive();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [returnDate, setReturnDate] = useState('');
+  const [requester, setRequester] = useState(user?.name || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Document[]>([]);
@@ -94,12 +95,15 @@ export const FileRequestPage: React.FC = () => {
       
       await addFileRequest({
         documentId: selectedDoc.id,
+        requesterName: requester,
         expectedReturnDate: returnDate,
         notes: `Request for ${selectedDoc.title}`
+
       });
 
       setSelectedDoc(null);
       setReturnDate('');
+      setRequester(user?.name || '');
       setSearchQuery('');
       toast.success('File request submitted successfully');
       fetchMyRequests(); // Refresh the list
@@ -385,9 +389,21 @@ export const FileRequestPage: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">
-                      Selected for Recovery
+                      Selected for Request
                     </p>
                   </div>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                      <User className="w-3 h-3" /> Requester Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={requester}
+                      onChange={(e) => setRequester(e.target.value)}
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800"
+                    />
+                  </div> 
 
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">

@@ -7,25 +7,25 @@ const fs = require('fs');
 
 /**
  * Generate a sequential file reference number
- * Format: FL/BRANCH_CODE/PRODUCT_CODE/SEQUENCE/YY
- * Sequence starts from 000001 and increments by 1 for each document
+ * Format: AI/BRANCH_CODE/SEQUENCE/YY
+ * Sequence starts from 001 and increments per branch and calendar year.
  */
-const generateSequentialReference = async (branchCode, productCode) => {
+const generateSequentialReference = async (branchCode) => {
   const year = new Date().getFullYear().toString().slice(-2);
   
   // Get the next sequence number for this branch and year
   const result = await query(
-    `SELECT COALESCE(MAX(CAST(SUBSTRING(archive_reference_number FROM 'FL/[^/]+/[^/]+/([0-9]+)/') AS INTEGER)), 0) + 1 as next_number
+    `SELECT COALESCE(MAX(CAST(SUBSTRING(archive_reference_number FROM 'AI/[^/]+/([0-9]{3})/') AS INTEGER)), 0) + 1 as next_number
      FROM documents 
      WHERE archive_reference_number LIKE $1
-     AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)`,
-    [`FL/${branchCode}/%`]
+     AND archive_reference_number ~ $2`,
+    [`AI/${branchCode}/%`, `^AI/${branchCode}/[0-9]{3}/${year}$`]
   );
   
   const nextNumber = parseInt(result.rows[0].next_number);
-  const formattedNumber = nextNumber.toString().padStart(6, '0');
+  const formattedNumber = nextNumber.toString().padStart(3, '0');
   
-  return `FL/${branchCode}/${productCode}/${formattedNumber}/${year}`;
+  return `AI/${branchCode}/${formattedNumber}/${year}`;
 };
 
 // ==================== INGEST DOCUMENT ====================
@@ -37,9 +37,8 @@ const ingestDocument = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // Get branch and product codes for reference generation
+    // Get the branch code for reference generation.
     let branchCode = 'XXX';
-    let productCode = 'PRD';
 
     if (req.body.branchId) {
       const branchResult = await query(
@@ -51,19 +50,8 @@ const ingestDocument = async (req, res) => {
       }
     }
 
-    if (req.body.productId) {
-      const productResult = await query(
-        'SELECT name FROM products WHERE id = $1',
-        [req.body.productId]
-      );
-      if (productResult.rows.length > 0) {
-        // Generate full product code (remove spaces, uppercase)
-        productCode = productResult.rows[0].name.replace(/\s+/g, '').toUpperCase();
-      }
-    }
-
     // Generate sequential reference number
-    const archiveRef = await generateSequentialReference(branchCode, productCode);
+    const archiveRef = await generateSequentialReference(branchCode);
     
     // Handle file upload
     let filePath = null;
@@ -71,6 +59,15 @@ const ingestDocument = async (req, res) => {
     if (req.file) {
       filePath = req.file.path;
       fileSize = req.file.size;
+    }
+
+    let productCustomFields = null;
+    if (req.body.productCustomFields) {
+      try {
+        productCustomFields = JSON.parse(req.body.productCustomFields);
+      } catch {
+        return res.status(400).json({ error: 'Invalid product custom fields' });
+      }
     }
 
     // Prepare document data object
@@ -92,6 +89,7 @@ const ingestDocument = async (req, res) => {
       branch_id: req.body.branchId,
       department_id: req.body.departmentId || null,
       product_id: req.body.productId || null,
+      product_custom_fields: productCustomFields,
       
       // Cabinet and drawer fields
       cabinet_id: req.body.cabinetId || null,
