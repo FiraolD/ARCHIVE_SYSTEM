@@ -91,6 +91,11 @@ const ingestDocument = async (req, res) => {
       product_id: req.body.productId || null,
       product_custom_fields: productCustomFields,
       
+        // NEW: Insurance-specific fields
+  sum_insured: req.body.sumInsured ? parseFloat(req.body.sumInsured) : null,
+  period_of_policy: req.body.periodOfPolicy || null,
+  date_of_accident: req.body.dateOfAccident || null,
+
       // Cabinet and drawer fields
       cabinet_id: req.body.cabinetId || null,
       drawer_number: req.body.drawerNumber || null,
@@ -186,20 +191,48 @@ const getDocuments = async (req, res) => {
     const queryParams = [];
     let paramIndex = 1;
 
-    if (search && search.trim() !== '') {
-      const searchTerm = `%${search.trim()}%`;
-      
-      queryText += ` AND (
-        d.title ILIKE $${paramIndex} OR
-        d.archive_reference_number ILIKE $${paramIndex} OR
-        COALESCE(d.insured_name, '') ILIKE $${paramIndex} OR
-        COALESCE(d.policy_number, '') ILIKE $${paramIndex} OR
-        COALESCE(d.claim_number, '') ILIKE $${paramIndex}
-      )`;
-      
-      queryParams.push(searchTerm);
-      paramIndex++;
-    }
+ if (search && search.trim() !== '') {
+  const raw = search.trim();
+  const searchTerm = `%${raw}%`;
+  const searchNum = Number.isFinite(parseFloat(raw)) && /^-?\d+(\.\d+)?$/.test(raw)
+    ? parseFloat(raw)
+    : null;
+
+  // ✅ Only treat as date if it matches a real ISO pattern (YYYY-MM-DD)
+  const isISODate = /^\d{4}-\d{2}-\d{2}$/.test(raw);
+  const searchDate = isISODate ? raw : null;
+
+  // Text/number search across all string + numeric fields
+  queryText += ` AND (
+    d.title ILIKE $${paramIndex} OR
+    d.archive_reference_number ILIKE $${paramIndex} OR
+    COALESCE(d.insured_name, '') ILIKE $${paramIndex} OR
+    COALESCE(d.policy_number, '') ILIKE $${paramIndex} OR
+    COALESCE(d.claim_number, '') ILIKE $${paramIndex} OR
+    COALESCE(d.period_of_policy, '') ILIKE $${paramIndex} OR
+    COALESCE(d.plate_number, '') ILIKE $${paramIndex} OR
+    COALESCE(d.vehicle_registration, '') ILIKE $${paramIndex} OR
+    COALESCE(d.make, '') ILIKE $${paramIndex} OR
+    COALESCE(d.model, '') ILIKE $${paramIndex} OR
+    d.product_custom_fields::text ILIKE $${paramIndex}
+  )`;
+  queryParams.push(searchTerm);
+  paramIndex++;
+
+  // Numeric search: sum insured
+  if (searchNum !== null) {
+    queryText += ` OR d.sum_insured = $${paramIndex}`;
+    queryParams.push(searchNum);
+    paramIndex++;
+  }
+
+  // Date search: only if valid ISO date format
+  if (searchDate) {
+    queryText += ` OR d.date_of_accident = $${paramIndex}::date`;
+    queryParams.push(searchDate);
+    paramIndex++;
+  }
+}
 
     if (type) {
       queryText += ` AND d.type = $${paramIndex}`;
@@ -243,6 +276,32 @@ const getDocuments = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+const searchByCustomField = async (req, res) => {
+  try {
+    const { key, value } = req.query;
+    
+    if (!key || !value) {
+      return res.status(400).json({ error: 'key and value required' });
+    }
+    
+    const result = await query(
+      `SELECT id, archive_reference_number, title, type, product_custom_fields
+       FROM documents
+       WHERE product_custom_fields->>$1 ILIKE $2
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [key, `%${value}%`]
+    );
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Add to module.exports
 
 // Also update getDocumentById for single document views
 const getDocumentById = async (req, res) => {
@@ -490,5 +549,6 @@ module.exports = {
   getDocumentById,
   updateDocumentStatus,
   updatePhysicalPlacement,
-  assignToBox  // Make sure this line exists
+  assignToBox,  // Make sure this line exists
+  searchByCustomField
 };

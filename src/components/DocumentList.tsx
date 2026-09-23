@@ -1,8 +1,9 @@
 import React from 'react';
-import { FileText, Eye, History, FileQuestion, MapPin, CheckCircle, Package, ArrowLeft } from 'lucide-react';
+import { FileText, Eye, History, FileQuestion, MapPin, CheckCircle, Package, ArrowLeft, ShieldCheck, Calendar, DollarSign } from 'lucide-react';
 import { Document } from '../types';
 import { motion } from 'framer-motion';
 import { UI_LABELS } from '../lib/constants';
+import { format } from 'date-fns';
 
 interface DocumentListProps {
   documents: Document[];
@@ -34,6 +35,8 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onPreview
             <tr>
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Document & Ref</th>
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
+              <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sum Insured</th>
+              <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Accident Date</th>
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Placement</th>
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
@@ -60,6 +63,30 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onPreview
                 </td>
                 <td className="px-6 py-4">
                   <span className="text-sm text-slate-600">{doc.type}</span>
+                </td>
+                <td className="px-6 py-4">
+                  {doc.sum_insured ? (
+                    <div className="flex items-center gap-1.5">
+                      <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="text-sm font-bold text-slate-700">
+                        {Number(doc.sum_insured).toLocaleString()}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
+                </td>
+                <td className="px-6 py-4">
+                  {doc.date_of_accident ? (
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-orange-500" />
+                      <span className="text-sm text-slate-700">
+                        {format(new Date(doc.date_of_accident), 'MMM dd, yyyy')}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <StatusBadge status={doc.status} />
@@ -94,12 +121,12 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onPreview
 };
 
 const StatusBadge: React.FC<{ status: Document['status'] }> = ({ status }) => {
- const styles: Record<string, string> = {
-  'Active': 'bg-green-50 text-green-700 border-green-100',
-  'Checked-out': 'bg-amber-50 text-amber-700 border-amber-100',
-  'Settled Claims': 'bg-blue-50 text-blue-700 border-blue-100',
-  'Returned': 'bg-purple-50 text-purple-700 border-purple-100', // Add this
-};
+  const styles: Record<string, string> = {
+    'Active': 'bg-green-50 text-green-700 border-green-100',
+    'Checked-out': 'bg-amber-50 text-amber-700 border-amber-100',
+    'Settled Claims': 'bg-blue-50 text-blue-700 border-blue-100',
+    'Returned': 'bg-purple-50 text-purple-700 border-purple-100',
+  };
 
   const icons: Record<string, React.ReactNode> = {
     'Active': <History className="w-3 h-3" />,

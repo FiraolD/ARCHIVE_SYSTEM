@@ -61,6 +61,10 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
   const [generatedReference, setGeneratedReference] = useState<string>('');
   const [showReference, setShowReference] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Policy period date range
+  const [policyFromDate, setPolicyFromDate] = useState('');
+  const [policyToDate, setPolicyToDate] = useState('');
   
   const [formData, setFormData] = useState({
     insuredName: '',
@@ -71,6 +75,8 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
     deliveredBy: '',
     receiverRemark: '',
     title: '',
+    sumInsured: '',
+    dateOfAccident: '',
   });
 
   const { branches, departments, products, fetchBranches, fetchDepartments, fetchProducts, ingestDocument } = useArchive();
@@ -96,7 +102,6 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
     if (selectedProduct && products) {
       const product = products.find(p => p.id === selectedProduct);
       if (product) {
-        // Generate full product code (remove spaces, uppercase)
         const productCode = product.name.replace(/\s+/g, '').toUpperCase();
         setSelectedProductCode(productCode);
       }
@@ -126,7 +131,6 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
     if (selectedCabinet && selectedBranchId) {
       const cabinet = availableCabinets.find(c => c.id === selectedCabinet);
       if (cabinet && cabinet.drawer_assignments) {
-        // Filter drawers assigned to the selected branch
         const branchDrawers = cabinet.drawer_assignments
           .filter(da => da.branchId === selectedBranchId)
           .map(da => da.drawer);
@@ -143,7 +147,6 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
   const fetchCabinetsByBranch = async (branchId: string) => {
     try {
       const response = await registrationApi.getCabinets(branchId);
-      // Filter cabinets that have drawers assigned to this branch
       const cabinetsWithBranchDrawers = (response.data || []).filter((cabinet: Cabinet) => 
         cabinet.drawer_assignments?.some(da => da.branchId === branchId)
       );
@@ -154,13 +157,28 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
     }
   };
 
-  // This function now only formats a preview - actual generation happens on backend
+  // Reference preview (actual generation happens on backend)
   const getReferencePreview = (): string => {
     if (!selectedBranchCode || !selectedProductCode) return '';
     const year = new Date().getFullYear().toString().slice(-2);
     return `AI/${selectedBranchCode}/###/${year}`;
   };
- 
+
+  // ========== HELPER FUNCTIONS (outside handleSubmit) ==========
+  const formatDateToDisplay = (isoDate: string): string => {
+    if (!isoDate) return '';
+    const [year, month, day] = isoDate.split('-');
+    return `${day}/${month}/${year}`;  // DD/MM/YYYY
+  };
+
+  const buildPolicyPeriod = (): string => {
+    if (!policyFromDate && !policyToDate) return '';
+    if (policyFromDate && policyToDate) {
+      return `${formatDateToDisplay(policyFromDate)} - ${formatDateToDisplay(policyToDate)}`;
+    }
+    return formatDateToDisplay(policyFromDate || policyToDate);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -181,7 +199,6 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       return;
     }
 
-    // Validation
     if (!selectedBranchId) {
       toast.error('Please select a branch');
       return;
@@ -203,11 +220,16 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       formDataToSend.append('branchCode', selectedBranchCode);
       formDataToSend.append('physicalPlacement', 
         selectedCabinet && selectedDrawer 
-          ? `Cabinet ${selectedCabinet} - Drawer ${selectedDrawer}`
+          ? `Cabinet ${availableCabinets.find(c => c.id === selectedCabinet)?.number || selectedCabinet} - Drawer ${selectedDrawer}`
           : 'Temporary Location'
       );
       formDataToSend.append('receivedBy', formData.receivedBy || 'System User');
       formDataToSend.append('deliveredBy', formData.deliveredBy || 'System User');
+      
+      // Insurance-specific fields
+      formDataToSend.append('sumInsured', formData.sumInsured || '');
+      formDataToSend.append('periodOfPolicy', buildPolicyPeriod());
+      formDataToSend.append('dateOfAccident', formData.dateOfAccident || '');
       
       // Title
       let title = '';
@@ -250,7 +272,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
 
       const response = await ingestDocument(formDataToSend);
       
-      // Display the generated reference from backend
+      // Display the generated reference
       const generatedRef = response?.archive_reference_number || response?.archiveReferenceNumber;
       if (generatedRef) {
         setGeneratedReference(generatedRef);
@@ -274,12 +296,17 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
         deliveredBy: '',
         receiverRemark: '',
         title: '',
+        sumInsured: '',
+        dateOfAccident: '',
       });
+      setPolicyFromDate('');
+      setPolicyToDate('');
       setSelectedCabinet('');
       setSelectedDrawer('');
       setSelectedProduct('');
+      setProductCustomValues({});
       
-      // Clear file input if it exists
+      // Clear file input
       if (fileInput) {
         fileInput.value = '';
       }
@@ -306,13 +333,18 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       deliveredBy: '',
       receiverRemark: '',
       title: '',
+      sumInsured: '',
+      dateOfAccident: '',
     });
+    setPolicyFromDate('');
+    setPolicyToDate('');
     setSelectedBranchId(branches?.[0]?.id || '');
     setSelectedBranchCode(branches?.[0]?.code || '');
     setSelectedCabinet('');
     setSelectedDrawer('');
     setSelectedProduct('');
     setSelectedProductCode('');
+    setProductCustomValues({});
     setFileType('Claim File');
     setShowReference(false);
     setGeneratedReference('');
@@ -352,30 +384,38 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
               exit={{ opacity: 0, height: 0 }}
               className="px-8 pt-6"
             >
-              <div className="bg-green-50 rounded-xl border border-green-200 p-6">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-300 p-6 shadow-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">
-                      File Reference Number
-                    </p>
-                    <p className="text-2xl font-mono font-black text-green-900">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <p className="text-sm font-bold text-green-700 uppercase tracking-wider">
+                        Document Ingested Successfully!
+                      </p>
+                    </div>
+                    <p className="text-xs text-green-600 mb-3">Your file reference number is:</p>
+                    <p className="text-3xl font-mono font-black text-green-900 break-all bg-white p-4 rounded-lg border border-green-200">
                       {generatedReference}
                     </p>
                   </div>
                   <button
                     onClick={() => copyToClipboard(generatedReference)}
-                    className="p-3 bg-white rounded-xl border border-green-200 hover:bg-green-100 transition-colors group"
+                    className="p-4 bg-white rounded-xl border-2 border-green-300 hover:bg-green-100 transition-colors group"
+                    title="Copy to clipboard"
                   >
                     {copied ? (
-                      <CheckCheck className="w-5 h-5 text-green-600" />
+                      <CheckCheck className="w-6 h-6 text-green-600" />
                     ) : (
-                      <Copy className="w-5 h-5 text-green-600" />
+                      <Copy className="w-6 h-6 text-green-600" />
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-green-600 mt-2">
-                  This reference number has been generated and saved to the system.
-                </p>
+                <div className="mt-4 flex gap-2 text-xs flex-wrap">
+                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Branch: {generatedReference.split('/')[1]}</span>
+                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Product: {generatedReference.split('/')[2]}</span>
+                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Seq: {generatedReference.split('/')[3]}</span>
+                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Year: {generatedReference.split('/')[4]}</span>
+                </div>
               </div>
             </motion.div>
           )}
@@ -422,90 +462,49 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                 </select>
               </div>
             </div>
-{selectedBranchCode && selectedProductCode && (
-  <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 shadow-md">
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-        <FileText className="w-4 h-4 text-white" />
-      </div>
-      <p className="text-sm font-bold text-blue-800 uppercase tracking-wider">
-        File Reference Number Preview
-      </p>
-    </div>
-    
-    <div className="bg-white p-4 rounded-lg border border-blue-100 mb-3">
-      <p className="text-2xl font-mono font-black text-blue-900 break-all text-center">
-        AI/{selectedBranchCode}/<span className="text-green-600">001</span>/{new Date().getFullYear().toString().slice(-2)}
-      </p>
-    </div>
-    
-    <div className="grid grid-cols-2 gap-4 text-xs">
-      <div className="p-2 bg-blue-50 rounded">
-        <span className="font-bold text-blue-700">Branch Code:</span>
-        <span className="ml-2 font-mono">{selectedBranchCode}</span>
-      </div>
-      <div className="p-2 bg-blue-50 rounded">
-        <span className="font-bold text-blue-700">Product Code:</span>
-        <span className="ml-2 font-mono">{selectedProductCode}</span>
-      </div>
-      <div className="p-2 bg-green-50 rounded">
-        <span className="font-bold text-green-700">Sequence:</span>
-        <span className="ml-2 font-mono">001 (auto-increments)</span>
-      </div>
-      <div className="p-2 bg-purple-50 rounded">
-        <span className="font-bold text-purple-700">Year:</span>
-        <span className="ml-2 font-mono">{new Date().getFullYear().toString().slice(-2)}</span>
-      </div>
-    </div>
-    
-    <p className="text-xs text-slate-500 mt-3 text-center italic">
-      The sequence number will be automatically generated when you submit the form
-    </p>
-  </div>
-)}
 
-{showReference && generatedReference && (
-  <motion.div
-    initial={{ opacity: 0, y: -20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    className="mb-6"
-  >
-    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-300 p-6 shadow-lg">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 className="w-5 h-5 text-green-600" />
-            <p className="text-sm font-bold text-green-700 uppercase tracking-wider">
-              Document Ingested Successfully!
-            </p>
-          </div>
-          <p className="text-xs text-green-600 mb-3">Your file reference number is:</p>
-          <p className="text-3xl font-mono font-black text-green-900 break-all bg-white p-4 rounded-lg border border-green-200">
-            {generatedReference}
-          </p>
-        </div>
-        <button
-          onClick={() => copyToClipboard(generatedReference)}
-          className="p-4 bg-white rounded-xl border-2 border-green-300 hover:bg-green-100 transition-colors group"
-          title="Copy to clipboard"
-        >
-          {copied ? (
-            <CheckCheck className="w-6 h-6 text-green-600" />
-          ) : (
-            <Copy className="w-6 h-6 text-green-600" />
-          )}
-        </button>
-      </div>
-      <div className="mt-4 flex gap-2 text-xs">
-        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Branch: {generatedReference.split('/')[1]}</span>
-        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Product: {generatedReference.split('/')[2]}</span>
-        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Seq: {generatedReference.split('/')[3]}</span>
-        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Year: {generatedReference.split('/')[4]}</span>
-      </div>
-    </div>
-  </motion.div>
-)}
+            {/* Reference Number Preview */}
+            {selectedBranchCode && selectedProductCode && (
+              <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 shadow-md">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <FileText className="w-4 h-4 text-white" />
+                  </div>
+                  <p className="text-sm font-bold text-blue-800 uppercase tracking-wider">
+                    File Reference Number Preview
+                  </p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-lg border border-blue-100 mb-3">
+                  <p className="text-2xl font-mono font-black text-blue-900 break-all text-center">
+                    AI/{selectedBranchCode}/<span className="text-green-600">001</span>/{new Date().getFullYear().toString().slice(-2)}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="p-2 bg-blue-50 rounded">
+                    <span className="font-bold text-blue-700">Branch Code:</span>
+                    <span className="ml-2 font-mono">{selectedBranchCode}</span>
+                  </div>
+                  <div className="p-2 bg-blue-50 rounded">
+                    <span className="font-bold text-blue-700">Product Code:</span>
+                    <span className="ml-2 font-mono">{selectedProductCode}</span>
+                  </div>
+                  <div className="p-2 bg-green-50 rounded">
+                    <span className="font-bold text-green-700">Sequence:</span>
+                    <span className="ml-2 font-mono">001 (auto-increments)</span>
+                  </div>
+                  <div className="p-2 bg-purple-50 rounded">
+                    <span className="font-bold text-purple-700">Year:</span>
+                    <span className="ml-2 font-mono">{new Date().getFullYear().toString().slice(-2)}</span>
+                  </div>
+                </div>
+                
+                <p className="text-xs text-slate-500 mt-3 text-center italic">
+                  The sequence number will be automatically generated when you submit the form
+                </p>
+              </div>
+            )}
 
             {/* Cabinet and Drawer Selection */}
             {selectedBranchId && (
@@ -617,6 +616,80 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                     required={field.required}
                   />
                 ))}
+
+                {/* Sum Insured */}
+                <InputField
+                  label="Sum Insured"
+                  name="sumInsured"
+                  icon={ShieldCheck}
+                  type="number"
+                  placeholder="e.g. 5000000"
+                  value={formData.sumInsured}
+                  onChange={handleInputChange}
+                  required={false}
+                />
+
+                {/* Period of Policy - Date Range */}
+                <div className="md:col-span-2">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    <Calendar className="w-3 h-3" /> Period of Policy
+                  </label>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* FROM */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        From
+                      </span>
+                      <input
+                        type="date"
+                        value={policyFromDate}
+                        onChange={(e) => setPolicyFromDate(e.target.value)}
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-medium text-slate-800"
+                      />
+                    </div>
+                    
+                    {/* TO */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        To
+                      </span>
+                      <input
+                        type="date"
+                        value={policyToDate}
+                        onChange={(e) => setPolicyToDate(e.target.value)}
+                        min={policyFromDate || undefined}
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-medium text-slate-800"
+                      />
+                    </div>
+                  </div>
+                  
+                  {buildPolicyPeriod() && (
+                    <div className="mt-3 flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                      <div>
+                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                          Policy Period Preview
+                        </p>
+                        <p className="text-base font-mono font-black text-blue-900 mt-0.5">
+                          {buildPolicyPeriod()}
+                        </p>
+                      </div>
+                      <Calendar className="w-5 h-5 text-blue-400" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Date of Accident */}
+                <InputField
+                  label="Date of Accident"
+                  name="dateOfAccident"
+                  icon={Calendar}
+                  type="date"
+                  value={formData.dateOfAccident}
+                  onChange={handleInputChange}
+                  required={false}
+                />
+
                 {/* Common Fields */}
                 <InputField 
                   label="Date Added" 

@@ -34,6 +34,12 @@ router.get('/:id',
   documentController.getDocumentById
 );
 
+// routes/documents.js
+router.get('/search/custom-field', 
+  authenticate, 
+  documentController.searchByCustomField
+);
+
 router.patch('/:id/status', 
   authenticate,
   authorize('Admin', 'Manager'),

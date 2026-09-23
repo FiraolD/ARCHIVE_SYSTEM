@@ -13,13 +13,15 @@ import {
   Loader2,
   X,
   History,
-  RefreshCw
+  RefreshCw,
+  ShieldCheck,
+  DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
 import { documentApi, requestApi } from '../services/api';
 import { Document } from '../types';
-import { format, set } from 'date-fns';
+import { format } from 'date-fns';
 
 export const FileRequestPage: React.FC = () => {
   const { user, addFileRequest } = useArchive();
@@ -37,7 +39,6 @@ export const FileRequestPage: React.FC = () => {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [returningId, setReturningId] = useState<string | null>(null);
 
-  // Fetch user's requests on mount
   useEffect(() => {
     fetchMyRequests();
   }, []);
@@ -54,7 +55,6 @@ export const FileRequestPage: React.FC = () => {
     }
   };
 
-  // Handle search when query changes
   useEffect(() => {
     const performSearch = async () => {
       if (!searchQuery.trim()) {
@@ -98,7 +98,6 @@ export const FileRequestPage: React.FC = () => {
         requesterName: requester,
         expectedReturnDate: returnDate,
         notes: `Request for ${selectedDoc.title}`
-
       });
 
       setSelectedDoc(null);
@@ -106,7 +105,7 @@ export const FileRequestPage: React.FC = () => {
       setRequester(user?.name || '');
       setSearchQuery('');
       toast.success('File request submitted successfully');
-      fetchMyRequests(); // Refresh the list
+      fetchMyRequests();
     } catch (error) {
       // Error is handled in context
     } finally {
@@ -121,7 +120,7 @@ export const FileRequestPage: React.FC = () => {
       setReturningId(requestId);
       await requestApi.returnByRequester(requestId);
       toast.success('Document returned. Awaiting admin verification.');
-      fetchMyRequests(); // Refresh the list
+      fetchMyRequests();
     } catch (error: any) {
       console.error('Return error:', error);
       toast.error(error.response?.data?.error || 'Failed to return document');
@@ -161,10 +160,10 @@ export const FileRequestPage: React.FC = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
               <input 
                 type="text"
-                placeholder="Search by Claim #, Policy #, Insured Name, or Reference..."
+                placeholder="Search by Claim #, Policy #, Insured Name, Sum Insured, Accident Date, or Reference..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800 dark:text-white dark:text-white"
+                className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800 dark:text-white"
               />
               {searchQuery && (
                 <button
@@ -179,7 +178,7 @@ export const FileRequestPage: React.FC = () => {
 
           {/* Results Header */}
           <div className="flex items-center justify-between px-2">
-            <h3 className="text-xl font-black text-slate-900	dark:text-white dark:text-white">Search Results</h3>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white">Search Results</h3>
             <div className="flex items-center gap-2 text-slate-400 text-sm font-bold uppercase tracking-widest">
               <Filter className="w-4 h-4" />
               <span>{searchResults.length} Found</span>
@@ -222,7 +221,7 @@ export const FileRequestPage: React.FC = () => {
                           <FileText className="w-7 h-7" />
                         </div>
                         <div>
-                          <h4 className="font-black text-slate-900	dark:text-white dark:text-white group-hover:text-blue-700 transition-colors">
+                          <h4 className="font-black text-slate-900 dark:text-white group-hover:text-blue-700 transition-colors">
                             {doc.claim_number || doc.policy_number || doc.insured_name || 'Untitled Document'}
                           </h4>
                           <div className="flex items-center gap-3 mt-1">
@@ -245,16 +244,60 @@ export const FileRequestPage: React.FC = () => {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100">
+                    {/* Info Grid - 4 columns with new fields */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
                       <InfoItem label="Insured" value={doc.insured_name || 'N/A'} icon={User} />
                       <InfoItem label="Policy #" value={doc.policy_number || 'N/A'} icon={Hash} />
                       <InfoItem label="Claim #" value={doc.claim_number || 'N/A'} icon={FileText} />
+                      <InfoItem 
+                        label="Sum Insured" 
+                        value={doc.sum_insured ? Number(doc.sum_insured).toLocaleString() : 'N/A'} 
+                        icon={DollarSign} 
+                      />
                     </div>
+
+                    {/* Secondary info row - Policy Period & Accident Date */}
+                    {(doc.period_of_policy || doc.date_of_accident) && (
+                      <div className="grid grid-cols-2 gap-4 mt-3">
+                        {doc.period_of_policy && (
+                          <InfoItem label="Policy Period" value={doc.period_of_policy} icon={Calendar} />
+                        )}
+                        {doc.date_of_accident && (
+                          <InfoItem 
+                            label="Date of Accident" 
+                            value={format(new Date(doc.date_of_accident), 'MMM dd, yyyy')} 
+                            icon={Calendar} 
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Product Custom Fields */}
+                    {doc.product_custom_fields && Object.keys(doc.product_custom_fields).length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-slate-100">
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(doc.product_custom_fields).slice(0, 4).map(([key, value]) => (
+                            <span 
+                              key={key} 
+                              className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100"
+                            >
+                              {key}: {String(value)}
+                            </span>
+                          ))}
+                          {Object.keys(doc.product_custom_fields).length > 4 && (
+                            <span className="text-[10px] text-slate-400 font-bold">
+                              +{Object.keys(doc.product_custom_fields).length - 4} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="mt-4 flex items-center gap-2">
                       <span className={`text-xs font-bold px-2 py-1 rounded-full ${
                         doc.status === 'Active' ? 'bg-green-100 text-green-700' :
                         doc.status === 'Checked-out' ? 'bg-amber-100 text-amber-700' :
+                        doc.status === 'Returned' ? 'bg-purple-100 text-purple-700' :
                         'bg-blue-100 text-blue-700'
                       }`}>
                         {doc.status}
@@ -272,9 +315,9 @@ export const FileRequestPage: React.FC = () => {
                   <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-4">
                     <Search className="w-8 h-8 text-slate-300" />
                   </div>
-                  <h4 className="text-lg font-bold text-slate-900	dark:text-white dark:text-white">No matching files found</h4>
+                  <h4 className="text-lg font-bold text-slate-900 dark:text-white">No matching files found</h4>
                   <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-                    Try a different claim number, policy number, or insured name.
+                    Try a different claim number, policy number, insured name, or sum insured.
                   </p>
                 </div>
               ) : (
@@ -282,19 +325,19 @@ export const FileRequestPage: React.FC = () => {
                   <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
                     <Search className="w-8 h-8 text-blue-300" />
                   </div>
-                  <h4 className="text-lg font-bold text-slate-900	dark:text-white dark:text-white">Start searching</h4>
+                  <h4 className="text-lg font-bold text-slate-900 dark:text-white">Start searching</h4>
                   <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-                    Enter claim number, policy number, or insured name above
+                    Enter claim number, policy number, insured name, sum insured, or accident date above
                   </p>
                 </div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* --- NEW: My Requests Section --- */}
+          {/* My Requests Section */}
           <div className="dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 mt-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-black text-slate-900	dark:text-white dark:text-white flex items-center gap-2">
+              <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <History className="w-5 h-5 text-blue-600" />
                 My Requests
               </h3>
@@ -318,7 +361,7 @@ export const FileRequestPage: React.FC = () => {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-bold text-slate-900	dark:text-white dark:text-white">{req.document_title || 'Untitled'}</p>
+                          <p className="font-bold text-slate-900 dark:text-white">{req.document_title || 'Untitled'}</p>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             req.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
                             req.status === 'Approved' ? 'bg-green-100 text-green-700' :
@@ -361,13 +404,12 @@ export const FileRequestPage: React.FC = () => {
               </div>
             )}
           </div>
-          {/* --- End of My Requests Section --- */}
         </div>
 
         {/* Right Column: Request Form */}
         <div className="space-y-6">
           <div className="dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl sticky top-24">
-            <h3 className="text-xl font-black text-slate-900	dark:text-white dark:text-white mb-6">Request Details</h3>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6">Request Details</h3>
             
             <AnimatePresence mode="wait">
               {selectedDoc ? (
@@ -392,6 +434,27 @@ export const FileRequestPage: React.FC = () => {
                       Selected for Request
                     </p>
                   </div>
+
+                  {/* Quick info about the selected document */}
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {selectedDoc.sum_insured && (
+                      <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                        <p className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Sum Insured</p>
+                        <p className="font-bold text-emerald-800">
+                          {Number(selectedDoc.sum_insured).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {selectedDoc.date_of_accident && (
+                      <div className="p-2 bg-orange-50 rounded-lg border border-orange-100">
+                        <p className="text-[9px] font-black uppercase text-orange-600 tracking-widest">Accident</p>
+                        <p className="font-bold text-orange-800">
+                          {format(new Date(selectedDoc.date_of_accident), 'MMM dd, yyyy')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
                     <label className="flex items-center gap-2 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                       <User className="w-3 h-3" /> Requester Name
