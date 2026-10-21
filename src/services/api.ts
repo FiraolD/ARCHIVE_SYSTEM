@@ -1,15 +1,19 @@
+// src/services/api.ts
 import axios from 'axios';
 
+// ⚠️ Desktop app: backend ALWAYS runs on localhost
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:7000/api';
+
+console.log('[api.ts] API_URL =', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 30000,
 });
 
-// Attach auth token to every request
+// ==================== INTERCEPTORS ====================
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -18,171 +22,163 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor - propagate errors without leaking payload data
 api.interceptors.response.use(
   (response) => response,
-  (error) => Promise.reject(error)
+  (error) => {
+    if (error.code === 'ERR_NETWORK') {
+      console.error(`❌ Cannot connect to backend at ${API_URL}`);
+    } else if (error.response) {
+      console.error(`❌ API error ${error.response.status} at ${error.config?.url}`, error.response.data);
+    }
+    return Promise.reject(error);
+  }
 );
-// Auth API
+
+// ==================== AUTH ====================
+
 export const authApi = {
-  login: (email: string, password: string) => 
+  login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
-  getProfile: () => 
-    api.get('/auth/profile'),
+  register: (data: any) => api.post('/auth/register', data),
+  getProfile: () => api.get('/auth/profile'),
 };
 
-// User API - ADD THIS SECTION
+// ==================== USERS ====================
+
 export const userApi = {
-  getUsers: () => 
-    api.get('/users'),
-  getUser: (id: string) => 
-    api.get(`/users/${id}`),
-  createUser: (userData: any) => 
-    api.post('/users', userData),
-  updateUser: (id: string, userData: any) => 
-    api.patch(`/users/${id}`, userData),
-  deleteUser: (id: string) => 
-    api.delete(`/users/${id}`),
+  getUsers: () => api.get('/users'),
+  getUser: (id: string) => api.get(`/users/${id}`),
+  createUser: (data: any) => api.post('/users', data),
+  updateUser: (id: string, data: any) => api.patch(`/users/${id}`, data),
+  deleteUser: (id: string) => api.delete(`/users/${id}`),
 };
 
+// ==================== DOCUMENTS ====================
 
 export const documentApi = {
   getDocuments: (params?: any) => api.get('/documents', { params }),
   getDocument: (id: string) => api.get(`/documents/${id}`),
-  ingestDocument: (formData: FormData) => 
+  ingestDocument: (formData: FormData) =>
     api.post('/documents/ingest', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  updateStatus: (id: string, status: string) => 
+  updateStatus: (id: string, status: string) =>
     api.patch(`/documents/${id}/status`, { status }),
-  updatePlacement: (id: string, physicalPlacement: string) => 
+  updatePlacement: (id: string, physicalPlacement: string) =>
     api.patch(`/documents/${id}/placement`, { physicalPlacement }),
-  
-  // This should match the backend route
-  assignToBox: (data: { documentId: string; boxId: string }) => 
-    api.post('/documents/assign-to-box', data), // Make sure this is POST, not GET
+  assignToBox: (data: { documentId: string; boxId: string }) =>
+    api.post('/documents/assign-to-box', data),
+  searchByCustomField: (key: string, value: string) =>
+    api.get('/documents/search/custom-field', { params: { key, value } }),
 };
 
-// Request API
-// In src/services/api.ts
+// ==================== FILE REQUESTS ====================
 
 export const requestApi = {
-  // Create a new request
   createRequest: (data: any) => api.post('/requests', data),
-  
-  // Get current user's requests
   getMyRequests: () => api.get('/requests/my-requests'),
-  
-  // Get all requests (admin only)
-  getAllRequests: (params?: any) => api.get('/requests/all', { params }),
-  
-  // Get pending requests (admin only)
   getPendingRequests: () => api.get('/requests/pending'),
-
-  returnByRequester: (id: string) => api.patch(`/requests/${id}/return-by-requester`),
-  
-  // Approve a request (admin only)
+  getAllRequests: (params?: any) => api.get('/requests/all', { params }),
   approveRequest: (id: string) => api.patch(`/requests/${id}/approve`),
-  
-  // REJECT a request (admin only) - ADD THIS
-  rejectRequest: (id: string, data: { reason: string }) => 
+  rejectRequest: (id: string, data: { reason: string }) =>
     api.patch(`/requests/${id}/reject`, data),
-  
-  // Return a document (admin only)
   returnDocument: (id: string) => api.patch(`/requests/${id}/return`),
-  
-  // Get request by reference number
-  getRequestByReference: (reference: string) => 
+  returnByRequester: (id: string) =>
+    api.patch(`/requests/${id}/return-by-requester`),
+  getByReference: (reference: string) =>
     api.get(`/requests/reference/${reference}`),
 };
 
-// Registration API
-// In your src/services/api.ts, update the registrationApi section:
+// ==================== REGISTRATION ====================
 
 export const registrationApi = {
   // Branches
   getBranches: () => api.get('/registration/branches'),
-  createBranch: (data: { name: string; code: string }) => 
+  createBranch: (data: { name: string; code: string }) =>
     api.post('/registration/branches', data),
-  
+
   // Departments
   getDepartments: () => api.get('/registration/departments'),
-  createDepartment: (data: { name: string; code: string }) => 
+  createDepartment: (data: { name: string; code: string }) =>
     api.post('/registration/departments', data),
-  
+
   // Products
   getProducts: () => api.get('/registration/products'),
-  createProduct: (data: { name: string }) => 
+  createProduct: (data: { name: string; code?: string }) =>
     api.post('/registration/products', data),
   getProductCustomFields: (productId: string) =>
-    api.get(/registration/products//fields),
-  
+    api.get(`/registration/products/${productId}/fields`),
+
   // Boxes
   getBoxes: () => api.get('/registration/boxes'),
-  createBox: (data: { branchCode: string; fileType: string }) => 
+  createBox: (data: { branchCode: string; fileType: string }) =>
     api.post('/registration/boxes', data),
-  
-  // File Boxes
-  getCabinets: (branchId?: string) => 
+
+  // Cabinets (called "File Boxes" in some UI)
+  getCabinets: (branchId?: string) =>
     api.get(branchId ? `/registration/cabinets?branchId=${branchId}` : '/registration/cabinets'),
-  createCabinet: () => 
-    api.post('/registration/cabinets'),
-  
-  // Drawer Assignments - THIS IS THE KEY PART
-  assignDrawer: (data: { cabinetId: string; branchId: string; drawerNumber: string }) => 
+  createCabinet: (data: { number: string; drawers: string[] }) =>
+    api.post('/registration/cabinets', data),
+
+  // Drawer assignments
+  assignDrawer: (data: { cabinetId: string; branchId: string; drawerNumber: string }) =>
     api.post('/registration/assign-drawer', data),
-  
-  getDrawerAssignments: () => 
-    api.get('/registration/drawer-assignments'),
-  
-  getDrawerHistory: (cabinetId: string, drawerNumber: string) => 
+  getDrawerAssignments: () => api.get('/registration/drawer-assignments'),
+  getDrawerHistory: (cabinetId: string, drawerNumber: string) =>
     api.get('/registration/drawer-history', { params: { cabinetId, drawerNumber } }),
-  
-  // Cabinet Assignment - link a cabinet to a branch
-  assignCabinet: (data: { cabinetId: string; branchId: string }) => 
+
+  // Cabinet assignment to branch
+  assignCabinet: (data: { cabinetId: string; branchId: string }) =>
     api.post('/registration/assign-cabinet', data),
-  
-  // Box Assignments
-  assignBox: (data: { boxId: string; cabinetId: string; drawerNumber: string }) => 
+
+  // Box assignments
+  assignBox: (data: { boxId: string; cabinetId: string; drawerNumber: string }) =>
     api.post('/registration/assign-box', data),
 };
-  export const notificationApi = {
-    getNotifications: () => api.get('/notifications'),
-    markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
-    markAllAsRead: () => api.patch('/notifications/read-all'),
-  };
-export default api;
 
-// To this:
-export const dashboardApi = {
-  getStats: () => api.get('/dashboard'),  // ✅ Correct - matches backend
+// ==================== NOTIFICATIONS ====================
+
+export const notificationApi = {
+  getNotifications: () => api.get('/notifications'),
+  getUnreadCount: () => api.get('/notifications/unread/count'),
+  markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllAsRead: () => api.patch('/notifications/read-all'),
 };
 
-// Add reports API to your api.ts file
+// ==================== DASHBOARD ====================
+
+export const dashboardApi = {
+  getStats: () => api.get('/dashboard'),
+};
+
+// ==================== REPORTS ====================
 
 export const reportsApi = {
-  // Get report statistics/dashboard data
-  getStats: (params?: { period?: '6months' | '1year' | 'all' }) => 
-    api.get('/reports/stats', { params }),
-  
-  // Get list of previously generated reports
-  getGeneratedReports: () => 
-    api.get('/reports/generated'),
-  
-  // Generate a new report
-  generateReport: (data: { 
-    type: 'Monthly Summary' | 'Claims Analysis' | 'Department Usage'; 
-    format?: 'PDF' | 'EXCEL' | 'CSV'
-  }) => 
+  getStats: (params?: any) => api.get('/reports/stats', { params }),
+  getGeneratedReports: () => api.get('/reports/generated'),
+  generateReport: (data: { type: string; format?: string; dateRange?: string }) =>
     api.post('/reports/generate', data),
-  
-  // Download a specific report by ID
-  downloadReport: (id: string) => 
-    api.get(`/reports/download/${id}`, {
-      responseType: 'blob'
-    }),
-  
-  // Delete a report
-  deleteReport: (id: string) => 
-    api.delete(`/reports/${id}`)
+  generateMonthlyReport: (data: { format?: string; month?: string }) =>
+    api.post('/reports/generate/monthly', data),
+  downloadReport: (id: string) =>
+    api.get(`/reports/download/${id}`, { responseType: 'blob' }),
+  deleteReport: (id: string) => api.delete(`/reports/${id}`),
 };
+
+// ==================== ADMIN ====================
+
+export const adminApi = {
+  executeQuery: (sql: string, allowWrite: boolean = false) =>
+    api.post('/admin/query', { sql, allowWrite }),
+};
+
+// ==================== AUDIT ====================
+
+export const auditApi = {
+  getLogs: (params?: any) => api.get('/audit/logs', { params }),
+  getUserLogs: (userId: string) => api.get(`/audit/logs/user/${userId}`),
+  getDocumentLogs: (documentId: string) => api.get(`/audit/logs/document/${documentId}`),
+  getStats: () => api.get('/audit/stats'),
+};
+
+export default api;

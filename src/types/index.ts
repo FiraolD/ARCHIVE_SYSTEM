@@ -37,6 +37,10 @@ export interface Document {
   model?: string;
   status: FileStatus;
   createdAt: string;
+  plate_number?: string;        // <-- ADD (backend returns snake_case)
+  branch_id?: string;           // <-- ADD
+  department_id?: string;       // <-- ADD
+  product_id?: string;  
   owner: string;
   size: string;
   versions: DocumentVersion[];
@@ -196,4 +200,56 @@ export interface Notification {
   read: boolean;
   relatedId?: string;
   adminOnly?: boolean;
+}
+
+export interface FacetBucket {
+  value: string | number;
+  count: number;
+  id?: string | null;
+  code?: string;
+}
+
+export interface Facets {
+  by_type: FacetBucket[];
+  by_status: FacetBucket[];
+  by_branch: FacetBucket[];
+  by_accident_year: FacetBucket[];
+  ranges: {
+    sum_insured_min: number | null;
+    sum_insured_max: number | null;
+    estimated_loss_min: number | null;
+    estimated_loss_max: number | null;
+    accident_min: string | null;
+    accident_max: string | null;
+  };
+}
+
+export interface DocumentFilters {
+  search?: string;
+  type?: string;
+  status?: string;
+  branch_id?: string;
+  department_id?: string;
+  product_id?: string;
+  claim_number?: string;
+  insured_name?: string;
+  plate_number?: string;
+  date_of_accident_from?: string;
+  date_of_accident_to?: string;
+  sum_insured_min?: number;
+  sum_insured_max?: number;
+  estimated_loss_min?: number;
+  estimated_loss_max?: number;
+  legacy?: 'true' | 'false';
+  page?: number;
+  limit?: number;
+  sort_by?: string;
+  sort_order?: 'ASC' | 'DESC';
+}
+
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
 }

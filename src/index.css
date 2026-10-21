@@ -189,3 +189,42 @@
     letter-spacing: var(--tracking-normal);
   }
 }
+/* ============================================
+   Dark Mode — Global Polish
+   ============================================ */
+
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+
+::selection {
+  background-color: rgb(59 130 246 / 0.25);
+}
+.dark ::selection {
+  background-color: rgb(96 165 250 / 0.35);
+}
+
+/* Dark scrollbars */
+.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* Autofill fix */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark textarea:-webkit-autofill {
+  -webkit-text-fill-color: #e2e8f0;
+  -webkit-box-shadow: 0 0 0px 1000px #1e293b inset;
+  caret-color: #e2e8f0;
+}
+
+/* Native date/time pickers in dark */
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+/* Native select options */
+.dark select option {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}

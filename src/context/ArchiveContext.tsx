@@ -1,11 +1,38 @@
 // src/context/ArchiveContext.tsx
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { 
-  Branch, Department, Product, Box, Cabinet, 
-  FileRequest, Notification, Document, User 
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  ReactNode,
+} from 'react';
+import {
+  Branch,
+  Department,
+  Product,
+  Box,
+  Cabinet,
+  FileRequest,
+  Notification,
+  Document,
+  User,
+  Facets,
+  DocumentFilters,
+  Pagination,
 } from '../types';
-import { authApi, documentApi, requestApi, registrationApi, notificationApi } from '../services/api';
+import {
+  authApi,
+  documentApi,
+  requestApi,
+  registrationApi,
+  notificationApi,
+} from '../services/api';
 import { toast } from 'sonner';
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface ArchiveContextType {
   user: User | null;
@@ -19,18 +46,25 @@ interface ArchiveContextType {
   fileRequests: FileRequest[];
   notifications: Notification[];
   isLoading: boolean;
-  
+
+  // Search / facets
+  filters: DocumentFilters;
+  facets: Facets | null;
+  pagination: Pagination | null;
+  setFilters: (next: DocumentFilters) => void;
+  applyFilters: (next: DocumentFilters) => Promise<void>;
+
   // Auth
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 
   // Documents
-  fetchDocuments: (params?: any) => Promise<void>;
+  fetchDocuments: (params?: DocumentFilters) => Promise<void>;
   fetchDocument: (id: string) => Promise<Document>;
   ingestDocument: (formData: FormData) => Promise<any>;
   updateDocumentStatus: (id: string, status: string) => Promise<void>;
   updatePhysicalPlacement: (id: string, placement: string) => Promise<void>;
-  
+
   // Registration
   fetchBranches: () => Promise<void>;
   addBranch: (branch: Omit<Branch, 'id'>) => Promise<void>;
@@ -41,29 +75,45 @@ interface ArchiveContextType {
   fetchBoxes: () => Promise<void>;
   addBox: (box: any) => Promise<void>;
   fetchCabinets: () => Promise<void>;
-  addCabinet: () => Promise<void>;
+  addCabinet: (cabinet: { number: string; drawers: string[] }) => Promise<void>;
   assignCabinet: (assignment: any) => Promise<void>;
   assignBox: (assignment: any) => Promise<void>;
-  
+
   // File Requests
   fetchMyRequests: () => Promise<void>;
   fetchAllRequests: (params?: any) => Promise<void>;
   addFileRequest: (request: any) => Promise<void>;
   approveRequest: (id: string) => Promise<void>;
   returnDocument: (id: string) => Promise<void>;
-  
+
   // Notifications
   fetchNotifications: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
-  
+
   // Helpers
   generateBoxIdentifier: (branchCode: string) => string;
 }
 
+// ============================================================================
+// CONTEXT
+// ============================================================================
+
 const ArchiveContext = createContext<ArchiveContextType | undefined>(undefined);
 
+const DEFAULT_FILTERS: DocumentFilters = {
+  page: 1,
+  limit: 20,
+  sort_by: 'date_added',
+  sort_order: 'DESC',
+};
+
+// ============================================================================
+// PROVIDER
+// ============================================================================
+
 export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // ----- Core state -----
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -76,14 +126,63 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  // ----- Search / facets state -----
+  const [filters, setFiltersState] = useState<DocumentFilters>(DEFAULT_FILTERS);
+  const [facets, setFacets] = useState<Facets | null>(null);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
 
-  // Set auth token on initial load
+  // Public setter (just stores; the effect below triggers the fetch)
+  const setFilters = useCallback((next: DocumentFilters) => {
+    setFiltersState(next);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Unified fetch: documents + pagination + facets (single API call)
+  // The backend returns all three from GET /documents
+  // ---------------------------------------------------------------------------
+  const fetchDocumentsAndFacets = useCallback(
+    async (params: DocumentFilters) => {
+      try {
+        setIsLoading(true);
+        const response = await documentApi.getDocuments(params);
+        setDocuments(response.data.documents || []);
+        setPagination(response.data.pagination ?? null);
+        setFacets(response.data.facets ?? null);
+      } catch (error: any) {
+        toast.error(error.response?.data?.error || 'Failed to fetch documents');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  const applyFilters = useCallback(
+    async (next: DocumentFilters) => {
+      setFiltersState(next);
+      await fetchDocumentsAndFacets(next);
+    },
+    [fetchDocumentsAndFacets]
+  );
+
+  // Auto-refetch when filters change (debounced for search typing)
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(() => {
+      fetchDocumentsAndFacets(filters);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [filters, user, fetchDocumentsAndFacets]);
+
+  // ---------------------------------------------------------------------------
+  // Auth bootstrap
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     if (token) {
-      // You could verify token here
       fetchUserProfile();
       fetchNotifications();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const fetchUserProfile = async () => {
@@ -96,17 +195,14 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // Auth methods
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
       const response = await authApi.login(email, password);
       const { user, token } = response.data;
-      
       localStorage.setItem('token', token);
       setToken(token);
       setUser(user);
-      
       toast.success(`Welcome back, ${user.name}!`);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Login failed');
@@ -122,20 +218,18 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     setUser(null);
     setDocuments([]);
     setNotifications([]);
+    setFileRequests([]);
+    setFiltersState(DEFAULT_FILTERS);
+    setFacets(null);
+    setPagination(null);
     toast.info('Logged out successfully');
   };
 
-  // Document methods
-  const fetchDocuments = async (params?: any) => {
-    try {
-      setIsLoading(true);
-      const response = await documentApi.getDocuments(params);
-      setDocuments(response.data.documents);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to fetch documents');
-    } finally {
-      setIsLoading(false);
-    }
+  // ---------------------------------------------------------------------------
+  // Documents
+  // ---------------------------------------------------------------------------
+  const fetchDocuments = async (params?: DocumentFilters) => {
+    await fetchDocumentsAndFacets(params ?? filters);
   };
 
   const fetchDocument = async (id: string) => {
@@ -152,8 +246,10 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       setIsLoading(true);
       const response = await documentApi.ingestDocument(formData);
-      setDocuments(prev => [response.data, ...prev]);
+      setDocuments((prev) => [response.data, ...prev]);
       toast.success('Document ingested successfully');
+      // Refresh list + facets in background (non-blocking)
+      fetchDocumentsAndFacets(filters).catch(() => {});
       return response.data;
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to ingest document');
@@ -167,7 +263,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       setIsLoading(true);
       const response = await documentApi.updateStatus(id, status);
-      setDocuments(prev => prev.map(d => d.id === id ? response.data : d));
+      setDocuments((prev) => prev.map((d) => (d.id === id ? response.data : d)));
       toast.success(`Status updated to ${status}`);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to update status');
@@ -181,7 +277,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       setIsLoading(true);
       const response = await documentApi.updatePlacement(id, placement);
-      setDocuments(prev => prev.map(d => d.id === id ? response.data : d));
+      setDocuments((prev) => prev.map((d) => (d.id === id ? response.data : d)));
       toast.success('Physical placement updated');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to update placement');
@@ -191,7 +287,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // Registration methods
+  // ---------------------------------------------------------------------------
+  // Registration
+  // ---------------------------------------------------------------------------
   const fetchBranches = async () => {
     try {
       const response = await registrationApi.getBranches();
@@ -205,7 +303,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       setIsLoading(true);
       const response = await registrationApi.createBranch(branch);
-      setBranches(prev => [...prev, response.data]);
+      setBranches((prev) => [...prev, response.data]);
       toast.success('Branch added successfully');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to add branch');
@@ -228,7 +326,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       setIsLoading(true);
       const response = await registrationApi.createDepartment(dept);
-      setDepartments(prev => [...prev, response.data]);
+      setDepartments((prev) => [...prev, response.data]);
       toast.success('Department added successfully');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to add department');
@@ -251,7 +349,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       setIsLoading(true);
       const response = await registrationApi.createProduct(product);
-      setProducts(prev => [...prev, response.data]);
+      setProducts((prev) => [...prev, response.data]);
       toast.success('Product added successfully');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to add product');
@@ -274,7 +372,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       setIsLoading(true);
       const response = await registrationApi.createBox(box);
-      setBoxes(prev => [...prev, response.data]);
+      setBoxes((prev) => [...prev, response.data]);
       toast.success('Box added successfully');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to add box');
@@ -293,11 +391,11 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const addCabinet = async () => {
+  const addCabinet = async (cabinet: { number: string; drawers: string[] }) => {
     try {
       setIsLoading(true);
-      const response = await registrationApi.createCabinet();
-      setCabinets(prev => [...prev, response.data]);
+      const response = await registrationApi.createCabinet(cabinet);
+      setCabinets((prev) => [...prev, response.data]);
       toast.success('Cabinet added successfully');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to add cabinet');
@@ -312,7 +410,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       setIsLoading(true);
       await registrationApi.assignCabinet(assignment);
       toast.success('Cabinet assigned successfully');
-      await fetchCabinets(); // Refresh cabinets
+      await fetchCabinets();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to assign cabinet');
       throw error;
@@ -326,7 +424,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       setIsLoading(true);
       await registrationApi.assignBox(assignment);
       toast.success('Box assigned successfully');
-      await fetchBoxes(); // Refresh boxes
+      await fetchBoxes();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to assign box');
       throw error;
@@ -335,7 +433,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // File Request methods
+  // ---------------------------------------------------------------------------
+  // File Requests
+  // ---------------------------------------------------------------------------
   const fetchMyRequests = async () => {
     try {
       const response = await requestApi.getMyRequests();
@@ -358,13 +458,12 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       setIsLoading(true);
       const response = await requestApi.createRequest(request);
-      setFileRequests(prev => [response.data, ...prev]);
-      
-      // Update document status in local state
-      setDocuments(prev => prev.map(doc => 
-        doc.id === request.documentId ? { ...doc, status: 'Checked-out' } : doc
-      ));
-      
+      setFileRequests((prev) => [response.data, ...prev]);
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.id === request.documentId ? { ...doc, status: 'Checked-out' } : doc
+        )
+      );
       toast.success('File request submitted successfully');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to submit request');
@@ -378,12 +477,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       setIsLoading(true);
       await requestApi.approveRequest(id);
-      
-      // Update local state
-      setFileRequests(prev => prev.map(req => 
-        req.id === id ? { ...req, status: 'Approved' } : req
-      ));
-      
+      setFileRequests((prev) =>
+        prev.map((req) => (req.id === id ? { ...req, status: 'Approved' } : req))
+      );
       toast.success('Request approved');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to approve request');
@@ -397,12 +493,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       setIsLoading(true);
       await requestApi.returnDocument(id);
-      
-      // Update local state
-      setFileRequests(prev => prev.map(req => 
-        req.id === id ? { ...req, status: 'Returned' } : req
-      ));
-      
+      setFileRequests((prev) =>
+        prev.map((req) => (req.id === id ? { ...req, status: 'Returned' } : req))
+      );
       toast.success('Document returned');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to return document');
@@ -412,7 +505,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // Notification methods
+  // ---------------------------------------------------------------------------
+  // Notifications
+  // ---------------------------------------------------------------------------
   const fetchNotifications = async () => {
     try {
       const response = await notificationApi.getNotifications();
@@ -425,7 +520,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
   const markNotificationRead = async (id: string) => {
     try {
       await notificationApi.markAsRead(id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
     } catch (error: any) {
       console.error('Failed to mark notification as read:', error);
     }
@@ -434,93 +531,111 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
   const markAllNotificationsRead = async () => {
     try {
       await notificationApi.markAllAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       toast.success('All notifications marked as read');
     } catch (error: any) {
       toast.error('Failed to mark notifications as read');
     }
   };
 
-  // Helper methods
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
   const generateBoxIdentifier = (branchCode: string): string => {
     const year = new Date().getFullYear().toString().slice(-2);
-    const existingInBranchAndYear = boxes.filter(b => b.branchCode === branchCode && b.year === year);
+    const existingInBranchAndYear = boxes.filter(
+      (b) => b.branchCode === branchCode && b.year === year
+    );
     const nextSequence = existingInBranchAndYear.length + 1;
     const formattedSequence = nextSequence.toString().padStart(4, '0');
     return `AI/${branchCode}/${formattedSequence}/${year}`;
   };
 
-  // Initial data fetch
+  // ---------------------------------------------------------------------------
+  // Initial data load when user logs in
+  // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (user) {
-      fetchDocuments();
-      fetchBranches();
-      fetchDepartments();
-      fetchProducts();
-      fetchBoxes();
-      fetchCabinets();
-      if (user.role === 'Admin') {
-        fetchAllRequests();
-      } else {
-        fetchMyRequests();
-      }
+    if (!user) return;
+    fetchBranches();
+    fetchDepartments();
+    fetchProducts();
+    fetchBoxes();
+    fetchCabinets();
+    if (user.role === 'Admin') {
+      fetchAllRequests();
+    } else {
+      fetchMyRequests();
     }
+    // documents + facets fetched by the filters effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // ---------------------------------------------------------------------------
+  // Provide context
+  // ---------------------------------------------------------------------------
   return (
-    <ArchiveContext.Provider value={{
-      user,
-      token,
-      documents,
-      branches,
-      departments,
-      products,
-      boxes,
-      cabinets,
-      fileRequests,
-      notifications,
-      isLoading,
-      
-      // Auth
-      login,
-      logout,
-      
-      // Documents
-      fetchDocuments,
-      fetchDocument,
-      ingestDocument,
-      updateDocumentStatus,
-      updatePhysicalPlacement,
-      
-      // Registration
-      fetchBranches,
-      addBranch,
-      fetchDepartments,
-      addDepartment,
-      fetchProducts,
-      addProduct,
-      fetchBoxes,
-      addBox,
-      fetchCabinets,
-      addCabinet,
-      assignCabinet,
-      assignBox,
-      
-      // File Requests
-      fetchMyRequests,
-      fetchAllRequests,
-      addFileRequest,
-      approveRequest,
-      returnDocument,
-      
-      // Notifications
-      fetchNotifications,
-      markNotificationRead,
-      markAllNotificationsRead,
-      
-      // Helpers
-      generateBoxIdentifier,
-    }}>
+    <ArchiveContext.Provider
+      value={{
+        user,
+        token,
+        documents,
+        branches,
+        departments,
+        products,
+        boxes,
+        cabinets,
+        fileRequests,
+        notifications,
+        isLoading,
+
+        // Search / facets
+        filters,
+        facets,
+        pagination,
+        setFilters,
+        applyFilters,
+
+        // Auth
+        login,
+        logout,
+
+        // Documents
+        fetchDocuments,
+        fetchDocument,
+        ingestDocument,
+        updateDocumentStatus,
+        updatePhysicalPlacement,
+
+        // Registration
+        fetchBranches,
+        addBranch,
+        fetchDepartments,
+        addDepartment,
+        fetchProducts,
+        addProduct,
+        fetchBoxes,
+        addBox,
+        fetchCabinets,
+        addCabinet,
+        assignCabinet,
+        assignBox,
+
+        // File Requests
+        fetchMyRequests,
+        fetchAllRequests,
+        addFileRequest,
+        approveRequest,
+        returnDocument,
+
+        // Notifications
+        fetchNotifications,
+        markNotificationRead,
+        markAllNotificationsRead,
+
+        // Helpers
+        generateBoxIdentifier,
+      }}
+    >
       {children}
     </ArchiveContext.Provider>
   );

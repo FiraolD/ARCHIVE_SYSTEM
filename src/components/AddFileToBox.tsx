@@ -142,7 +142,7 @@ export const AddFileToBox: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
         <div className="bg-slate-900 p-8 text-white">
           <h2 className="text-3xl font-black mb-2">Add File to Box</h2>
           <p className="text-slate-400">Organize files into physical boxes for better tracking</p>
@@ -151,7 +151,7 @@ export const AddFileToBox: React.FC = () => {
         <div className="p-8 space-y-8">
           {/* File Selection */}
           <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 block">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 block">
               Select File to Add
             </label>
             <div className="relative mb-4">
@@ -161,19 +161,19 @@ export const AddFileToBox: React.FC = () => {
                 placeholder="Search by Archive Ref, Claim #, Policy #, or Insured Name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-400"
                 >
                   <X className="w-5 h-5" />
                 </button>
               )}
             </div>
 
-            <div className="text-xs text-slate-500 mb-2 flex items-center gap-4">
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Hash className="w-3 h-3" /> Claim Files
               </span>
@@ -201,8 +201,8 @@ export const AddFileToBox: React.FC = () => {
                       whileHover={{ scale: 1.01 }}
                       className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                         selectedFile === file?.id
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-slate-200 hover:border-blue-200'
+                          ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/40'
+                          : 'border-slate-200 dark:border-slate-700 hover:border-blue-200'
                       }`}
                       onClick={() => file?.id && setSelectedFile(file.id)}
                     >
@@ -213,15 +213,15 @@ export const AddFileToBox: React.FC = () => {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-mono font-bold text-slate-900">
+                              <span className="font-mono font-bold text-slate-900 dark:text-white dark:text-white">
                                 {file?.archive_reference_number || 'No Reference'}
                               </span>
                               <span className={`text-xs px-2 py-0.5 rounded-full ${
                                 file?.type === 'Claim File' 
-                                  ? 'bg-blue-100 text-blue-700' 
+                                  ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' 
                                   : file?.type === 'Policy'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-slate-100 text-slate-700'
+                                  ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300'
+                                  : 'bg-slate-100 text-slate-700 dark:text-slate-300'
                               }`}>
                                 {file?.type || 'Unknown'}
                               </span>
@@ -276,7 +276,7 @@ export const AddFileToBox: React.FC = () => {
 
           {/* Box Selection */}
           <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 block">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 block">
               Select Destination Box
             </label>
             <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -291,8 +291,8 @@ export const AddFileToBox: React.FC = () => {
                       whileHover={{ scale: 1.01 }}
                       className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                         selectedBox === box?.id
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-slate-200 hover:border-blue-200'
+                          ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/40'
+                          : 'border-slate-200 dark:border-slate-700 hover:border-blue-200'
                       }`}
                       onClick={() => box?.id && setSelectedBox(box.id)}
                     >
@@ -300,8 +300,8 @@ export const AddFileToBox: React.FC = () => {
                         <div className="flex items-center gap-3">
                           <Package className="w-5 h-5 text-slate-400" />
                           <div>
-                            <p className="font-bold text-slate-900">{box?.identifier || 'Unknown Box'}</p>
-                            <p className="text-xs text-slate-500">
+                            <p className="font-bold text-slate-900 dark:text-white dark:text-white">{box?.identifier || 'Unknown Box'}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
                               {box?.fileType || 'Unknown Type'} • {box?.branchCode || 'No Branch'}
                             </p>
                           </div>

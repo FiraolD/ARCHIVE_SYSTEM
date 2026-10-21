@@ -1,0 +1,1 @@
+CREATE SEQUENCE IF NOT EXISTS legacy_arc_seq START 1;

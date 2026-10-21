@@ -48,13 +48,13 @@ export const CabinetAssignment: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="bg-white rounded-3xl border border-slate-200 p-8">
-        <h2 className="text-2xl font-black text-slate-900 mb-6">Cabinet & Drawer Assignment</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 p-8">
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Cabinet & Drawer Assignment</h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Cabinet List */}
           <div>
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Available Cabinets</h3>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 mb-4">Available Cabinets</h3>
             <div className="space-y-4">
               {cabinets.map((cabinet) => (
                 <motion.div
@@ -63,17 +63,17 @@ export const CabinetAssignment: React.FC = () => {
                   className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${
                     selectedCabinet?.id === cabinet.id
                       ? 'border-blue-600 bg-blue-50'
-                      : 'border-slate-200 hover:border-blue-200'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-blue-200'
                   }`}
                   onClick={() => setSelectedCabinet(cabinet)}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <Archive className="w-6 h-6 text-blue-600" />
-                      <span className="font-bold text-slate-900">Cabinet {cabinet.number}</span>
+                      <span className="font-bold text-slate-900 dark:text-white dark:text-white">Cabinet {cabinet.number}</span>
                     </div>
                     {cabinet.branchName && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                      <span className="text-xs bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">
                         {cabinet.branchName}
                       </span>
                     )}
@@ -82,7 +82,7 @@ export const CabinetAssignment: React.FC = () => {
                     {cabinet.drawers.map((drawer) => (
                       <div
                         key={drawer}
-                        className="p-2 bg-white rounded-lg border border-slate-200 text-center"
+                        className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-center"
                       >
                         <FolderOpen className="w-4 h-4 text-slate-400 mx-auto mb-1" />
                         <span className="text-xs font-medium">Drawer {drawer}</span>
@@ -95,19 +95,19 @@ export const CabinetAssignment: React.FC = () => {
           </div>
 
           {/* Assignment Form */}
-          <div className="bg-slate-50 rounded-2xl p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Assign Drawer to Branch</h3>
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-6">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 mb-4">Assign Drawer to Branch</h3>
             
             {selectedCabinet ? (
               <div className="space-y-6">
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
                     Select Branch
                   </label>
                   <select
                     value={selectedBranch}
                     onChange={(e) => setSelectedBranch(e.target.value)}
-                    className="w-full p-4 bg-white border border-slate-200 rounded-xl"
+                    className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
                   >
                     <option value="">Choose a branch...</option>
                     {branches.map(branch => (
@@ -119,13 +119,13 @@ export const CabinetAssignment: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
                     Select Drawer
                   </label>
                   <select
                     value={selectedDrawer}
                     onChange={(e) => setSelectedDrawer(e.target.value)}
-                    className="w-full p-4 bg-white border border-slate-200 rounded-xl"
+                    className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
                   >
                     <option value="">Choose a drawer...</option>
                     {selectedCabinet.drawers.map(drawer => (

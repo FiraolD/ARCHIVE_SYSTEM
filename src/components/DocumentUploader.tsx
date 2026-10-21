@@ -96,7 +96,7 @@ export const DocumentUploader: React.FC = () => {
     <div className="w-full space-y-4">
       <div className="grid grid-cols-1 gap-4 mb-4">
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+          <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-2">
             <MapPin className="w-3 h-3" /> Physical Placement
           </label>
           <input 
@@ -104,7 +104,7 @@ export const DocumentUploader: React.FC = () => {
             placeholder="e.g. Room A, Shelf 4, Box 12"
             value={physicalPlacement}
             onChange={(e) => setPhysicalPlacement(e.target.value)}
-            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
       </div>
@@ -115,7 +115,7 @@ export const DocumentUploader: React.FC = () => {
         onDragOver={handleDrag}
         onDrop={handleDrop}
         className={`relative p-8 border-2 border-dashed rounded-xl transition-all flex flex-col items-center justify-center min-h-[200px] ${
-          dragActive ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'
+          dragActive ? 'border-blue-500 bg-blue-50' : 'border-slate-200 dark:border-slate-700 bg-white hover:border-slate-300'
         }`}
       >
         <input
@@ -130,8 +130,8 @@ export const DocumentUploader: React.FC = () => {
         <div className="p-4 bg-blue-100 rounded-full mb-4">
           <Upload className="w-8 h-8 text-blue-600" />
         </div>
-        <p className="text-lg font-medium text-slate-700">Drag and drop files here</p>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-lg font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">Drag and drop files here</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Supported formats: {APP_CONFIG.MAX_FILE_SIZE_MB}MB max size
         </p>
         <button
@@ -150,15 +150,15 @@ export const DocumentUploader: React.FC = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="p-4 bg-white border border-slate-200 rounded-lg flex items-center gap-4 shadow-sm"
+              className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center gap-4 shadow-sm"
             >
               <div className="p-2 bg-slate-100 rounded">
-                <FileText className="w-6 h-6 text-slate-600" />
+                <FileText className="w-6 h-6 text-slate-600 dark:text-slate-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-medium text-slate-800 truncate">{item.file.name}</p>
-                  <span className="text-xs text-slate-500">{(item.file.size / 1024 / 1024).toFixed(2)} MB</span>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100 dark:text-slate-100 truncate">{item.file.name}</p>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{(item.file.size / 1024 / 1024).toFixed(2)} MB</span>
                 </div>
                 {item.archiveRef && (
                   <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-2">

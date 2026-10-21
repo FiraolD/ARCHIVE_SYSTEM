@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DocumentCard } from './DocumentCard';
+import { PageHeader } from './PageHeader';
 import { 
   Search, 
   Calendar, 
@@ -163,12 +165,12 @@ export const FileRequestPage: React.FC = () => {
                 placeholder="Search by Claim #, Policy #, Insured Name, Sum Insured, Accident Date, or Reference..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800 dark:text-white"
+                className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800 dark:text-slate-100 dark:text-white"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-400"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -190,126 +192,24 @@ export const FileRequestPage: React.FC = () => {
             <AnimatePresence mode="popLayout">
               {isSearching ? (
                 <div className="flex justify-center items-center h-64">
-                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                  <Loader2 className="w-10 h-8 text-blue-600 animate-spin" />
                 </div>
               ) : searchResults.length > 0 ? (
-                searchResults.map((doc) => (
-                  <motion.div
-                    key={doc.id}
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    onClick={() => doc.status === 'Active' && setSelectedDoc(doc)}
-                    className={`p-6 rounded-3xl border-2 transition-all cursor-pointer group ${
-                      selectedDoc?.id === doc.id 
-                        ? 'border-blue-600 bg-blue-50/50 shadow-lg shadow-blue-500/10' 
-                        : doc.status === 'Active'
-                        ? 'border-slate-100 dark:bg-slate-800 hover:border-blue-200 hover:shadow-md'
-                        : 'border-slate-100 bg-slate-50 dark:bg-slate-800/50 opacity-60 cursor-not-allowed'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-4">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
-                          selectedDoc?.id === doc.id 
-                            ? 'bg-blue-600 text-white' 
-                            : doc.status === 'Active'
-                            ? 'bg-slate-100 text-slate-500 dark:text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600'
-                            : 'bg-slate-100 text-slate-400'
-                        }`}>
-                          <FileText className="w-7 h-7" />
-                        </div>
-                        <div>
-                          <h4 className="font-black text-slate-900 dark:text-white group-hover:text-blue-700 transition-colors">
-                            {doc.claim_number || doc.policy_number || doc.insured_name || 'Untitled Document'}
-                          </h4>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs font-black uppercase text-slate-400 tracking-tighter">
-                              {doc.archiveReferenceNumber}
-                            </span>
-                            <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                            <span className="text-xs font-black uppercase text-blue-600 tracking-tighter">
-                              {doc.type}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className={`p-2 rounded-full transition-colors ${
-                        selectedDoc?.id === doc.id 
-                          ? 'bg-blue-600 text-white' 
-                          : 'bg-slate-100 text-slate-300'
-                      }`}>
-                        <CheckCircle2 className="w-5 h-5" />
-                      </div>
-                    </div>
-                    
-                    {/* Info Grid - 4 columns with new fields */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
-                      <InfoItem label="Insured" value={doc.insured_name || 'N/A'} icon={User} />
-                      <InfoItem label="Policy #" value={doc.policy_number || 'N/A'} icon={Hash} />
-                      <InfoItem label="Claim #" value={doc.claim_number || 'N/A'} icon={FileText} />
-                      <InfoItem 
-                        label="Sum Insured" 
-                        value={doc.sum_insured ? Number(doc.sum_insured).toLocaleString() : 'N/A'} 
-                        icon={DollarSign} 
-                      />
-                    </div>
-
-                    {/* Secondary info row - Policy Period & Accident Date */}
-                    {(doc.period_of_policy || doc.date_of_accident) && (
-                      <div className="grid grid-cols-2 gap-4 mt-3">
-                        {doc.period_of_policy && (
-                          <InfoItem label="Policy Period" value={doc.period_of_policy} icon={Calendar} />
-                        )}
-                        {doc.date_of_accident && (
-                          <InfoItem 
-                            label="Date of Accident" 
-                            value={format(new Date(doc.date_of_accident), 'MMM dd, yyyy')} 
-                            icon={Calendar} 
-                          />
-                        )}
-                      </div>
-                    )}
-
-                    {/* Product Custom Fields */}
-                    {doc.product_custom_fields && Object.keys(doc.product_custom_fields).length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-slate-100">
-                        <div className="flex flex-wrap gap-2">
-                          {Object.entries(doc.product_custom_fields).slice(0, 4).map(([key, value]) => (
-                            <span 
-                              key={key} 
-                              className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100"
-                            >
-                              {key}: {String(value)}
-                            </span>
-                          ))}
-                          {Object.keys(doc.product_custom_fields).length > 4 && (
-                            <span className="text-[10px] text-slate-400 font-bold">
-                              +{Object.keys(doc.product_custom_fields).length - 4} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="mt-4 flex items-center gap-2">
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                        doc.status === 'Active' ? 'bg-green-100 text-green-700' :
-                        doc.status === 'Checked-out' ? 'bg-amber-100 text-amber-700' :
-                        doc.status === 'Returned' ? 'bg-purple-100 text-purple-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
-                        {doc.status}
-                      </span>
-                      {doc.status !== 'Active' && (
-                        <span className="text-xs text-amber-600 font-medium">
-                          (Not available for request)
-                        </span>
-                      )}
-                    </div>
-                  </motion.div>
-                ))
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  {searchResults.map((doc) => {
+    const isActive = doc.status === 'Active';
+    return (
+      <DocumentCard
+        key={doc.id}
+        doc={doc}
+        onSelect={(d) => isActive && setSelectedDoc(d)}
+        selected={selectedDoc?.id === doc.id}
+        disabled={!isActive}
+        disabledMessage={!isActive ? `Not available — file is ${doc.status}` : undefined}
+      />
+    );
+  })}
+</div>
               ) : searchQuery ? (
                 <div className="dark:bg-slate-800 p-12 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center text-center">
                   <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-4">
@@ -464,7 +364,7 @@ export const FileRequestPage: React.FC = () => {
                       required
                       value={requester}
                       onChange={(e) => setRequester(e.target.value)}
-                      className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100"
                     />
                   </div> 
 
@@ -478,7 +378,7 @@ export const FileRequestPage: React.FC = () => {
                       min={new Date().toISOString().split('T')[0]}
                       value={returnDate}
                       onChange={(e) => setReturnDate(e.target.value)}
-                      className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100"
                     />
                   </div>
 

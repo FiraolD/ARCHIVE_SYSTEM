@@ -190,14 +190,14 @@ const handleReject = async () => {
     if (!status) return null;
     
     const styles: Record<string, string> = {
-      Pending: 'bg-amber-100 text-amber-700 border-amber-200',
-      Approved: 'bg-green-100 text-green-700 border-green-200',
-      Rejected: 'bg-red-100 text-red-700 border-red-200',
-      Returned: 'bg-blue-100 text-blue-700 border-blue-200'
+      Pending: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200',
+      Approved: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200',
+      Rejected: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200',
+      Returned: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200'
     };
     
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-bold border ${styles[status] || 'bg-slate-100 text-slate-700'}`}>
+      <span className={`px-2 py-1 rounded-full text-xs font-bold border ${styles[status] || 'bg-slate-100 text-slate-700 dark:text-slate-300'}`}>
         {status}
       </span>
     );
@@ -216,19 +216,19 @@ const handleReject = async () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-black text-slate-900	dark:text-white dark:text-white">Request Management</h2>
-          <p className="text-slate-500 font-medium mt-1">
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white	dark:text-white dark:text-white">Request Management</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">
             Approve or reject file requests from users
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           <Clock className="w-4 h-4" />
           <span>{filteredRequests.length} requests found</span>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -237,14 +237,14 @@ const handleReject = async () => {
               placeholder="Search by reference, document, or requester..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
+              className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
             />
           </div>
           <div className="flex gap-2">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
+              className="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
             >
               <option value="all">All Requests</option>
               <option value="Pending">Pending</option>
@@ -273,7 +273,7 @@ const handleReject = async () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg transition-all"
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-all"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-4">
@@ -282,7 +282,7 @@ const handleReject = async () => {
                     </div>
                     <div>
                       <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-bold text-slate-900">{request.archive_reference_number || 'Untitled'}</h3>
+                        <h3 className="font-bold text-slate-900 dark:text-white dark:text-white">{request.archive_reference_number || 'Untitled'}</h3>
                         {getStatusBadge(request.status)}
                       </div>
                       <p className="text-sm font-mono text-blue-600">
@@ -300,26 +300,26 @@ const handleReject = async () => {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-100">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-green-600" />
                     <div>
-                      <p className="text-xs text-slate-500">Policy</p>
-                      <p className="text-sm font-medium text-slate-700">{request.policy_number || 'N/A'}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Policy</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">{request.policy_number || 'N/A'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-blue-600" />
                     <div>
-                      <p className="text-xs text-slate-500">Claim</p>
-                      <p className="text-sm font-medium text-slate-700">{request.claim_number || 'N/A'}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Claim</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">{request.claim_number || 'N/A'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-slate-400" />
                     <div>
-                      <p className="text-xs text-slate-500">Expected Return</p>
-                      <p className="text-sm font-medium text-slate-700">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Expected Return</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">
                         {request.expected_return_date ? format(new Date(request.expected_return_date), 'MMM dd, yyyy') : 'N/A'}
                       </p>
                     </div>
@@ -327,14 +327,14 @@ const handleReject = async () => {
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-slate-400" />
                     <div>
-                      <p className="text-xs text-slate-500">Requester</p>
-                      <p className="text-sm font-medium text-slate-700">{request.requester_name || 'Unknown'}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Requester</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">{request.requester_name || 'Unknown'}</p>
                     </div>
                   </div>
                 </div>
 
                 {request.status === 'Pending' && (
-                  <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
+                  <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <button
                       onClick={() => {
                         setSelectedRequest(request);
@@ -365,12 +365,12 @@ const handleReject = async () => {
               </motion.div>
             ))
           ) : (
-            <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 text-center">
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 text-center">
+              <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/60 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCheck className="w-8 h-8 text-slate-300" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">No requests found</h3>
-              <p className="text-slate-500 text-sm mt-1">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white dark:text-white">No requests found</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                 {statusFilter === 'Pending' 
                   ? 'No pending requests at the moment' 
                   : `No ${statusFilter.toLowerCase()} requests found`}
@@ -425,21 +425,21 @@ const RequestDetailsModal: React.FC<{
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     onClick={onClose}
   >
     <motion.div
       initial={{ scale: 0.9, y: 20 }}
       animate={{ scale: 1, y: 0 }}
       exit={{ scale: 0.9, y: 20 }}
-      className="bg-white rounded-3xl max-w-2xl w-full p-8"
+      className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-8"
       onClick={(e) => e.stopPropagation()}
     >
-      <h3 className="text-2xl font-black text-slate-900 mb-6">Request Details</h3>
+      <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Request Details</h3>
       
       <div className="space-y-6">
         {/* Reference */}
-        <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+        <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-100 dark:border-blue-900">
           <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">
             Request Reference
           </p>
@@ -451,27 +451,27 @@ const RequestDetailsModal: React.FC<{
         {/* Document Info */}
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <p className="text-xs font-bold text-slate-500 uppercase mb-1">Document</p>
-            <p className="font-medium text-slate-900">{request.document_title || 'Untitled'}</p>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Document</p>
+            <p className="font-medium text-slate-900 dark:text-white dark:text-white">{request.document_title || 'Untitled'}</p>
             <p className="text-xs font-mono text-blue-600 mt-1">{request.archive_reference_number || 'N/A'}</p>
           </div>
         </div>
 
         {/* Policy and Claim Numbers */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="p-3 bg-slate-50 rounded-xl">
-            <p className="text-xs font-bold text-slate-500 uppercase mb-1 flex items-center gap-1">
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 flex items-center gap-1">
               <FileText className="w-3 h-3" /> Policy Number
             </p>
-            <p className="text-sm font-mono font-bold text-slate-900">
+            <p className="text-sm font-mono font-bold text-slate-900 dark:text-white dark:text-white">
               {request.policy_number || 'N/A'}
             </p>
           </div>
-          <div className="p-3 bg-slate-50 rounded-xl">
-            <p className="text-xs font-bold text-slate-500 uppercase mb-1 flex items-center gap-1">
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 flex items-center gap-1">
               <FileText className="w-3 h-3" /> Claim Number
             </p>
-            <p className="text-sm font-mono font-bold text-slate-900">
+            <p className="text-sm font-mono font-bold text-slate-900 dark:text-white dark:text-white">
               {request.claim_number || 'N/A'}
             </p>
           </div>
@@ -480,14 +480,14 @@ const RequestDetailsModal: React.FC<{
         {/* Requester Info */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase mb-1">Requester</p>
-            <p className="font-medium text-slate-900">{request.requester_name || 'Unknown'}</p>
-            <p className="text-xs text-slate-500">{request.requester_email || 'No email'}</p>
-            <p className="text-xs text-slate-500 mt-1">{request.requester_department_name || 'No department'}</p>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Requester</p>
+            <p className="font-medium text-slate-900 dark:text-white dark:text-white">{request.requester_name || 'Unknown'}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{request.requester_email || 'No email'}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{request.requester_department_name || 'No department'}</p>
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase mb-1">Expected Return</p>
-            <p className="font-medium text-slate-900">
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Expected Return</p>
+            <p className="font-medium text-slate-900 dark:text-white dark:text-white">
               {request.expected_return_date ? format(new Date(request.expected_return_date), 'MMMM dd, yyyy') : 'N/A'}
             </p>
           </div>
@@ -496,8 +496,8 @@ const RequestDetailsModal: React.FC<{
         {/* Dates */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase mb-1">Request Date</p>
-            <p className="text-sm text-slate-700">
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Request Date</p>
+            <p className="text-sm text-slate-700 dark:text-slate-300 dark:text-slate-300">
               {request.request_date ? format(new Date(request.request_date), 'MMM dd, yyyy') : 'N/A'}
             </p>
           </div>
@@ -506,8 +506,8 @@ const RequestDetailsModal: React.FC<{
         {/* Notes */}
         {request.notes && (
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase mb-2">Notes</p>
-            <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-xl">{request.notes}</p>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Notes</p>
+            <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl">{request.notes}</p>
           </div>
         )}
 
@@ -515,7 +515,7 @@ const RequestDetailsModal: React.FC<{
         {request.rejection_reason && (
           <div>
             <p className="text-xs font-bold text-red-500 uppercase mb-2">Rejection Reason</p>
-            <p className="text-sm text-red-700 bg-red-50 p-3 rounded-xl">{request.rejection_reason}</p>
+            <p className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 p-3 rounded-xl">{request.rejection_reason}</p>
           </div>
         )}
 
@@ -545,7 +545,7 @@ const RequestDetailsModal: React.FC<{
 
         <button
           onClick={onClose}
-          className="w-full mt-4 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors"
+          className="w-full mt-4 py-3 text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-50 dark:bg-slate-800/60 rounded-xl transition-colors"
         >
           Close
         </button>
@@ -567,29 +567,29 @@ const RejectModal: React.FC<{
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     onClick={onClose}
   >
     <motion.div
       initial={{ scale: 0.9, y: 20 }}
       animate={{ scale: 1, y: 0 }}
       exit={{ scale: 0.9, y: 20 }}
-      className="bg-white rounded-3xl max-w-md w-full p-8"
+      className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-8"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <AlertCircle className="w-8 h-8 text-red-600" />
       </div>
       
-      <h3 className="text-2xl font-black text-slate-900 text-center mb-2">Reject Request</h3>
-      <p className="text-sm text-slate-500 text-center mb-6">
+      <h3 className="text-2xl font-black text-slate-900 dark:text-white text-center mb-2">Reject Request</h3>
+      <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">
         Are you sure you want to reject this request? Please provide a reason.
       </p>
 
       <div className="space-y-4">
-        <div className="p-4 bg-slate-50 rounded-xl">
-          <p className="text-xs text-slate-500">Request Reference</p>
-          <p className="font-mono font-bold text-slate-900">{request.request_reference || 'N/A'}</p>
+        <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Request Reference</p>
+          <p className="font-mono font-bold text-slate-900 dark:text-white dark:text-white">{request.request_reference || 'N/A'}</p>
         </div>
 
         <textarea
@@ -597,7 +597,7 @@ const RejectModal: React.FC<{
           onChange={(e) => onReasonChange(e.target.value)}
           placeholder="Enter rejection reason..."
           rows={4}
-          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-red-500/10 outline-none"
+          className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-red-500/10 outline-none"
           autoFocus
         />
 
@@ -605,7 +605,7 @@ const RejectModal: React.FC<{
           <button
             onClick={onClose}
             disabled={isProcessing}
-            className="flex-1 py-4 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+            className="flex-1 py-4 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors"
           >
             Cancel
           </button>

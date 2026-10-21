@@ -276,6 +276,8 @@ async function upgradeExistingTables(client) {
     { table: 'file_requests', column: 'insured_name', type: 'VARCHAR(255)' },
     { table: 'file_requests', column: 'requester_department', type: 'VARCHAR(100)' },
     { table: 'file_requests', column: 'requester_department_name', type: 'VARCHAR(100)' },
+    { table: 'documents', column: 'legacy_source', type: 'VARCHAR(50)' },
+    { table: 'documents', column: 'legacy_id', type: 'VARCHAR(50)' }
   ];
 
   for (const { table, column, type } of columnUpgrades) {
@@ -286,6 +288,7 @@ async function upgradeExistingTables(client) {
 async function createIndexes(client) {
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_documents_archive_ref ON documents(archive_reference_number);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_legacy_unique ON documents (legacy_source, legacy_id) WHERE legacy_source IS NOT NULL;
     CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
     CREATE INDEX IF NOT EXISTS idx_documents_type ON documents(type);
     CREATE INDEX IF NOT EXISTS idx_documents_branch ON documents(branch_id);

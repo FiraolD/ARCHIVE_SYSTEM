@@ -46,25 +46,25 @@ const BranchRegistrationForm: React.FC = () => {
   return (
     <FormSection title="Branch Registration" onSubmit={handleSubmit}>
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">Branch Name</label>
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300">Branch Name</label>
         <input 
           name="name" 
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required 
           placeholder="e.g. Bole Premium Branch" 
-          className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
+          className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
         />
       </div>
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">Branch Code</label>
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300">Branch Code</label>
         <input 
           name="code" 
           value={formData.code}
           onChange={(e) => setFormData({ ...formData, code: e.target.value })}
           required 
           placeholder="e.g. LGS" 
-          className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
+          className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
         />
       </div>
     </FormSection>
@@ -164,19 +164,19 @@ const DepartmentRegistrationForm: React.FC = () => {
   return (
     <FormSection title="Department Registration" onSubmit={handleSubmit}>
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">Department Name</label>
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300">Department Name</label>
         <input 
           name="name" 
           value={formData.name}
           onChange={handleNameChange}
           required 
           placeholder="e.g. Claims" 
-          className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
+          className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
         />
       </div>
       
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">Department Code</label>
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300">Department Code</label>
         <input 
           name="code" 
           value={formData.code}
@@ -186,7 +186,7 @@ const DepartmentRegistrationForm: React.FC = () => {
           className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none ${
             error ? 'border-red-500 bg-red-50' : 
             formData.code && !error ? 'border-green-500 bg-green-50' : 
-            'border-slate-200'
+            'border-slate-200 dark:border-slate-700'
           }`}
         />
         
@@ -214,14 +214,14 @@ const DepartmentRegistrationForm: React.FC = () => {
       {/* Show existing departments for reference */}
       {existingDepartments.length > 0 && (
         <div className="md:col-span-2 mt-4">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
             Existing Department Codes
           </p>
           <div className="flex flex-wrap gap-2">
             {existingDepartments.map(dept => (
               <span 
                 key={dept.id}
-                className="px-2 py-1 bg-slate-100 rounded-lg text-xs font-mono text-slate-600"
+                className="px-2 py-1 bg-slate-100 rounded-lg text-xs font-mono text-slate-600 dark:text-slate-400"
               >
                 {dept.code}
               </span>
@@ -259,14 +259,14 @@ const ProductRegistrationForm: React.FC = () => {
   return (
     <FormSection title="Policy/Product Registration" onSubmit={handleSubmit}>
       <div className="md:col-span-2 space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">Product Name</label>
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300">Product Name</label>
         <input 
           name="name" 
           value={productName}
           onChange={(e) => setProductName(e.target.value)}
           required 
           placeholder="e.g. Health Insurance Plan A" 
-          className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
+          className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
         />
       </div>
     </FormSection>
@@ -300,21 +300,21 @@ const BoxRegistrationForm: React.FC = () => {
   return (
     <FormSection title="Box Registration" onSubmit={handleSubmit}>
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">Select Branch</label>
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300">Select Branch</label>
         <select 
           value={selectedBranch} 
           onChange={(e) => setSelectedBranch(e.target.value)} 
-          className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none bg-white"
+          className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none bg-white dark:bg-slate-800"
         >
           {branches.map(b => <option key={b.id} value={b.code}>{b.name} ({b.code})</option>)}
         </select>
       </div>
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">File Type</label>
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300">File Type</label>
         <select 
           value={fileType} 
           onChange={(e) => setFileType(e.target.value as FileType)} 
-          className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none bg-white"
+          className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none bg-white dark:bg-slate-800"
         >
           <option value="Claim File">Claim File</option>
           <option value="Circular">Circular</option>
@@ -324,7 +324,7 @@ const BoxRegistrationForm: React.FC = () => {
         </select>
       </div>
       <div className="md:col-span-2">
-        <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-center gap-3">
+        <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-2xl border border-blue-100 dark:border-blue-900 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-blue-600" />
           <div>
             <p className="text-xs font-black uppercase text-blue-600 tracking-widest">Box ID Preview</p>
@@ -350,7 +350,16 @@ const CabinetRegistrationForm: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await addCabinet();
+      // Parse comma-separated drawers into an array
+const drawersArray = formData.drawers
+  .split(',')
+  .map(d => d.trim())
+  .filter(d => d.length > 0);
+
+await addCabinet({
+  number: formData.number,
+  drawers: drawersArray,
+});
       toast.success('File Box registered successfully with 12 drawers');
     } catch (error) {
       toast.error('Failed to register File Box');
@@ -362,25 +371,25 @@ const CabinetRegistrationForm: React.FC = () => {
   return (
     <FormSection title="File Box Registration" onSubmit={handleSubmit}>
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">File Box Name</label>
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300">File Box Name</label>
         <input 
           name="number" 
           value={formData.number}
           onChange={(e) => setFormData({ ...formData, number: e.target.value })}
           required 
           placeholder="Assigned automatically: FILEBOX + sequence" 
-          className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
+          className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
         />
       </div>
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700">Drawers</label>
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300">Drawers</label>
         <input 
           name="drawers" 
           value={formData.drawers}
           onChange={(e) => setFormData({ ...formData, drawers: e.target.value })}
           required 
           placeholder="12 drawers are created automatically" 
-          className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
+          className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none" 
         />
       </div>
     </FormSection>
@@ -394,7 +403,7 @@ const CabinetRegistrationForm: React.FC = () => {
 const FormSection: React.FC<{ title: string; children: React.ReactNode; onSubmit: (e: React.FormEvent) => void }> = ({ title, children, onSubmit }) => (
   <form onSubmit={onSubmit} className="space-y-6">
     <div className="flex items-center justify-between mb-4">
-      <h3 className="text-xl font-bold text-slate-800">{title}</h3>
+      <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 dark:text-slate-100">{title}</h3>
       <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
         <Plus className="w-6 h-6" />
       </div>
@@ -442,7 +451,7 @@ export const RegistrationPage: React.FC = () => {
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
               activeTab === tab.id
                 ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                : 'bg-white text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700'
             }`}
           >
             <tab.icon className="w-5 h-5" />
@@ -453,7 +462,7 @@ export const RegistrationPage: React.FC = () => {
 
       {/* Content Area */}
       <div className="lg:w-3/4">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, x: 20 }}

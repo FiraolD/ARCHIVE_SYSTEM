@@ -109,13 +109,13 @@ export const DrawerAssignment: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="bg-white rounded-3xl border border-slate-200 p-8">
-        <h2 className="text-2xl font-black text-slate-900 mb-6">Drawer Assignment</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 p-8">
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Drawer Assignment</h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Cabinet List */}
           <div>
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Available Cabinets</h3>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 mb-4">Available Cabinets</h3>
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
               {cabinets.map((cabinet) => (
                 <motion.div
@@ -124,14 +124,14 @@ export const DrawerAssignment: React.FC = () => {
                   className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${
                     selectedCabinet?.id === cabinet.id
                       ? 'border-blue-600 bg-blue-50'
-                      : 'border-slate-200 hover:border-blue-200'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-blue-200'
                   }`}
                   onClick={() => setSelectedCabinet(cabinet)}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <Archive className="w-6 h-6 text-blue-600" />
-                      <span className="font-bold text-slate-900">Cabinet {cabinet.number}</span>
+                      <span className="font-bold text-slate-900 dark:text-white dark:text-white">Cabinet {cabinet.number}</span>
                     </div>
                   </div>
                   
@@ -145,7 +145,7 @@ export const DrawerAssignment: React.FC = () => {
                           className={`p-2 rounded-lg border text-center relative group ${
                             assignment 
                               ? 'bg-green-50 border-green-200' 
-                              : 'bg-white border-slate-200 hover:border-blue-200'
+                              : 'bg-white border-slate-200 dark:border-slate-700 hover:border-blue-200'
                           }`}
                         >
                           <Grid className={`w-4 h-4 mx-auto mb-1 ${
@@ -178,31 +178,31 @@ export const DrawerAssignment: React.FC = () => {
           </div>
 
           {/* Assignment Form */}
-          <div className="bg-slate-50 rounded-2xl p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Assign Drawer</h3>
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-6">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 mb-4">Assign Drawer</h3>
             
             {selectedCabinet ? (
               <div className="space-y-6">
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
                     Selected Cabinet
                   </label>
-                  <div className="p-4 bg-white rounded-xl border border-slate-200">
+                  <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                     <div className="flex items-center gap-3">
                       <Archive className="w-5 h-5 text-blue-600" />
-                      <span className="font-bold text-slate-900">Cabinet {selectedCabinet.number}</span>
+                      <span className="font-bold text-slate-900 dark:text-white dark:text-white">Cabinet {selectedCabinet.number}</span>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
                     Select Branch
                   </label>
                   <select
                     value={selectedBranch}
                     onChange={(e) => setSelectedBranch(e.target.value)}
-                    className="w-full p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
+                    className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
                   >
                     <option value="">Choose a branch...</option>
                     {branches.map(branch => (
@@ -214,13 +214,13 @@ export const DrawerAssignment: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
                     Select Drawer
                   </label>
                   <select
                     value={selectedDrawer}
                     onChange={(e) => setSelectedDrawer(e.target.value)}
-                    className="w-full p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
+                    className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
                   >
                     <option value="">Choose a drawer...</option>
                     {selectedCabinet.drawers.map(drawer => {
@@ -261,21 +261,21 @@ export const DrawerAssignment: React.FC = () => {
         </div>
 
         {/* Current Assignments Summary */}
-        <div className="mt-8 pt-8 border-t border-slate-200">
-          <h3 className="text-lg font-bold text-slate-800 mb-4">Current Assignments</h3>
+        <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 mb-4">Current Assignments</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {assignments.map((assignment) => (
-              <div key={assignment.id} className="p-4 bg-green-50 rounded-xl border border-green-200">
+              <div key={assignment.id} className="p-4 bg-green-50 dark:bg-green-950/40 rounded-xl border border-green-200 dark:border-green-900">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-bold text-slate-900">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white dark:text-white">
                       Cabinet {assignment.cabinet_number} • Drawer {assignment.drawer_number}
                     </p>
                     <p className="text-xs text-green-700 mt-1 flex items-center gap-1">
                       <Building2 className="w-3 h-3" />
                       {assignment.branch_name} ({assignment.branch_code})
                     </p>
-                    <p className="text-[10px] text-slate-500 mt-2">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2">
                       Assigned: {new Date(assignment.assigned_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -305,38 +305,38 @@ const DrawerHistoryModal: React.FC<{ history: any[]; onClose: () => void }> = ({
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     onClick={onClose}
   >
     <motion.div
       initial={{ scale: 0.9, y: 20 }}
       animate={{ scale: 1, y: 0 }}
       exit={{ scale: 0.9, y: 20 }}
-      className="bg-white rounded-3xl max-w-2xl w-full p-8"
+      className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-8"
       onClick={(e) => e.stopPropagation()}
     >
-      <h3 className="text-2xl font-black text-slate-900 mb-6">Assignment History</h3>
+      <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Assignment History</h3>
       
       <div className="space-y-4 max-h-[400px] overflow-y-auto">
         {history.map((item, index) => (
-          <div key={item.id || index} className="relative pl-8 pb-4 border-l-2 border-slate-200">
+          <div key={item.id || index} className="relative pl-8 pb-4 border-l-2 border-slate-200 dark:border-slate-700">
             <div className="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-blue-600" />
-            <div className="bg-slate-50 p-4 rounded-xl">
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-slate-900">
+                <span className="font-bold text-slate-900 dark:text-white dark:text-white">
                   {item.branch_name}
                 </span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
                   {new Date(item.assigned_at).toLocaleString()}
                 </span>
               </div>
               {item.ended_at && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Ended: {new Date(item.ended_at).toLocaleString()}
                 </p>
               )}
               {item.assigned_by_name && (
-                <p className="text-xs text-slate-500 flex items-center gap-1 mt-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-2">
                   <User className="w-3 h-3" />
                   Assigned by: {item.assigned_by_name}
                 </p>

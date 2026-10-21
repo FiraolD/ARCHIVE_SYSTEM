@@ -20,6 +20,8 @@ const notificationRoutes = require('./routes/notifications');
 const userRoutes = require('./routes/users');
 const dashboardRoutes = require('./routes/dashboard');
 const reportsRoutes = require('./routes/reports');
+const adminRoutes = require('./routes/admin'); // Import the admin routes
+
 
 
 
@@ -119,6 +121,7 @@ app.use('/api/notifications', authenticate, notificationRoutes);  // This was mi
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/dashboard', authenticate, dashboardRoutes);
 app.use('/api/reports', authenticate, reportsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {

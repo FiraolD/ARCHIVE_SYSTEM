@@ -70,6 +70,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
     insuredName: '',
     policyNumber: '',
     claimNumber: '',
+    estimatedLoss: '',
     dateAdded: new Date().toISOString().split('T')[0],
     receivedBy: '',
     deliveredBy: '',
@@ -77,6 +78,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
     title: '',
     sumInsured: '',
     dateOfAccident: '',
+    plateNumber: '',
   });
 
   const { branches, departments, products, fetchBranches, fetchDepartments, fetchProducts, ingestDocument } = useArchive();
@@ -225,22 +227,25 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       );
       formDataToSend.append('receivedBy', formData.receivedBy || 'System User');
       formDataToSend.append('deliveredBy', formData.deliveredBy || 'System User');
+      formDataToSend.append('plateNumber', formData.plateNumber || '');
       
       // Insurance-specific fields
       formDataToSend.append('sumInsured', formData.sumInsured || '');
       formDataToSend.append('periodOfPolicy', buildPolicyPeriod());
       formDataToSend.append('dateOfAccident', formData.dateOfAccident || '');
       
-      // Title
-      let title = '';
-      if (fileType === 'Claim File') {
-        title = formData.insuredName 
-          ? `Claim - ${formData.insuredName}`
-          : `Claim File - ${new Date().toLocaleDateString()}`;
-      } else {
-        title = formData.title || `${fileType} - ${new Date().toLocaleDateString()}`;
-      }
-      formDataToSend.append('title', title);
+   let title = '';
+if (fileType === 'Claim File') {
+  const parts = ['Claim File'];
+  if (formData.claimNumber) parts.push(formData.claimNumber);
+  if (formData.insuredName) parts.push(formData.insuredName);
+  title = parts.length > 1
+    ? parts.join(' - ')
+    : `Claim File - ${new Date().toLocaleDateString()}`;
+} else {
+  title = formData.title || `${fileType} - ${new Date().toLocaleDateString()}`;
+}
+formDataToSend.append('title', title);
       
       // Optional fields
       formDataToSend.append('dateAdded', formData.dateAdded);
@@ -263,6 +268,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       formDataToSend.append('insuredName', formData.insuredName || '');
       formDataToSend.append('policyNumber', formData.policyNumber || '');
       formDataToSend.append('claimNumber', formData.claimNumber || '');
+      formDataToSend.append('estimatedLoss', formData.estimatedLoss || '');
       
       // File is optional
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -295,9 +301,11 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
         receivedBy: '',
         deliveredBy: '',
         receiverRemark: '',
+        estimatedLoss: '',
         title: '',
         sumInsured: '',
         dateOfAccident: '',
+        plateNumber: '',
       });
       setPolicyFromDate('');
       setPolicyToDate('');
@@ -332,9 +340,11 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       receivedBy: '',
       deliveredBy: '',
       receiverRemark: '',
+      estimatedLoss: '',
       title: '',
       sumInsured: '',
       dateOfAccident: '',
+      plateNumber: '',
     });
     setPolicyFromDate('');
     setPolicyToDate('');
@@ -356,15 +366,15 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
         <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500">
           <Lock size={40} />
         </div>
-        <h2 className="text-2xl font-black text-slate-900 mb-2">Access Restricted</h2>
-        <p className="text-slate-500 font-medium">Only administrators are authorized to add or ingest files into the archive.</p>
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Access Restricted</h2>
+        <p className="text-slate-500 dark:text-slate-400 font-medium">Only administrators are authorized to add or ingest files into the archive.</p>
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
         <div className="bg-slate-900 p-8 text-white relative overflow-hidden">
           <div className="relative z-10">
             <h2 className="text-3xl font-black tracking-tight mb-2">Ingest New Document</h2>
@@ -384,23 +394,23 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
               exit={{ opacity: 0, height: 0 }}
               className="px-8 pt-6"
             >
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-300 p-6 shadow-lg">
+              <div className="bg-gradient-to-r from-blue-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-xl border-2 border-blue-300 dark:border-green-800 p-6 shadow-lg">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      <p className="text-sm font-bold text-green-700 uppercase tracking-wider">
+                      <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                      <p className="text-sm font-bold text-blue-700 uppercase tracking-wider">
                         Document Ingested Successfully!
                       </p>
                     </div>
-                    <p className="text-xs text-green-600 mb-3">Your file reference number is:</p>
-                    <p className="text-3xl font-mono font-black text-green-900 break-all bg-white p-4 rounded-lg border border-green-200">
+                    <p className="text-xs text-blue-600 mb-3">Your file reference number is:</p>
+                    <p className="text-3xl font-mono font-black text-blue-900 dark:text-green-200 break-all bg-white dark:bg-slate-900 p-4 rounded-lg border border-blue-200 dark:border-green-800">
                       {generatedReference}
                     </p>
                   </div>
                   <button
                     onClick={() => copyToClipboard(generatedReference)}
-                    className="p-4 bg-white rounded-xl border-2 border-green-300 hover:bg-green-100 transition-colors group"
+                    className="p-4 bg-white dark:bg-slate-800 rounded-xl border-2 border-blue-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-950/40 transition-colors group"
                     title="Copy to clipboard"
                   >
                     {copied ? (
@@ -410,12 +420,12 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                     )}
                   </button>
                 </div>
-                <div className="mt-4 flex gap-2 text-xs flex-wrap">
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Branch: {generatedReference.split('/')[1]}</span>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Product: {generatedReference.split('/')[2]}</span>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Seq: {generatedReference.split('/')[3]}</span>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">Year: {generatedReference.split('/')[4]}</span>
-                </div>
+               {/* <div className="mt-4 flex gap-2 text-xs flex-wrap">
+                  <span className="px-2 py-1 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 rounded-full">Branch: {generatedReference.split('/')[1]}</span>
+                  <span className="px-2 py-1 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 rounded-full">Product: {generatedReference.split('/')[2]}</span>
+                  <span className="px-2 py-1 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 rounded-full">Seq: {generatedReference.split('/')[3]}</span>
+                  <span className="px-2 py-1 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 rounded-full">Year: {generatedReference.split('/')[4]}</span>
+                </div> */}
               </div>
             </motion.div>
           )}
@@ -426,13 +436,13 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Document Type
                 </label>
                 <select 
                   value={fileType}
                   onChange={(e) => setFileType(e.target.value as typeof FILE_TYPES[number])}
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                   required
                 >
                   {FILE_TYPES.map(type => (
@@ -442,7 +452,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
               </div>
 
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   <Building2 className="w-3 h-3" /> Branch (Source)
                 </label>
                 <select 
@@ -452,7 +462,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                     setSelectedBranchId(e.target.value);
                     setSelectedBranchCode(branch?.code || '');
                   }}
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                   required
                 >
                   <option value="">Select a branch...</option>
@@ -463,9 +473,9 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
               </div>
             </div>
 
-            {/* Reference Number Preview */}
+            {/* Reference Number Preview
             {selectedBranchCode && selectedProductCode && (
-              <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 shadow-md">
+              <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 rounded-xl border-2 border-blue-200 dark:border-blue-900 shadow-md">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                     <FileText className="w-4 h-4 text-white" />
@@ -475,7 +485,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                   </p>
                 </div>
                 
-                <div className="bg-white p-4 rounded-lg border border-blue-100 mb-3">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-blue-100 dark:border-blue-900 mb-3">
                   <p className="text-2xl font-mono font-black text-blue-900 break-all text-center">
                     AI/{selectedBranchCode}/<span className="text-green-600">001</span>/{new Date().getFullYear().toString().slice(-2)}
                   </p>
@@ -500,23 +510,23 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                   </div>
                 </div>
                 
-                <p className="text-xs text-slate-500 mt-3 text-center italic">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 text-center italic">
                   The sequence number will be automatically generated when you submit the form
                 </p>
               </div>
-            )}
+            )} */}
 
             {/* Cabinet and Drawer Selection */}
             {selectedBranchId && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     <Archive className="w-3 h-3" /> Select File Box
                   </label>
                   <select
                     value={selectedCabinet}
                     onChange={(e) => setSelectedCabinet(e.target.value)}
-                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                    className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                   >
                     <option value="">Choose File Box...</option>
                     {availableCabinets?.map(cabinet => (
@@ -534,13 +544,13 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
 
                 {selectedCabinet && (
                   <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       <Grid className="w-3 h-3" /> Select Drawer
                     </label>
                     <select
                       value={selectedDrawer}
                       onChange={(e) => setSelectedDrawer(e.target.value)}
-                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                     >
                       <option value="">Choose drawer...</option>
                       {availableDrawers?.map(drawer => (
@@ -629,9 +639,21 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                   required={false}
                 />
 
+                 {/* Estimated Loss */}
+                <InputField
+                  label="Esimated Loss"
+                  name="estimatedLoss"
+                  icon={ShieldCheck}
+                  type="number"
+                  placeholder="e.g. 5000000"
+                  value={formData.estimatedLoss}
+                  onChange={handleInputChange}
+                  required={false}
+                />
+
                 {/* Period of Policy - Date Range */}
                 <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                     <Calendar className="w-3 h-3" /> Period of Policy
                   </label>
                   
@@ -645,7 +667,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                         type="date"
                         value={policyFromDate}
                         onChange={(e) => setPolicyFromDate(e.target.value)}
-                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-medium text-slate-800"
+                        className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-medium text-slate-800 dark:text-slate-100 dark:text-slate-100 dark:text-slate-100"
                       />
                     </div>
                     
@@ -659,13 +681,13 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                         value={policyToDate}
                         onChange={(e) => setPolicyToDate(e.target.value)}
                         min={policyFromDate || undefined}
-                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-medium text-slate-800"
+                        className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-medium text-slate-800 dark:text-slate-100 dark:text-slate-100 dark:text-slate-100"
                       />
                     </div>
                   </div>
                   
                   {buildPolicyPeriod() && (
-                    <div className="mt-3 flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                    <div className="mt-3 flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 rounded-lg border border-blue-200 dark:border-blue-900">
                       <div>
                         <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
                           Policy Period Preview
@@ -720,7 +742,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                 />
                 
                 <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                     <MessageSquare className="w-3 h-3" /> Receiver Remarks
                   </label>
                   <textarea 
@@ -729,13 +751,13 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                     placeholder="Any specific observations or notes..."
                     value={formData.receiverRemark}
                     onChange={handleInputChange}
-                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all resize-none font-medium"
+                    className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all resize-none font-medium"
                   />
                 </div>
               </motion.div>
             </AnimatePresence>
 
-            {/* Physical Location Summary */}
+            {/* Physical Location Summary 
             {selectedCabinet && selectedDrawer && (
               <div className="p-4 bg-green-50 rounded-xl border border-green-100">
                 <div className="flex items-center gap-2 mb-2">
@@ -753,9 +775,9 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
 
             <div className="h-px bg-slate-100" />
 
-            {/* Document Upload - Optional */}
+            {/* Document Upload - Optional
             <div className="space-y-4">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Document Attachment (Optional)
               </label>
               <DocumentUploader />
@@ -763,13 +785,14 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
                 Uploading a soft copy is optional. You can still ingest the file without an attachment.
               </p>
             </div>
+*/}
 
             {/* Form Actions */}
             <div className="flex justify-end gap-4 pt-4">
               <button 
                 type="button"
                 onClick={resetForm}
-                className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors"
+                className="px-6 py-3 text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-50 dark:bg-slate-800/60 rounded-xl transition-colors"
               >
                 Reset
               </button>
@@ -818,7 +841,7 @@ const InputField: React.FC<{
   required 
 }) => (
   <div className="space-y-2">
-    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
       <Icon className="w-3 h-3" /> {label}
     </label>
     <input 
@@ -828,7 +851,7 @@ const InputField: React.FC<{
       onChange={onChange}
       required={required}
       placeholder={placeholder}
-      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-medium text-slate-800"
+      className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-medium text-slate-800 dark:text-slate-100 dark:text-slate-100 dark:text-slate-100"
     />
   </div>
 );
@@ -852,7 +875,7 @@ const SelectField: React.FC<{
   required 
 }) => (
   <div className="space-y-2">
-    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
       <Icon className="w-3 h-3" /> {label}
     </label>
     <select 
@@ -860,7 +883,7 @@ const SelectField: React.FC<{
       value={value || ''}
       onChange={onChange}
       required={required}
-      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-bold text-slate-800"
+      className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 dark:text-slate-100"
     >
       <option value="">Select {label}...</option>
       {options.length > 0 ? (

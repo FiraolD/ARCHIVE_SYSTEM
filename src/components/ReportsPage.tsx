@@ -236,8 +236,8 @@ export const ReportsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black text-slate-900	dark:text-white dark:text-white">Analytics & Reports</h2>
-          <p className="text-slate-500 font-medium">
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white	dark:text-white dark:text-white">Analytics & Reports</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">
             Real-time insights into archival metrics and system health.
           </p>
         </div>
@@ -245,7 +245,7 @@ export const ReportsPage: React.FC = () => {
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value as any)}
-            className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500/20 outline-none"
+            className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-blue-500/20 outline-none"
           >
             <option value="6months">Last 6 Months</option>
             <option value="1year">Last Year</option>
@@ -253,7 +253,7 @@ export const ReportsPage: React.FC = () => {
           </select>
           <button
             onClick={loadDashboardData}
-            className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors"
+            className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors"
             title="Refresh"
           >
             <RefreshCw className="w-4 h-4" />
@@ -307,11 +307,11 @@ export const ReportsPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+          className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm"
         >
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-black text-slate-900">Document Ingestion Trends</h3>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <h3 className="text-xl font-black text-slate-900 dark:text-white dark:text-white">Document Ingestion Trends</h3>
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               <Calendar className="w-4 h-4" />
               <span>Last {period === '6months' ? '6 Months' : period === '1year' ? '12 Months' : 'All Time'}</span>
             </div>
@@ -319,7 +319,7 @@ export const ReportsPage: React.FC = () => {
           
           {stats?.trends?.monthlyTrends && stats.trends.monthlyTrends.length > 0 ? (
             <>
-              <div className="h-64 bg-slate-50 rounded-2xl flex items-end justify-around p-6 gap-2">
+              <div className="h-64 bg-slate-50 dark:bg-slate-800/60 rounded-2xl flex items-end justify-around p-6 gap-2">
                 {stats.trends.monthlyTrends.map((item, i) => {
                   const height = (item.count / getMaxTrendValue()) * 100;
                   return (
@@ -358,19 +358,19 @@ export const ReportsPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+          className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm"
         >
-          <h3 className="text-xl font-black text-slate-900 mb-6">System Overview</h3>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6">System Overview</h3>
           
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Users className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Total Users</p>
-                  <p className="text-xl font-black text-slate-900">{stats?.summary.totalUsers || 0}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Total Users</p>
+                  <p className="text-xl font-black text-slate-900 dark:text-white dark:text-white">{stats?.summary.totalUsers || 0}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -379,14 +379,14 @@ export const ReportsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                   <Archive className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Active Branches</p>
-                  <p className="text-xl font-black text-slate-900">{stats?.summary.activeBranches || 0}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Active Branches</p>
+                  <p className="text-xl font-black text-slate-900 dark:text-white dark:text-white">{stats?.summary.activeBranches || 0}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -394,14 +394,14 @@ export const ReportsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                   <FileText className="w-5 h-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Request Breakdown</p>
-                  <p className="text-xl font-black text-slate-900">{stats?.summary.totalRequests || 0}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Request Breakdown</p>
+                  <p className="text-xl font-black text-slate-900 dark:text-white dark:text-white">{stats?.summary.totalRequests || 0}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -414,9 +414,9 @@ export const ReportsPage: React.FC = () => {
       </div>
 
       {/* Generated Reports Section */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-8">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-black text-slate-900">Generated Reports</h3>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white dark:text-white">Generated Reports</h3>
           <span className="text-sm text-slate-400">{generatedReports.length} reports</span>
         </div>
 
@@ -431,15 +431,15 @@ export const ReportsPage: React.FC = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -10 }}
-                    className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors group"
+                    className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl hover:bg-slate-100 transition-colors group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-200 shadow-sm">
+                      <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
                         <Icon className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900">{report.name}</p>
-                        <div className="flex items-center gap-3 text-xs text-slate-500">
+                        <p className="font-bold text-slate-900 dark:text-white dark:text-white">{report.name}</p>
+                        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                           <span>{report.type}</span>
                           <span>•</span>
                           <span className="uppercase">{report.format}</span>
@@ -453,7 +453,7 @@ export const ReportsPage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleDownloadReport(report.id, report.name)}
-                        className="p-2 hover:bg-white rounded-lg transition-colors text-slate-400 hover:text-blue-600"
+                        className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-blue-600"
                         title="Download"
                       >
                         <Download className="w-4 h-4" />
@@ -461,7 +461,7 @@ export const ReportsPage: React.FC = () => {
                       <button
                         onClick={() => handleDeleteReport(report.id)}
                         disabled={deletingId === report.id}
-                        className="p-2 hover:bg-white rounded-lg transition-colors text-slate-400 hover:text-red-600"
+                        className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-red-600"
                         title="Delete"
                       >
                         {deletingId === report.id ? (
@@ -514,7 +514,7 @@ const StatCard: React.FC<{
 }> = ({ title, value, subtitle, icon: Icon, color, progress }) => (
   <motion.div
     whileHover={{ scale: 1.02 }}
-    className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm"
+    className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm"
   >
     <div className="flex items-center justify-between mb-4">
       <div className={`p-3 ${color} rounded-2xl text-white shadow-lg`}>
@@ -526,8 +526,8 @@ const StatCard: React.FC<{
         </span>
       )}
     </div>
-    <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{title}</p>
-    <h4 className="text-3xl font-black text-slate-900 mt-1">{value}</h4>
+    <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{title}</p>
+    <h4 className="text-3xl font-black text-slate-900 dark:text-white mt-1">{value}</h4>
     <p className="text-xs font-medium text-slate-400 mt-2">{subtitle}</p>
     
     {progress !== undefined && (
@@ -563,22 +563,22 @@ const GenerateReportModal: React.FC<{
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     onClick={onClose}
   >
     <motion.div
       initial={{ scale: 0.9, y: 20 }}
       animate={{ scale: 1, y: 0 }}
       exit={{ scale: 0.9, y: 20 }}
-      className="bg-white rounded-3xl max-w-md w-full p-8"
+      className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-8"
       onClick={(e) => e.stopPropagation()}
     >
-      <h3 className="text-2xl font-black text-slate-900 mb-6">Generate Report</h3>
+      <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Generate Report</h3>
 
       <div className="space-y-6">
         {/* Report Type */}
         <div>
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+          <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
             Report Type
           </label>
           <div className="grid grid-cols-1 gap-2">
@@ -589,11 +589,11 @@ const GenerateReportModal: React.FC<{
                 className={`p-4 rounded-xl border-2 text-left transition-all ${
                   selectedType === type
                     ? 'border-blue-600 bg-blue-50'
-                    : 'border-slate-200 hover:border-blue-200'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-blue-200'
                 }`}
               >
-                <p className="font-bold text-slate-900">{type}</p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="font-bold text-slate-900 dark:text-white dark:text-white">{type}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {type === 'Monthly Summary' && 'Overview of all documents and requests'}
                   {type === 'Claims Analysis' && 'Detailed analysis of claim files'}
                   {type === 'Department Usage' && 'Request patterns by department'}
@@ -605,7 +605,7 @@ const GenerateReportModal: React.FC<{
 
         {/* Format Selection */}
         <div>
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+          <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
             Export Format
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -616,10 +616,10 @@ const GenerateReportModal: React.FC<{
                 className={`p-3 rounded-xl border-2 text-center transition-all ${
                   selectedFormat === format
                     ? 'border-blue-600 bg-blue-50'
-                    : 'border-slate-200 hover:border-blue-200'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-blue-200'
                 }`}
               >
-                <p className="font-bold text-slate-900 text-sm">{format}</p>
+                <p className="font-bold text-slate-900 dark:text-white text-sm">{format}</p>
               </button>
             ))}
           </div>
@@ -630,7 +630,7 @@ const GenerateReportModal: React.FC<{
           <button
             onClick={onClose}
             disabled={isGenerating}
-            className="flex-1 py-4 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            className="flex-1 py-4 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
             Cancel
           </button>

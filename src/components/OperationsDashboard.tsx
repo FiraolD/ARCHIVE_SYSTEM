@@ -112,15 +112,15 @@ export const OperationsDashboard: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-black text-slate-900	dark:text-white dark:text-white">Admin Dashboard</h2>
-            <p className="text-slate-500 font-medium mt-1">
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white	dark:text-white dark:text-white">Admin Dashboard</h2>
+            <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">
               Overview of archive system statistics
             </p>
           </div>
           <button
             onClick={refreshData}
             disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -161,10 +161,10 @@ export const OperationsDashboard: React.FC = () => {
 
         {/* Claim Files Section */}
         {claimDocuments.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
             <div className="flex items-center gap-2 mb-4">
               <FileSearch className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-bold text-slate-800">Recent Claim Files</h3>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 dark:text-slate-100">Recent Claim Files</h3>
             </div>
             <div className="space-y-4">
               {claimDocuments.map((doc) => (
@@ -177,10 +177,10 @@ export const OperationsDashboard: React.FC = () => {
 
         {/* Policy Documents Section */}
         {policyDocuments.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
             <div className="flex items-center gap-2 mb-4">
               <FileText className="w-5 h-5 text-green-600" />
-              <h3 className="text-lg font-bold text-slate-800">Recent Policy Documents</h3>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 dark:text-slate-100">Recent Policy Documents</h3>
             </div>
             <div className="space-y-4">
               {policyDocuments.map((doc) => (
@@ -192,9 +192,9 @@ export const OperationsDashboard: React.FC = () => {
         
  {/* Recent Documents */}
 {stats.recentDocuments && stats.recentDocuments.length > 0 && (
-  <div className="bg-white rounded-2xl border border-slate-200 p-6">
+  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
     <div className="flex items-center justify-between mb-4">
-      <h3 className="text-lg font-bold text-slate-800">Recently Added Documents</h3>
+      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 dark:text-slate-100">Recently Added Documents</h3>
       {stats.recentDocuments.length > 5 && (
         <button 
           onClick={() => {/* navigate to full document list */}}
@@ -224,15 +224,15 @@ export const OperationsDashboard: React.FC = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-black text-slate-900	dark:text-white dark:text-white">My Dashboard</h2>
-          <p className="text-slate-500 font-medium mt-1">
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white	dark:text-white dark:text-white">My Dashboard</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">
             Track your file requests and activity
           </p>
         </div>
         <button
           onClick={refreshData}
           disabled={isRefreshing}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors"
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           Refresh
@@ -271,21 +271,21 @@ export const OperationsDashboard: React.FC = () => {
 // Separate DocumentCard component to avoid scope issues
 const DocumentCard: React.FC<{ document: any }> = ({ document }) => {
   return (
-    <div className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+    <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl hover:bg-slate-100 transition-colors">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="font-bold text-slate-900">{document.archive_reference_number || 'Untitled'}</p>
+          <p className="font-bold text-slate-900 dark:text-white dark:text-white">{document.archive_reference_number || 'Untitled'}</p>
           
           {/* Branch and Location Info */}
           <div className="flex items-center gap-4 mt-2 text-xs">
             {document.branch_name && (
-              <span className="flex items-center gap-1 text-slate-600">
+              <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
                 <Building2 className="w-3 h-3" />
               Branch: {document.branch_name}
               </span>
             )}
             {document.cabinet_number && document.drawer_number && (
-              <span className="flex items-center gap-1 text-slate-600">
+              <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
                 <Archive className="w-3 h-3" />
                 Cabinet {document.cabinet_number} • Drawer {document.drawer_number}
               </span>
@@ -307,7 +307,7 @@ const DocumentCard: React.FC<{ document: any }> = ({ document }) => {
               </span>
             )}
             {document.insured_name && (
-              <span className="flex items-center gap-1 text-xs text-slate-500">
+              <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                 <User className="w-3 h-3" />
                Insured: {document.insured_name}
               </span>
@@ -325,15 +325,15 @@ const DocumentCard: React.FC<{ document: any }> = ({ document }) => {
         
         <div className="flex flex-col items-end gap-2">
           <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-            document.status === 'Active' ? 'bg-green-100 text-green-700' :
-            document.status === 'Checked-out' ? 'bg-amber-100 text-amber-700' :
-            'bg-blue-100 text-blue-700'
+            document.status === 'Active' ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300' :
+            document.status === 'Checked-out' ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' :
+            'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
           }`}>
             {document.status}
           </span>
         </div>
       </div>
-      <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-200">
+      <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
         <p className="text-[10px] font-mono text-slate-400">
           Ref: {document.archive_reference_number || 'N/A'}
         </p>
@@ -354,15 +354,15 @@ const StatCard: React.FC<{
 }> = ({ title, value, icon: Icon, color, subtitle }) => (
   <motion.div
     whileHover={{ scale: 1.02 }}
-    className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm"
+    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm"
   >
     <div className="flex items-start justify-between">
       <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white shadow-lg`}>
         <Icon className="w-6 h-6" />
       </div>
-      <span className="text-3xl font-black text-slate-900">{value}</span>
+      <span className="text-3xl font-black text-slate-900 dark:text-white dark:text-white">{value}</span>
     </div>
-    <p className="text-sm font-bold text-slate-700 mt-4">{title}</p>
+    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mt-4">{title}</p>
     {subtitle && (
       <p className="text-xs text-slate-400 mt-1">{subtitle}</p>
     )}
@@ -375,12 +375,12 @@ const RecentActivity: React.FC<{ activities: any[]; title?: string }> = ({
   activities, 
   title = "Recent Activity" 
 }) => (
-  <div className="bg-white rounded-2xl border border-slate-200 p-6">
-    <h3 className="text-lg font-bold text-slate-800 mb-4">{title}</h3>
+  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100 mb-4">{title}</h3>
     <div className="space-y-4">
       {activities.length > 0 ? (
         activities.slice(0, 5).map((activity, i) => (
-          <div key={activity.id || i} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
+          <div key={activity.id || i} className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
             <div className={`w-2 h-2 rounded-full ${
               activity.status === 'Approved' ? 'bg-green-500' :
               activity.status === 'Pending' ? 'bg-amber-500' :
@@ -389,8 +389,8 @@ const RecentActivity: React.FC<{ activities: any[]; title?: string }> = ({
               'bg-slate-400'
             }`} />
             <div className="flex-1">
-              <p className="font-medium text-slate-900">{activity.document_title || 'Document'}</p>
-              <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+              <p className="font-medium text-slate-900 dark:text-white dark:text-white">{activity.document_title || 'Document'}</p>
+              <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   {activity.request_date ? format(new Date(activity.request_date), 'MMM dd, yyyy') : ''}

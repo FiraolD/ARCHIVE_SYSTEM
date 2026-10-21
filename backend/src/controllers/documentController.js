@@ -159,124 +159,256 @@ const ingestDocument = async (req, res) => {
   }
 };
 
-// ==================== GET DOCUMENTS ====================
-
-// In documentController.js, update the getDocuments function
+// ==================== GET DOCUMENTS (with all filters) ====================
 
 const getDocuments = async (req, res) => {
   try {
-    const { search, type, status, branch, page = 1, limit = 10 } = req.query;
-    const offset = (page - 1) * limit;
+    const {
+      search,
+      type,
+      status,
+      branch_id,
+      branch,                 // legacy alias for branch_id
+      plate_number,
+      insured_name,
+      date_of_accident_from,
+      date_of_accident_to,
+      sum_insured_min,
+      sum_insured_max,
+      legacy,
+      page = 1,
+      limit = 20,
+    } = req.query;
 
-    let queryText = `
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 20));
+    const offset = (pageNum - 1) * limitNum;
+
+    // ========== BUILD WHERE CLAUSE ONCE ==========
+    const whereClauses = [];
+    const whereParams = [];
+    let paramIndex = 1;
+
+    // --- Search (multi-term, AND across terms, OR across fields) ---
+    if (search && String(search).trim()) {
+      const terms = String(search).trim().split(/\s+/).filter(Boolean);
+      for (const term of terms) {
+        whereClauses.push(`(
+          d.title ILIKE $${paramIndex} OR
+          d.archive_reference_number ILIKE $${paramIndex} OR
+          COALESCE(d.insured_name, '') ILIKE $${paramIndex} OR
+          COALESCE(d.policy_number, '') ILIKE $${paramIndex} OR
+          COALESCE(d.claim_number, '') ILIKE $${paramIndex} OR
+          COALESCE(d.period_of_policy, '') ILIKE $${paramIndex} OR
+          COALESCE(d.plate_number, '') ILIKE $${paramIndex} OR
+          COALESCE(d.receiver_remark, '') ILIKE $${paramIndex} OR
+          d.product_custom_fields::text ILIKE $${paramIndex}
+        )`);
+        whereParams.push(`%${term}%`);
+        paramIndex++;
+      }
+    }
+
+    // --- Type ---
+    if (type) {
+      whereClauses.push(`d.type = $${paramIndex}`);
+      whereParams.push(type);
+      paramIndex++;
+    }
+
+    // --- Status ---
+    if (status) {
+      whereClauses.push(`d.status = $${paramIndex}`);
+      whereParams.push(status);
+      paramIndex++;
+    }
+
+    // --- Branch (accept both branch_id and branch) ---
+    const branchFilter = branch_id || branch;
+    if (branchFilter && branchFilter !== 'undefined') {
+      whereClauses.push(`d.branch_id = $${paramIndex}`);
+      whereParams.push(branchFilter);
+      paramIndex++;
+    }
+
+    // --- Plate number ---
+    if (plate_number && String(plate_number).trim()) {
+      whereClauses.push(`COALESCE(d.plate_number, '') ILIKE $${paramIndex}`);
+      whereParams.push(`%${String(plate_number).trim()}%`);
+      paramIndex++;
+    }
+
+    // --- Insured name ---
+    if (insured_name && String(insured_name).trim()) {
+      whereClauses.push(`COALESCE(d.insured_name, '') ILIKE $${paramIndex}`);
+      whereParams.push(`%${String(insured_name).trim()}%`);
+      paramIndex++;
+    }
+
+    // --- Date of accident range ---
+    if (date_of_accident_from) {
+      whereClauses.push(`d.date_of_accident >= $${paramIndex}::date`);
+      whereParams.push(date_of_accident_from);
+      paramIndex++;
+    }
+    if (date_of_accident_to) {
+      whereClauses.push(`d.date_of_accident <= $${paramIndex}::date`);
+      whereParams.push(date_of_accident_to);
+      paramIndex++;
+    }
+
+    // --- Sum insured range ---
+    if (sum_insured_min !== undefined && sum_insured_min !== '' && sum_insured_min !== 'undefined') {
+      whereClauses.push(`d.sum_insured >= $${paramIndex}`);
+      whereParams.push(Number(sum_insured_min));
+      paramIndex++;
+    }
+    if (sum_insured_max !== undefined && sum_insured_max !== '' && sum_insured_max !== 'undefined') {
+      whereClauses.push(`d.sum_insured <= $${paramIndex}`);
+      whereParams.push(Number(sum_insured_max));
+      paramIndex++;
+    }
+
+    // --- Legacy flag ---
+    if (legacy === 'true') {
+      whereClauses.push(`d.product_custom_fields ? 'legacy_source'`);
+    } else if (legacy === 'false') {
+      whereClauses.push(`(d.product_custom_fields IS NULL OR NOT (d.product_custom_fields ? 'legacy_source'))`);
+    }
+
+    const whereSql = whereClauses.length > 0 ? whereClauses.join(' AND ') : '1=1';
+
+    // ========== MAIN LIST QUERY ==========
+    const listSql = `
       SELECT 
-        d.*, 
+        d.*,
         u.name as owner_name,
         b.name as branch_name,
         b.code as branch_code,
         dept.name as department_name,
-        p.name as product_name,
-        c.number as cabinet_number,
-        c.id as cabinet_id,
-        d.drawer_number
+        p.name as product_name
       FROM documents d
       LEFT JOIN users u ON d.owner_id = u.id
       LEFT JOIN branches b ON d.branch_id = b.id
       LEFT JOIN departments dept ON d.department_id = dept.id
       LEFT JOIN products p ON d.product_id = p.id
-      LEFT JOIN cabinets c ON d.cabinet_id = c.id
-      WHERE 1=1
+      WHERE ${whereSql}
+      ORDER BY d.created_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
-    
-    const queryParams = [];
-    let paramIndex = 1;
+    const listParams = [...whereParams, limitNum, offset];
 
- if (search && search.trim() !== '') {
-  const raw = search.trim();
-  const searchTerm = `%${raw}%`;
-  const searchNum = Number.isFinite(parseFloat(raw)) && /^-?\d+(\.\d+)?$/.test(raw)
-    ? parseFloat(raw)
-    : null;
+    // ========== COUNT QUERY (same WHERE, no LIMIT) ==========
+    const countSql = `SELECT COUNT(*)::int as total FROM documents d WHERE ${whereSql}`;
 
-  // ✅ Only treat as date if it matches a real ISO pattern (YYYY-MM-DD)
-  const isISODate = /^\d{4}-\d{2}-\d{2}$/.test(raw);
-  const searchDate = isISODate ? raw : null;
-
-  // Text/number search across all string + numeric fields
-  queryText += ` AND (
-    d.title ILIKE $${paramIndex} OR
-    d.archive_reference_number ILIKE $${paramIndex} OR
-    COALESCE(d.insured_name, '') ILIKE $${paramIndex} OR
-    COALESCE(d.policy_number, '') ILIKE $${paramIndex} OR
-    COALESCE(d.claim_number, '') ILIKE $${paramIndex} OR
-    COALESCE(d.period_of_policy, '') ILIKE $${paramIndex} OR
-    COALESCE(d.plate_number, '') ILIKE $${paramIndex} OR
-    COALESCE(d.vehicle_registration, '') ILIKE $${paramIndex} OR
-    COALESCE(d.make, '') ILIKE $${paramIndex} OR
-    COALESCE(d.model, '') ILIKE $${paramIndex} OR
-    d.product_custom_fields::text ILIKE $${paramIndex}
-  )`;
-  queryParams.push(searchTerm);
-  paramIndex++;
-
-  // Numeric search: sum insured
-  if (searchNum !== null) {
-    queryText += ` OR d.sum_insured = $${paramIndex}`;
-    queryParams.push(searchNum);
-    paramIndex++;
-  }
-
-  // Date search: only if valid ISO date format
-  if (searchDate) {
-    queryText += ` OR d.date_of_accident = $${paramIndex}::date`;
-    queryParams.push(searchDate);
-    paramIndex++;
-  }
-}
-
-    if (type) {
-      queryText += ` AND d.type = $${paramIndex}`;
-      queryParams.push(type);
-      paramIndex++;
-    }
-
-    if (status) {
-      queryText += ` AND d.status = $${paramIndex}`;
-      queryParams.push(status);
-      paramIndex++;
-    }
-
-    if (branch) {
-      queryText += ` AND d.branch_id = $${paramIndex}`;
-      queryParams.push(branch);
-      paramIndex++;
-    }
-
-    queryText += ` ORDER BY d.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    queryParams.push(limit, offset);
-
-    const result = await query(queryText, queryParams);
-
-    // Get total count
-    let countQuery = 'SELECT COUNT(*) FROM documents';
-    const countResult = await query(countQuery);
-    const total = parseInt(countResult.rows[0].count);
-
-    res.json({
-      documents: result.rows,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
+    // ========== FACETS (based on search only, ignoring dimension-specific filters) ==========
+    // This gives users useful counts even when other filters are applied
+    const facetBaseClauses = [];
+    const facetBaseParams = [];
+    let fp = 1;
+    if (search && String(search).trim()) {
+      const terms = String(search).trim().split(/\s+/).filter(Boolean);
+      for (const term of terms) {
+        facetBaseClauses.push(`(
+          d.title ILIKE $${fp} OR
+          d.archive_reference_number ILIKE $${fp} OR
+          COALESCE(d.insured_name, '') ILIKE $${fp} OR
+          COALESCE(d.policy_number, '') ILIKE $${fp} OR
+          COALESCE(d.claim_number, '') ILIKE $${fp} OR
+          COALESCE(d.period_of_policy, '') ILIKE $${fp} OR
+          COALESCE(d.plate_number, '') ILIKE $${fp} OR
+          COALESCE(d.receiver_remark, '') ILIKE $${fp} OR
+          d.product_custom_fields::text ILIKE $${fp}
+        )`);
+        facetBaseParams.push(`%${term}%`);
+        fp++;
       }
+    }
+    const facetWhereSql = facetBaseClauses.length > 0 ? facetBaseClauses.join(' AND ') : '1=1';
+
+    // ========== EXECUTE ALL QUERIES IN PARALLEL ==========
+    const [
+      listResult,
+      countResult,
+      typeFacets,
+      statusFacets,
+      branchFacets,
+      yearFacets,
+      sumRange,
+    ] = await Promise.all([
+      query(listSql, listParams),
+      query(countSql, whereParams),
+      query(
+        `SELECT d.type as value, COUNT(*)::int as count 
+         FROM documents d WHERE ${facetWhereSql} 
+         GROUP BY d.type ORDER BY count DESC`,
+        facetBaseParams
+      ),
+      query(
+        `SELECT d.status as value, COUNT(*)::int as count 
+         FROM documents d WHERE ${facetWhereSql} 
+         GROUP BY d.status ORDER BY count DESC`,
+        facetBaseParams
+      ),
+      query(
+        `SELECT d.branch_id as id, COALESCE(b.name, 'Unassigned') as value, COUNT(*)::int as count
+         FROM documents d 
+         LEFT JOIN branches b ON d.branch_id = b.id 
+         WHERE ${facetWhereSql} 
+         GROUP BY d.branch_id, b.name 
+         ORDER BY count DESC`,
+        facetBaseParams
+      ),
+      query(
+        `SELECT EXTRACT(YEAR FROM d.date_of_accident)::text as value, COUNT(*)::int as count
+         FROM documents d 
+         WHERE ${facetWhereSql} AND d.date_of_accident IS NOT NULL
+         GROUP BY 1 ORDER BY 1 DESC`,
+        facetBaseParams
+      ),
+      query(
+        `SELECT MIN(d.sum_insured)::numeric as min, MAX(d.sum_insured)::numeric as max
+         FROM documents d WHERE ${facetWhereSql} AND d.sum_insured IS NOT NULL`,
+        facetBaseParams
+      ),
+    ]);
+
+    const total = countResult.rows[0].total;
+    const totalPages = Math.ceil(total / limitNum);
+
+    // ========== DEBUG LOG ==========
+    console.log('📋 getDocuments:', {
+      filters: { search, type, status, branch_id: branchFilter, plate_number, insured_name, date_of_accident_from, date_of_accident_to, sum_insured_min, sum_insured_max, legacy },
+      resultsCount: listResult.rows.length,
+      total,
+    });
+
+    // ========== RESPONSE ==========
+    res.json({
+      documents: listResult.rows,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        total_pages: totalPages,
+        pages: totalPages, // alias used by some components
+      },
+      facets: {
+        by_type: typeFacets.rows,
+        by_status: statusFacets.rows,
+        by_branch: branchFacets.rows,
+        by_accident_year: yearFacets.rows,
+        ranges: {
+          sum_insured_min: sumRange.rows[0]?.min ? Number(sumRange.rows[0].min) : null,
+          sum_insured_max: sumRange.rows[0]?.max ? Number(sumRange.rows[0].max) : null,
+        },
+      },
     });
   } catch (error) {
     console.error('Get documents error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error: ' + error.message });
   }
 };
-
 const searchByCustomField = async (req, res) => {
   try {
     const { key, value } = req.query;

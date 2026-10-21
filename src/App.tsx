@@ -23,7 +23,8 @@ import {
   FolderOpen,
   Layers,
   Box,
-  Square
+  Square,
+  Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DocumentPreview } from './components/DocumentPreview';
@@ -35,6 +36,7 @@ import { ArchiveProvider } from './context/ArchiveContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Logo } from './components/Logo';
+import { AdminQueryPage } from './components/AdminQueryPage';
 
 // Lazy-loaded pages (named exports adapted for React.lazy)
 const LoginPage = lazy(() => import('./components/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -46,14 +48,16 @@ const AddIngestFileForm = lazy(() => import('./components/AddIngestFileForm').th
 const AdminRequests = lazy(() => import('./components/AdminRequests').then(m => ({ default: m.AdminRequests })));
 const UserManagement = lazy(() => import('./components/UserManagement').then(m => ({ default: m.UserManagement })));
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
-
+const DocumentsPage = lazy(() =>
+  import('./components/DocumentsPage').then((m) => ({ default: m.DocumentsPage }))
+);
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center py-24">
     <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
   </div>
 );
 
-type AppTab = 'file-request' | 'dashboard' | 'user-management' | 'registration' | 'status-update' | 'upload' | 'request-management' | 'reports';
+type AppTab = 'file-request' | 'dashboard' | 'documents' | 'user-management' | 'registration' | 'status-update' | 'admin-query' | 'upload' | 'request-management' | 'reports';
 
 const AppContent: React.FC = () => {
   const { 
@@ -100,6 +104,7 @@ const AppContent: React.FC = () => {
   // Updated menu items
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
+    { id: 'documents', label: 'Documents', icon: Archive },
     { id: 'file-request', label: UI_LABELS.SIDEBAR.FILE_REQUEST, icon: FileSearch },
     { 
       id: 'registration', 
@@ -119,6 +124,7 @@ const AppContent: React.FC = () => {
     { id: 'upload', label: UI_LABELS.SIDEBAR.UPLOAD, icon: UploadCloud, roles: ['Admin', 'Manager'] },
     { id: 'user-management', label: 'User Management', icon: Users, roles: ['Admin'] },
     { id: 'request-management', label: 'Request Management', icon: CheckCircle2, roles: ['Admin', 'Manager'] },
+    { id: 'admin-query', label: 'SQL Console', icon: Database, roles: ['Admin'] },
     { id: 'reports', label: 'Reports', icon: Grid, roles: ['Admin', 'Manager'] }
   ];
 
@@ -263,14 +269,14 @@ const AppContent: React.FC = () => {
           <div className="flex items-center gap-6">
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 dark:text-slate-400 transition-colors"
+              className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 transition-colors"
             >
               <Menu className="w-6 h-6" />
             </button>
             <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
             <div className="hidden md:flex items-center gap-2 text-sm">
               <span className="text-slate-400 dark:text-slate-500 dark:text-slate-400 font-medium">Archive System</span>
-              <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+              <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 dark:text-slate-400" />
               <span className="text-slate-900	dark:text-white dark:text-white dark:text-white font-black capitalize">{activeTab.replace('-', ' ')}</span>
             </div>
           </div>
@@ -288,7 +294,7 @@ const AppContent: React.FC = () => {
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl relative text-slate-500 dark:text-slate-400 dark:text-slate-400 transition-colors group"
+                className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl relative text-slate-500 dark:text-slate-400 transition-colors group"
               >
                 <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" />
                 {unreadNotifications.length > 0 && (
@@ -302,9 +308,9 @@ const AppContent: React.FC = () => {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-4 w-80 dark:bg-slate-800 dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 dark:border-slate-700 shadow-2xl z-50 overflow-hidden"
+                    className="absolute right-0 mt-4 w-80 dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 dark:border-slate-700 shadow-2xl z-50 overflow-hidden"
                   >
-                    <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 dark:border-slate-700 flex items-center justify-between">
                       <h4 className="font-black text-slate-900	dark:text-white dark:text-white dark:text-white">Notifications</h4>
                       <div className="flex items-center gap-2">
                         {unreadNotifications.length > 0 && (
@@ -351,7 +357,7 @@ const AppContent: React.FC = () => {
               </AnimatePresence>
             </div>
             
-            <button className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 dark:text-slate-400 transition-colors">
+            <button className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 transition-colors">
               <Settings className="w-5 h-5" />
             </button>
           </div>
@@ -371,6 +377,17 @@ const AppContent: React.FC = () => {
                   <OperationsDashboard />
                 </motion.div>
               )}
+
+              {activeTab === 'documents' && (
+  <motion.div
+    key="documents"
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+  >
+    <DocumentsPage />
+  </motion.div>
+)}
 
               {activeTab === 'file-request' && (
                 <motion.div
@@ -404,7 +421,16 @@ const AppContent: React.FC = () => {
                   <StatusUpdatePage />
                 </motion.div>
               )}
-
+{activeTab === 'admin-query' && user?.role === 'Admin' && (
+  <motion.div
+    key="admin-query"
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+  >
+    <AdminQueryPage />
+  </motion.div>
+)}
               {activeTab === 'upload' && (user?.role === 'Admin' || user?.role === 'Manager') && (
                 <motion.div
                   key="upload"
