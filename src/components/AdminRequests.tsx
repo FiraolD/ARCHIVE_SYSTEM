@@ -1,24 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  User,
-  FileText,
-  Calendar,
-  MessageSquare,
-  Search,
-  Filter,
-  AlertCircle,
-  CheckCheck,
-  Eye,
-  Loader2
+import {
+  CheckCircle2, XCircle, Clock, User, FileText, Calendar, Eye,
+  Loader2, RefreshCw, Inbox, CheckCheck, LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { requestApi } from '../services/api';
 import { format } from 'date-fns';
-import { useArchive } from '../context/ArchiveContext'; // Add this import
+import { requestApi } from '../services/api';
+import { PageHeader, PageHeaderButton, SearchInput, FilterBar, EmptyState, Modal } from './ui';
 
 interface Request {
   id: string;
@@ -38,9 +27,6 @@ interface Request {
 }
 
 export const AdminRequests: React.FC = () => {
-  // Get user from archive context
-  const { user } = useArchive(); // Add this line
-  
   const [requests, setRequests] = useState<Request[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<Request[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,223 +37,120 @@ export const AdminRequests: React.FC = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadRequests();
-  }, []);
+  useEffect(() => { loadRequests(); }, [statusFilter]);
 
   useEffect(() => {
-    if (requests) {
-      filterRequests();
-    }
-  }, [requests, searchQuery, statusFilter]);
-
-const loadRequests = async () => {
-  try {
-    setIsLoading(true);
-    
-    const params = statusFilter !== 'all' ? { status: statusFilter } : {};
-    
-    const response = await requestApi.getAllRequests(params);
-    setRequests(response.data);
-  } catch (error: any) {
-    console.error('Failed to load requests:', error);
-    console.error('Error response:', error.response?.data); // This will show the backend error
-    console.error('Error status:', error.response?.status);
-    
-    if (error.response?.status === 403) {
-      toast.error('You do not have permission to view requests');
-    } else if (error.response?.status === 500) {
-      toast.error('Server error: ' + (error.response?.data?.error || 'Unknown error'));
-    } else {
-      toast.error('Failed to load requests');
-    }
-    
-    setRequests([]);
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const filterRequests = () => {
-    if (!requests) {
-      setFilteredRequests([]);
-      return;
-    }
-
     let filtered = [...requests];
-    
-    // Filter by status
-    if (statusFilter && statusFilter !== 'all') {
-      filtered = filtered.filter(r => r && r.status === statusFilter);
-    }
-    
-    // Filter by search query
-    if (searchQuery && searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(r => 
-        (r.request_reference && r.request_reference.toLowerCase().includes(query)) ||
-        (r.document_title && r.document_title.toLowerCase().includes(query)) ||
-        (r.policy_number && r.policy_number.toLowerCase().includes(query)) ||
-        (r.claim_number && r.claim_number.toLowerCase().includes(query)) ||
-        (r.requester_name && r.requester_name.toLowerCase().includes(query)) ||
-        (r.archive_reference_number && r.archive_reference_number.toLowerCase().includes(query))
+    if (statusFilter && statusFilter !== 'all') filtered = filtered.filter(r => r.status === statusFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(r =>
+        r.request_reference?.toLowerCase().includes(q) ||
+        r.document_title?.toLowerCase().includes(q) ||
+        r.policy_number?.toLowerCase().includes(q) ||
+        r.claim_number?.toLowerCase().includes(q) ||
+        r.requester_name?.toLowerCase().includes(q) ||
+        r.archive_reference_number?.toLowerCase().includes(q)
       );
     }
-    
     setFilteredRequests(filtered);
+  }, [requests, searchQuery, statusFilter]);
+
+  const loadRequests = async () => {
+    try {
+      setIsLoading(true);
+      const params = statusFilter !== 'all' ? { status: statusFilter } : {};
+      const response = await requestApi.getAllRequests(params);
+      setRequests(response.data);
+    } catch (error: any) {
+      const msg = error.response?.status === 403
+        ? 'You do not have permission to view requests'
+        : error.response?.data?.error || 'Failed to load requests';
+      toast.error(msg);
+      setRequests([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleApprove = async (requestId: string) => {
     try {
       setProcessingId(requestId);
       const response = await requestApi.approveRequest(requestId);
-      toast.success(
-        <div>
-          <p className="font-bold">Request Approved</p>
-          <p className="text-xs">Reference: {response.data.requestReference}</p>
-          <p className="text-xs mt-1">User can collect file with this reference</p>
-        </div>
-      );
+      toast.success(`Approved — reference ${response.data.requestReference}`);
       await loadRequests();
       setSelectedRequest(null);
-    } catch (error) {
-      console.error('Approve error:', error);
+    } catch {
       toast.error('Failed to approve request');
     } finally {
       setProcessingId(null);
     }
   };
 
-  // In AdminRequests.tsx, update the handleReject function:
-
-const handleReject = async () => {
-  if (!selectedRequest || !rejectReason.trim()) {
-    toast.error('Please provide a rejection reason');
-    return;
-  }
-  
-  try {
-    setProcessingId(selectedRequest.id);
-    
-    // Make the API call
-    await requestApi.rejectRequest(selectedRequest.id, { 
-      reason: rejectReason 
-    });
-    
-    toast.success('Request rejected successfully');
-    setShowRejectModal(false);
-    setRejectReason('');
-    await loadRequests();
-    setSelectedRequest(null);
-  } catch (error: any) {
-    console.error('❌ Reject error:', error);
-    console.error('Error config:', error.config);
-    console.error('Error response:', error.response);
-    console.error('Error status:', error.response?.status);
-    console.error('Error data:', error.response?.data);
-    console.error('Error message:', error.message);
-    
-    // Show specific error message
-    if (error.response?.status === 403) {
-      toast.error('You do not have permission to reject requests');
-    } else if (error.response?.status === 404) {
-      toast.error('Request not found');
-    } else {
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.message || 
-                          error.message || 
-                          'Failed to reject request';
-      toast.error(errorMessage);
+  const handleReject = async () => {
+    if (!selectedRequest || !rejectReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
     }
-  } finally {
-    setProcessingId(null);
-  }
-};
-
-
-
-  const getStatusBadge = (status: string) => {
-    if (!status) return null;
-    
-    const styles: Record<string, string> = {
-      Pending: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200',
-      Approved: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200',
-      Rejected: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200',
-      Returned: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200'
-    };
-    
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-bold border ${styles[status] || 'bg-slate-100 text-slate-700 dark:text-slate-300'}`}>
-        {status}
-      </span>
-    );
+    try {
+      setProcessingId(selectedRequest.id);
+      await requestApi.rejectRequest(selectedRequest.id, { reason: rejectReason });
+      toast.success('Request rejected');
+      setShowRejectModal(false);
+      setRejectReason('');
+      await loadRequests();
+      setSelectedRequest(null);
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to reject request');
+    } finally {
+      setProcessingId(null);
+    }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-black text-slate-900 dark:text-white	dark:text-white dark:text-white">Request Management</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">
-            Approve or reject file requests from users
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <Clock className="w-4 h-4" />
-          <span>{filteredRequests.length} requests found</span>
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <PageHeader
+        title="Request Management"
+        subtitle="Approve or reject file requests from users"
+        icon={Inbox}
+        actions={<PageHeaderButton icon={RefreshCw} onClick={loadRequests}>Refresh</PageHeaderButton>}
+      />
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by reference, document, or requester..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
-            />
-          </div>
-          <div className="flex gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
-            >
-              <option value="all">All Requests</option>
-              <option value="Pending">Pending</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Returned">Returned</option>
-            </select>
-            <button
-              onClick={loadRequests}
-              className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Filter className="w-5 h-5" />
-              Refresh
-            </button>
-          </div>
-        </div>
-      </div>
+      <FilterBar>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search by reference, document, or requester…"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium"
+        >
+          <option value="all">All Requests</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+          <option value="Returned">Returned</option>
+        </select>
+      </FilterBar>
 
-      {/* Requests List */}
-      <div className="space-y-4">
-        <AnimatePresence>
-          {filteredRequests.length > 0 ? (
-            filteredRequests.map((request) => (
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        </div>
+      ) : filteredRequests.length === 0 ? (
+        <EmptyState
+          icon={CheckCheck}
+          title="No requests found"
+          description={statusFilter === 'Pending'
+            ? 'No pending requests at the moment'
+            : `No ${statusFilter.toLowerCase()} requests found`}
+        />
+      ) : (
+        <div className="space-y-3">
+          <AnimatePresence>
+            {filteredRequests.map((request) => (
               <motion.div
                 key={request.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -277,351 +160,199 @@ const handleReject = async () => {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-950/50 rounded-xl flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-bold text-slate-900 dark:text-white dark:text-white">{request.archive_reference_number || 'Untitled'}</h3>
-                        {getStatusBadge(request.status)}
+                      <div className="flex items-center gap-3 mb-1 flex-wrap">
+                        <h3 className="font-bold text-slate-900 dark:text-white">
+                          {request.archive_reference_number || 'Untitled'}
+                        </h3>
+                        <StatusBadge status={request.status} />
                       </div>
                       <p className="text-sm font-mono text-blue-600">
                         Req Ref: {request.request_reference || 'N/A'}
                       </p>
-                    
                     </div>
                   </div>
                   <button
                     onClick={() => setSelectedRequest(request)}
-                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                    title="View Details"
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                   >
                     <Eye className="w-5 h-5 text-slate-400" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-green-600" />
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Policy</p>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">{request.policy_number || 'N/A'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-blue-600" />
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Claim</p>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">{request.claim_number || 'N/A'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-400" />
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Expected Return</p>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">
-                        {request.expected_return_date ? format(new Date(request.expected_return_date), 'MMM dd, yyyy') : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-slate-400" />
-                    <div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Requester</p>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">{request.requester_name || 'Unknown'}</p>
-                    </div>
-                  </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <Meta label="Policy" value={request.policy_number} icon={FileText} />
+                  <Meta label="Claim" value={request.claim_number} icon={FileText} />
+                  <Meta label="Expected Return" value={request.expected_return_date
+                    ? format(new Date(request.expected_return_date), 'MMM dd, yyyy') : 'N/A'} icon={Calendar} />
+                  <Meta label="Requester" value={request.requester_name} icon={User} />
                 </div>
 
                 {request.status === 'Pending' && (
                   <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <button
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setShowRejectModal(true);
-                      }}
+                      onClick={() => { setSelectedRequest(request); setShowRejectModal(true); }}
                       disabled={processingId === request.id}
-                      className="px-4 py-2 border-2 border-red-200 text-red-600 rounded-xl font-bold hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-2"
+                      className="px-4 py-2 border-2 border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 flex items-center gap-2"
                     >
-                      <XCircle className="w-4 h-4" />
-                      Reject
+                      <XCircle className="w-4 h-4" /> Reject
                     </button>
                     <button
                       onClick={() => handleApprove(request.id)}
                       disabled={processingId === request.id}
-                      className="px-4 py-2 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                      className="px-4 py-2 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
                     >
-                      {processingId === request.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <CheckCircle2 className="w-4 h-4" />
-                          Approve
-                        </>
-                      )}
+                      {processingId === request.id
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <><CheckCircle2 className="w-4 h-4" /> Approve</>}
                     </button>
                   </div>
                 )}
               </motion.div>
-            ))
-          ) : (
-            <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 text-center">
-              <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/60 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCheck className="w-8 h-8 text-slate-300" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white dark:text-white">No requests found</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-                {statusFilter === 'Pending' 
-                  ? 'No pending requests at the moment' 
-                  : `No ${statusFilter.toLowerCase()} requests found`}
-              </p>
-            </div>
-          )}
-        </AnimatePresence>
-      </div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
-      {/* Request Details Modal */}
-      <AnimatePresence>
-        {selectedRequest && !showRejectModal && (
-          <RequestDetailsModal
-            request={selectedRequest}
-            onClose={() => setSelectedRequest(null)}
-            onApprove={handleApprove}
-            onReject={() => setShowRejectModal(true)}
-            isProcessing={processingId === selectedRequest.id}
-          />
-        )}
-      </AnimatePresence>
+      <RequestDetailsModal
+        request={selectedRequest && !showRejectModal ? selectedRequest : null}
+        onClose={() => setSelectedRequest(null)}
+        onApprove={handleApprove}
+        onReject={() => setShowRejectModal(true)}
+        isProcessing={processingId === selectedRequest?.id}
+      />
 
-      {/* Reject Modal */}
-      <AnimatePresence>
-        {showRejectModal && selectedRequest && (
-          <RejectModal
-            request={selectedRequest}
-            reason={rejectReason}
-            onReasonChange={setRejectReason}
-            onConfirm={handleReject}
-            onClose={() => {
-              setShowRejectModal(false);
-              setRejectReason('');
-            }}
-            isProcessing={processingId === selectedRequest.id}
-          />
-        )}
-      </AnimatePresence>
+      <Modal
+        open={showRejectModal && !!selectedRequest}
+        onClose={() => { setShowRejectModal(false); setRejectReason(''); }}
+        title="Reject Request"
+        size="sm"
+        footer={
+          <>
+            <button
+              onClick={() => { setShowRejectModal(false); setRejectReason(''); }}
+              className="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleReject}
+              disabled={!rejectReason.trim() || processingId === selectedRequest?.id}
+              className="px-4 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {processingId === selectedRequest?.id
+                ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Reject'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          Are you sure you want to reject{' '}
+          <span className="font-mono font-bold text-slate-900 dark:text-white">
+            {selectedRequest?.request_reference}
+          </span>? Please provide a reason.
+        </p>
+        <textarea
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="Enter rejection reason…"
+          rows={4}
+          autoFocus
+          className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-red-500/20 outline-none"
+        />
+      </Modal>
     </div>
   );
 };
 
-// Request Details Modal Component
+const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  const styles: Record<string, string> = {
+    Pending: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900',
+    Approved: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900',
+    Rejected: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900',
+    Returned: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900',
+  };
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-bold border ${styles[status] || 'bg-slate-100 text-slate-700'}`}>
+      {status}
+    </span>
+  );
+};
+
+const Meta: React.FC<{ label: string; value?: string | null; icon: LucideIcon }> = ({ label, value, icon: Icon }) => (
+  <div className="flex items-center gap-2 min-w-0">
+    <Icon className="w-4 h-4 text-slate-400 shrink-0" />
+    <div className="min-w-0">
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{value || 'N/A'}</p>
+    </div>
+  </div>
+);
+
 const RequestDetailsModal: React.FC<{
-  request: Request;
+  request: Request | null;
   onClose: () => void;
   onApprove: (id: string) => void;
   onReject: () => void;
   isProcessing: boolean;
 }> = ({ request, onClose, onApprove, onReject, isProcessing }) => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-    onClick={onClose}
+  <Modal
+    open={!!request}
+    onClose={onClose}
+    title="Request Details"
+    size="md"
+    footer={request?.status === 'Pending' ? (
+      <>
+        <button onClick={onReject} disabled={isProcessing}
+          className="px-4 py-3 border-2 border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50">
+          Reject
+        </button>
+        <button onClick={() => request && onApprove(request.id)} disabled={isProcessing}
+          className="px-4 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 disabled:opacity-50">
+          Approve
+        </button>
+      </>
+    ) : undefined}
   >
-    <motion.div
-      initial={{ scale: 0.9, y: 20 }}
-      animate={{ scale: 1, y: 0 }}
-      exit={{ scale: 0.9, y: 20 }}
-      className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-8"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Request Details</h3>
-      
-      <div className="space-y-6">
-        {/* Reference */}
+    {request && (
+      <div className="space-y-4">
         <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-100 dark:border-blue-900">
-          <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">
-            Request Reference
-          </p>
-          <p className="text-lg font-mono font-black text-blue-900">
-            {request.request_reference || 'N/A'}
-          </p>
+          <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">Request Reference</p>
+          <p className="text-lg font-mono font-black text-blue-900 dark:text-blue-200">{request.request_reference}</p>
         </div>
-
-        {/* Document Info */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Document</p>
-            <p className="font-medium text-slate-900 dark:text-white dark:text-white">{request.document_title || 'Untitled'}</p>
-            <p className="text-xs font-mono text-blue-600 mt-1">{request.archive_reference_number || 'N/A'}</p>
-          </div>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            ['Document', request.document_title],
+            ['Archive Ref', request.archive_reference_number],
+            ['Policy', request.policy_number],
+            ['Claim', request.claim_number],
+            ['Requester', request.requester_name],
+            ['Email', request.requester_email],
+            ['Department', request.requester_department_name],
+            ['Expected Return', request.expected_return_date && format(new Date(request.expected_return_date), 'MMM dd, yyyy')],
+          ].map(([label, value]) => (
+            <div key={label as string} className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">{label}</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{(value as string) || 'N/A'}</p>
+            </div>
+          ))}
         </div>
-
-        {/* Policy and Claim Numbers */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 flex items-center gap-1">
-              <FileText className="w-3 h-3" /> Policy Number
-            </p>
-            <p className="text-sm font-mono font-bold text-slate-900 dark:text-white dark:text-white">
-              {request.policy_number || 'N/A'}
-            </p>
-          </div>
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 flex items-center gap-1">
-              <FileText className="w-3 h-3" /> Claim Number
-            </p>
-            <p className="text-sm font-mono font-bold text-slate-900 dark:text-white dark:text-white">
-              {request.claim_number || 'N/A'}
-            </p>
-          </div>
-        </div>
-
-        {/* Requester Info */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Requester</p>
-            <p className="font-medium text-slate-900 dark:text-white dark:text-white">{request.requester_name || 'Unknown'}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{request.requester_email || 'No email'}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{request.requester_department_name || 'No department'}</p>
-          </div>
-          <div>
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Expected Return</p>
-            <p className="font-medium text-slate-900 dark:text-white dark:text-white">
-              {request.expected_return_date ? format(new Date(request.expected_return_date), 'MMMM dd, yyyy') : 'N/A'}
-            </p>
-          </div>
-        </div>
-
-        {/* Dates */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Request Date</p>
-            <p className="text-sm text-slate-700 dark:text-slate-300 dark:text-slate-300">
-              {request.request_date ? format(new Date(request.request_date), 'MMM dd, yyyy') : 'N/A'}
-            </p>
-          </div>
-        </div>
-
-        {/* Notes */}
         {request.notes && (
           <div>
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Notes</p>
+            <p className="text-xs font-bold text-slate-500 uppercase mb-1">Notes</p>
             <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl">{request.notes}</p>
           </div>
         )}
-
-        {/* Rejection Reason */}
         {request.rejection_reason && (
           <div>
-            <p className="text-xs font-bold text-red-500 uppercase mb-2">Rejection Reason</p>
+            <p className="text-xs font-bold text-red-500 uppercase mb-1">Rejection Reason</p>
             <p className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 p-3 rounded-xl">{request.rejection_reason}</p>
           </div>
         )}
-
-        {/* Actions */}
-        {request.status === 'Pending' && (
-          <div className="flex gap-3 pt-4">
-            <button
-              onClick={onReject}
-              disabled={isProcessing}
-              className="flex-1 py-4 border-2 border-red-200 text-red-600 rounded-xl font-bold hover:bg-red-50 transition-colors disabled:opacity-50"
-            >
-              Reject Request
-            </button>
-            <button
-              onClick={() => onApprove(request.id)}
-              disabled={isProcessing}
-              className="flex-1 py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isProcessing ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                'Approve Request'
-              )}
-            </button>
-          </div>
-        )}
-
-        <button
-          onClick={onClose}
-          className="w-full mt-4 py-3 text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-50 dark:bg-slate-800/60 rounded-xl transition-colors"
-        >
-          Close
-        </button>
       </div>
-    </motion.div>
-  </motion.div>
-);
-
-// Reject Modal Component
-const RejectModal: React.FC<{
-  request: Request;
-  reason: string;
-  onReasonChange: (reason: string) => void;
-  onConfirm: () => void;
-  onClose: () => void;
-  isProcessing: boolean;
-}> = ({ request, reason, onReasonChange, onConfirm, onClose, isProcessing }) => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-    onClick={onClose}
-  >
-    <motion.div
-      initial={{ scale: 0.9, y: 20 }}
-      animate={{ scale: 1, y: 0 }}
-      exit={{ scale: 0.9, y: 20 }}
-      className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-8"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <AlertCircle className="w-8 h-8 text-red-600" />
-      </div>
-      
-      <h3 className="text-2xl font-black text-slate-900 dark:text-white text-center mb-2">Reject Request</h3>
-      <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">
-        Are you sure you want to reject this request? Please provide a reason.
-      </p>
-
-      <div className="space-y-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Request Reference</p>
-          <p className="font-mono font-bold text-slate-900 dark:text-white dark:text-white">{request.request_reference || 'N/A'}</p>
-        </div>
-
-        <textarea
-          value={reason}
-          onChange={(e) => onReasonChange(e.target.value)}
-          placeholder="Enter rejection reason..."
-          rows={4}
-          className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-red-500/10 outline-none"
-          autoFocus
-        />
-
-        <div className="flex gap-3 pt-4">
-          <button
-            onClick={onClose}
-            disabled={isProcessing}
-            className="flex-1 py-4 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={!reason.trim() || isProcessing}
-            className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {isProcessing ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              'Confirm Reject'
-            )}
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  </motion.div>
+    )}
+  </Modal>
 );

@@ -1,69 +1,66 @@
-// backend/src/routes/documents.js
-
+// src/routes/documents.js
 const express = require('express');
-const router = express.Router();
-const { body } = require('express-validator');
-const { authenticate, authorize } = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const { authenticate } = require('../middleware/auth');
+const role = require('../middleware/role');
 const documentController = require('../controllers/documentController');
 
-// Validation rules
-const documentValidation = [
-  body('title').notEmpty().withMessage('Title is required'),
-  body('type').isIn(['Claim File', 'Circular', 'Policy', 'Billing', 'Correspondence'])
-    .withMessage('Invalid document type'),
-  body('physicalPlacement').notEmpty().withMessage('Physical placement is required'),
-];
+const router = express.Router();
 
-// Routes
-router.post('/ingest', 
-  authenticate,
-  authorize('Admin', 'Manager'),
+/* ---------- Multer config for ingest ---------- */
+const uploadDir = process.env.UPLOAD_DIR
+  ? path.resolve(process.env.UPLOAD_DIR, 'documents')
+  : path.resolve(__dirname, '../../uploads/documents');
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadDir),
+    filename: (_req, file, cb) => {
+      const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      cb(null, `${Date.now()}-${safe}`);
+    },
+  }),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+});
+
+/* ---------- All document routes require auth ---------- */
+router.use(authenticate);
+
+/* ---------- Read ---------- */
+router.get('/', documentController.getDocuments);
+router.get('/:id', documentController.getDocumentById);
+
+/* ---------- Write ---------- */
+router.post(
+  '/ingest',
+  role('Admin'),
   upload.single('file'),
-  documentValidation,
   documentController.ingestDocument
 );
 
-router.get('/', 
-  authenticate,
-  documentController.getDocuments
-);
-
-router.get('/:id', 
-  authenticate,
-  documentController.getDocumentById
-);
-
-// routes/documents.js
-router.get('/search/custom-field', 
-  authenticate, 
-  documentController.searchByCustomField
-);
-
-router.patch('/:id/status', 
-  authenticate,
-  authorize('Admin', 'Manager'),
-  body('status').isIn(['Active', 'Checked-out', 'Settled Claims'])
-    .withMessage('Invalid status'),
+router.patch(
+  '/:id/status',
+  role('Admin', 'Manager'),
   documentController.updateDocumentStatus
 );
 
-router.patch('/:id/placement', 
-  authenticate,
-  authorize('Admin', 'Manager'),
-  body('physicalPlacement').notEmpty().withMessage('Physical placement is required'),
+router.patch(
+  '/:id/placement',
+  role('Admin', 'Manager'),
   documentController.updatePhysicalPlacement
 );
 
-// NEW ROUTE - Make sure this is line 51 and that documentController.assignToBox exists
-router.post('/assign-to-box', 
-  authenticate,
-  authorize('Admin', 'Manager'),
-  [
-    body('documentId').notEmpty().withMessage('Document ID is required'),
-    body('boxId').notEmpty().withMessage('Box ID is required')
-  ],
-  documentController.assignToBox  // Make sure this function exists
+router.post(
+  '/assign-to-box',
+  role('Admin', 'Manager'),
+  documentController.assignToBox
 );
 
 module.exports = router;

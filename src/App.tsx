@@ -1,30 +1,9 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { 
-  FileText, 
-  UploadCloud, 
-  ShieldCheck, 
-  History, 
-  Settings, 
-  Bell, 
-  Menu,
-  User as UserIcon,
-  Search,
-  Building2,
-  RefreshCcw,
-  ChevronRight,
-  FileSearch,
-  CheckCircle2,
-  LogOut,
-  TrendingUp,
-  Users,
-  Package,
-  Archive,
-  Grid,
-  FolderOpen,
-  Layers,
-  Box,
-  Square,
-  Database
+  FileText, UploadCloud, ShieldCheck, History, Settings, Bell, Menu,
+  User as UserIcon, Search, Building2, RefreshCcw, ChevronRight,
+  FileSearch, CheckCircle2, LogOut, TrendingUp, Users, Package,
+  Archive, Grid, FolderOpen, Layers, Box, Square, Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DocumentPreview } from './components/DocumentPreview';
@@ -38,7 +17,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { Logo } from './components/Logo';
 import { AdminQueryPage } from './components/AdminQueryPage';
 
-// Lazy-loaded pages (named exports adapted for React.lazy)
+// Lazy-loaded pages
 const LoginPage = lazy(() => import('./components/LoginPage').then(m => ({ default: m.LoginPage })));
 const OperationsDashboard = lazy(() => import('./components/OperationsDashboard').then(m => ({ default: m.OperationsDashboard })));
 const FileRequestPage = lazy(() => import('./components/FileRequestPage').then(m => ({ default: m.FileRequestPage })));
@@ -48,9 +27,8 @@ const AddIngestFileForm = lazy(() => import('./components/AddIngestFileForm').th
 const AdminRequests = lazy(() => import('./components/AdminRequests').then(m => ({ default: m.AdminRequests })));
 const UserManagement = lazy(() => import('./components/UserManagement').then(m => ({ default: m.UserManagement })));
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
-const DocumentsPage = lazy(() =>
-  import('./components/DocumentsPage').then((m) => ({ default: m.DocumentsPage }))
-);
+const DocumentsPage = lazy(() => import('./components/DocumentsPage').then((m) => ({ default: m.DocumentsPage })));
+
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center py-24">
     <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -61,23 +39,17 @@ type AppTab = 'file-request' | 'dashboard' | 'documents' | 'user-management' | '
 
 const AppContent: React.FC = () => {
   const { 
-    user, 
-    documents, 
-    notifications, 
-    markNotificationRead,
-    markAllNotificationsRead,
-    logout,
-    fetchDocuments,
-    fetchNotifications
+    user, documents, notifications, markNotificationRead, markAllNotificationsRead,
+    logout, fetchDocuments, fetchNotifications
   } = useArchive();
   
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
+  const [registrationTab, setRegistrationTab] = useState('branch'); // Tracks sub-menu
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // Fetch documents on mount and when tab changes
   useEffect(() => {
     if (user) {
       fetchDocuments();
@@ -85,7 +57,6 @@ const AppContent: React.FC = () => {
     }
   }, [user]);
 
-  // Filter documents based on search
   const filteredDocs = useMemo(() => {
     if (!searchQuery.trim()) return documents;
     const query = searchQuery.toLowerCase();
@@ -101,7 +72,6 @@ const AppContent: React.FC = () => {
     );
   }, [searchQuery, documents]);
 
-  // Updated menu items
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
     { id: 'documents', label: 'Documents', icon: Archive },
@@ -116,6 +86,7 @@ const AppContent: React.FC = () => {
         { id: 'department', label: 'Department', icon: Layers },
         { id: 'product', label: 'Product', icon: Package },
         { id: 'box', label: 'Box Registration', icon: Box },
+        { id: 'cabinet', label: 'File Box', icon: Archive }, 
         { id: 'drawer-assignment', label: 'Drawer Assignment', icon: Square },
         { id: 'add-to-box', label: 'Add File to Box', icon: FolderOpen }
       ]
@@ -132,7 +103,7 @@ const AppContent: React.FC = () => {
     !item.roles || (user && item.roles.includes(user.role))
   );
 
-  // Handle tab change
+  // Handle tab change (Now supports sub-tabs)
   const handleTabChange = (tabId: AppTab, subTab?: string) => {
     const tabData = menuItems.find(m => m.id === tabId);
     if (tabData?.roles && user && !tabData.roles.includes(user.role)) {
@@ -140,12 +111,14 @@ const AppContent: React.FC = () => {
       return;
     }
     setActiveTab(tabId);
-    if (subTab) {
-      // Handle sub tab if needed
+    
+    if (tabId === 'registration' && !subTab) {
+      setRegistrationTab('branch');
+    } else if (tabId === 'registration' && subTab) {
+      setRegistrationTab(subTab);
     }
   };
 
-  // Filter notifications based on user role
   const filteredNotifications = notifications.filter(n => {
     if (n.adminOnly) return user?.role === 'Admin';
     return true;
@@ -158,7 +131,6 @@ const AppContent: React.FC = () => {
     toast.success('All notifications marked as read');
   };
 
-  // If no user, show login page
   if (!user) {
     return (
       <Suspense fallback={<PageLoader />}>
@@ -169,14 +141,30 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-800/50 dark:bg-slate-950 font-sans text-slate-900	dark:text-white dark:text-white dark:text-slate-100 overflow-hidden">
-      <Toaster position="top-right" expand={false} richColors />
+  
+<Toaster 
+  position="top-right" 
+  expand={false} 
+  closeButton
+  toastOptions={{
+    classNames: {
+      toast: 'group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl rounded-2xl p-4 flex gap-3',
+      title: 'font-black text-slate-900 dark:text-white text-sm',
+      description: 'text-slate-500 dark:text-slate-400 text-xs font-medium mt-1',
+      actionButton: 'bg-blue-600 text-white font-bold rounded-lg px-3 py-1.5',
+      cancelButton: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-lg px-3 py-1.5',
+      error: 'group-[.toast]:bg-red-50 group-[.toast]:border-red-200 dark:group-[.toast]:bg-red-950/30 dark:group-[.toast]:border-red-900',
+      success: 'group-[.toast]:bg-green-50 group-[.toast]:border-green-200 dark:group-[.toast]:bg-green-950/30 dark:group-[.toast]:border-green-900',
+      warning: 'group-[.toast]:bg-amber-50 group-[.toast]:border-amber-200 dark:group-[.toast]:bg-amber-950/30 dark:group-[.toast]:border-amber-900',
+      info: 'group-[.toast]:bg-blue-50 group-[.toast]:border-blue-200 dark:group-[.toast]:bg-blue-950/30 dark:group-[.toast]:border-blue-900',
+    },
+  }}
+/>
       
       <AnimatePresence>
         {!sidebarOpen && (
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(true)}
             className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/80 backdrop-blur-sm z-40 lg:hidden"
           />
@@ -185,10 +173,7 @@ const AppContent: React.FC = () => {
 
       <motion.aside
         initial={false}
-        animate={{ 
-          width: sidebarOpen ? 280 : 80,
-          x: 0 
-        }}
+        animate={{ width: sidebarOpen ? 280 : 80, x: 0 }}
         className={`bg-[#0f172a] dark:bg-slate-950 text-slate-400 dark:text-slate-500 dark:text-slate-400 flex flex-col relative z-50 transition-all duration-300 ease-in-out border-r border-white/5 dark:border-slate-800/50 ${
           !sidebarOpen ? 'w-[80px]' : 'w-[280px]'
         }`}
@@ -196,11 +181,7 @@ const AppContent: React.FC = () => {
         <div className="p-6 flex items-center gap-3">
           <Logo className="w-10 h-10" variant="light" />
           {sidebarOpen && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-white font-black tracking-tighter text-2xl truncate dark:text-slate-200"
-            >
+            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-white font-black tracking-tighter text-2xl truncate dark:text-slate-200">
               AWASH<span className="text-blue-400 dark:text-blue-400">ARCH</span>
             </motion.span>
           )}
@@ -227,7 +208,12 @@ const AppContent: React.FC = () => {
                   {item.subItems.map((subItem) => (
                     <button
                       key={subItem.id}
-                      className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:dark:bg-slate-800/5 dark:text-slate-500 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/50 transition-colors"
+                      onClick={() => handleTabChange('registration', subItem.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
+                        registrationTab === subItem.id 
+                          ? 'bg-blue-600/20 text-blue-400 font-bold' 
+                          : 'text-slate-400 hover:text-white hover:dark:bg-slate-800/5 dark:text-slate-500 dark:hover:text-slate-200'
+                      }`}
                     >
                       <subItem.icon className="w-4 h-4" />
                       <span>{subItem.label}</span>
@@ -239,6 +225,7 @@ const AppContent: React.FC = () => {
           ))}
         </nav>
 
+        {/* User Profile Section - Sign Out Removed */}
         <div className="p-4 border-t border-white/5 dark:border-slate-800/50 space-y-4">
           <div className="flex items-center gap-3 px-4 py-3 dark:bg-slate-800/5 rounded-2xl border border-white/5 dark:border-slate-800/50 dark:bg-slate-800/30">
             <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 border border-white/10 dark:border-slate-700">
@@ -251,51 +238,35 @@ const AppContent: React.FC = () => {
               </div>
             )}
           </div>
-          
-          {sidebarOpen && (
-            <button
-              onClick={logout}
-              className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:dark:bg-slate-800/5 rounded-xl transition-all group dark:text-slate-500 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/50"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="font-bold text-sm">Sign Out</span>
-            </button>
-          )}
         </div>
       </motion.aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-20 dark:bg-slate-800/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 dark:border-slate-800 px-8 flex items-center justify-between z-40 sticky top-0">
           <div className="flex items-center gap-6">
-            <button 
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 transition-colors"
-            >
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 transition-colors">
               <Menu className="w-6 h-6" />
             </button>
             <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
             <div className="hidden md:flex items-center gap-2 text-sm">
               <span className="text-slate-400 dark:text-slate-500 dark:text-slate-400 font-medium">Archive System</span>
               <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 dark:text-slate-400" />
-              <span className="text-slate-900	dark:text-white dark:text-white dark:text-white font-black capitalize">{activeTab.replace('-', ' ')}</span>
+              <span className="text-slate-900	dark:text-white dark:text-white font-black capitalize">
+                {activeTab.replace('-', ' ')}
+                {activeTab === 'registration' && ` > ${registrationTab.replace('-', ' ')}`}
+              </span>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
             <div className="hidden lg:flex items-center gap-2 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700 dark:border-slate-700">
-              <span className="px-3 py-1.5 text-xs font-black text-slate-600 dark:text-slate-300">
-                {user.role}
-              </span>
+              <span className="px-3 py-1.5 text-xs font-black text-slate-600 dark:text-slate-300">{user.role}</span>
             </div>
             
-            {/* Theme Toggle */}
             <ThemeToggle />
             
             <div className="relative">
-              <button 
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl relative text-slate-500 dark:text-slate-400 transition-colors group"
-              >
+              <button onClick={() => setShowNotifications(!showNotifications)} className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl relative text-slate-500 dark:text-slate-400 transition-colors group">
                 <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform" />
                 {unreadNotifications.length > 0 && (
                   <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800 shadow-sm"></span>
@@ -304,51 +275,29 @@ const AppContent: React.FC = () => {
 
               <AnimatePresence>
                 {showNotifications && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-4 w-80 dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 dark:border-slate-700 shadow-2xl z-50 overflow-hidden"
-                  >
+                  <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute right-0 mt-4 w-80 dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 dark:border-slate-700 shadow-2xl z-50 overflow-hidden">
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800 dark:border-slate-700 flex items-center justify-between">
-                      <h4 className="font-black text-slate-900	dark:text-white dark:text-white dark:text-white">Notifications</h4>
+                      <h4 className="font-black text-slate-900	dark:text-white">Notifications</h4>
                       <div className="flex items-center gap-2">
                         {unreadNotifications.length > 0 && (
-                          <button 
-                            onClick={handleMarkAllRead}
-                            className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-bold"
-                          >
-                            Mark all read
-                          </button>
+                          <button onClick={handleMarkAllRead} className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-bold">Mark all read</button>
                         )}
-                        <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:text-slate-400 dark:hover:text-slate-300">
-                          <CheckCircle2 className="w-5 h-5" />
-                        </button>
+                        <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"><CheckCircle2 className="w-5 h-5" /></button>
                       </div>
                     </div>
                     <div className="max-h-[400px] overflow-y-auto p-2">
                       {filteredNotifications.length > 0 ? (
                         filteredNotifications.map(notification => (
-                          <div 
-                            key={notification.id} 
-                            onClick={() => markNotificationRead(notification.id)}
-                            className={`p-4 rounded-2xl mb-1 cursor-pointer transition-colors ${
-                              notification.read 
-                                ? 'opacity-50 hover:bg-slate-50 dark:bg-slate-800/50 dark:hover:bg-slate-700' 
-                                : 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50'
-                            }`}
-                          >
-                            <p className="text-xs font-black text-slate-900	dark:text-white dark:text-white dark:text-white mb-1">{notification.title}</p>
+                          <div key={notification.id} onClick={() => markNotificationRead(notification.id)} className={`p-4 rounded-2xl mb-1 cursor-pointer transition-colors ${notification.read ? 'opacity-50 hover:bg-slate-50 dark:bg-slate-800/50 dark:hover:bg-slate-700' : 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50'}`}>
+                            <p className="text-xs font-black text-slate-900	dark:text-white mb-1">{notification.title}</p>
                             <p className="text-xs text-slate-600 dark:text-slate-300 leading-tight font-medium">{notification.message}</p>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 dark:text-slate-400 mt-2">
-                              {new Date(notification.timestamp).toLocaleString()}
-                            </p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2">{new Date(notification.timestamp).toLocaleString()}</p>
                           </div>
                         ))
                       ) : (
                         <div className="p-8 text-center">
                           <Bell className="w-8 h-8 text-slate-200 dark:text-slate-700 mx-auto mb-2" />
-                          <p className="text-sm text-slate-400 dark:text-slate-500 dark:text-slate-400 font-medium">No notifications</p>
+                          <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">No notifications</p>
                         </div>
                       )}
                     </div>
@@ -360,6 +309,15 @@ const AppContent: React.FC = () => {
             <button className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 transition-colors">
               <Settings className="w-5 h-5" />
             </button>
+
+            {/* Moved Sign Out Button Here */}
+            <button 
+              onClick={logout}
+              title="Sign Out"
+              className="p-2.5 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         </header>
 
@@ -367,110 +325,22 @@ const AppContent: React.FC = () => {
           <div className="max-w-[1400px] mx-auto">
             <Suspense fallback={<PageLoader />}>
             <AnimatePresence mode="wait">
-              {activeTab === 'dashboard' && (
-                <motion.div
-                  key="dashboard"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <OperationsDashboard />
-                </motion.div>
-              )}
-
-              {activeTab === 'documents' && (
-  <motion.div
-    key="documents"
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-  >
-    <DocumentsPage />
-  </motion.div>
-)}
-
-              {activeTab === 'file-request' && (
-                <motion.div
-                  key="file-request"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <FileRequestPage />
-                </motion.div>
-              )}
-
+              {activeTab === 'dashboard' && <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}><OperationsDashboard /></motion.div>}
+              {activeTab === 'documents' && <motion.div key="documents" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}><DocumentsPage /></motion.div>}
+              {activeTab === 'file-request' && <motion.div key="file-request" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}><FileRequestPage /></motion.div>}
+              
               {activeTab === 'registration' && (user?.role === 'Admin' || user?.role === 'Manager') && (
-                <motion.div
-                  key="registration"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <RegistrationPage />
+                <motion.div key="registration" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                  <RegistrationPage activeTab={registrationTab} />
                 </motion.div>
               )}
 
-              {activeTab === 'status-update' && (user?.role === 'Admin' || user?.role === 'Manager') && (
-                <motion.div
-                  key="status-update"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <StatusUpdatePage />
-                </motion.div>
-              )}
-{activeTab === 'admin-query' && user?.role === 'Admin' && (
-  <motion.div
-    key="admin-query"
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-  >
-    <AdminQueryPage />
-  </motion.div>
-)}
-              {activeTab === 'upload' && (user?.role === 'Admin' || user?.role === 'Manager') && (
-                <motion.div
-                  key="upload"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <AddIngestFileForm userRole={user.role} />
-                </motion.div>
-              )}
-              {activeTab === 'request-management' && (user?.role === 'Admin' || user?.role === 'Manager') && (
-                <motion.div
-                key="request-management"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                >
-                  <AdminRequests />
-                </motion.div>
-)}
-              {activeTab === 'user-management' && (user?.role === 'Admin' || user?.role === 'Manager') && (
-                <motion.div
-                  key="user-management"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <UserManagement />
-                </motion.div>
-              )}
-              {activeTab === 'reports' && (user?.role === 'Admin' || user?.role === 'Manager') && (
-                <motion.div
-                  key="reports"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <ReportsPage />
-                </motion.div>
-              )}
+              {activeTab === 'status-update' && (user?.role === 'Admin' || user?.role === 'Manager') && <motion.div key="status-update" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}><StatusUpdatePage /></motion.div>}
+              {activeTab === 'admin-query' && user?.role === 'Admin' && <motion.div key="admin-query" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}><AdminQueryPage /></motion.div>}
+              {activeTab === 'upload' && (user?.role === 'Admin' || user?.role === 'Manager') && <motion.div key="upload" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}><AddIngestFileForm userRole={user.role} /></motion.div>}
+              {activeTab === 'request-management' && (user?.role === 'Admin' || user?.role === 'Manager') && <motion.div key="request-management" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}><AdminRequests /></motion.div>}
+              {activeTab === 'user-management' && (user?.role === 'Admin' || user?.role === 'Manager') && <motion.div key="user-management" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}><UserManagement /></motion.div>}
+              {activeTab === 'reports' && (user?.role === 'Admin' || user?.role === 'Manager') && <motion.div key="reports" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}><ReportsPage /></motion.div>}
             </AnimatePresence>
             </Suspense>
           </div>
@@ -478,33 +348,16 @@ const AppContent: React.FC = () => {
       </main>
 
       <AnimatePresence>
-        {selectedDoc && (
-          <DocumentPreview 
-            document={selectedDoc} 
-            onClose={() => setSelectedDoc(null)} 
-          />
-        )}
+        {selectedDoc && <DocumentPreview document={selectedDoc} onClose={() => setSelectedDoc(null)} />}
       </AnimatePresence>
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 5px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #e2e8f0;
-        }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #334155;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #cbd5e1;
-        }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #475569;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
       `}</style>
     </div>
   );

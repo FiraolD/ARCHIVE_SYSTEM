@@ -1,11 +1,15 @@
-// backend/src/routes/admin.js
-
+// src/routes/admin.js
 const express = require('express');
 const router = express.Router();
-const { authenticate, authorize } = require('../middleware/auth');
-const { executeQuery } = require('../controllers/queryController');
+const { authenticate } = require('../middleware/auth');
+const role = require('../middleware/role');
+const adminController = require('../controllers/adminController');
 
-// Direct SQL query (Admin only)
-router.post('/query', authenticate, authorize('Admin'), executeQuery);
+// All admin routes require authentication and Admin role
+router.use(authenticate);
+router.use(role('Admin'));
+
+// SQL Console endpoint
+router.post('/query', adminController.executeQuery);
 
 module.exports = router;

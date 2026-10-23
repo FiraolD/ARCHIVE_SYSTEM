@@ -1,29 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  UserPlus, 
-  Shield, 
-  Mail, 
-  Lock, 
-  User as UserIcon,
-  Edit2,
-  Trash2,
-  CheckCircle2,
-  XCircle,
-  Search,
-  Filter,
-  MoreVertical,
-  Building2,
-  Loader2
+import {
+  Users as UsersIcon, UserPlus, Mail, Lock, User as UserIcon, Edit2, Trash2,
+  CheckCircle2, XCircle, MoreVertical, Building2, Loader2, RefreshCw,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
-import { userApi, registrationApi } from '../services/api'; // Make sure registrationApi is imported
+import { userApi, registrationApi } from '../services/api';
+import {
+  PageHeader, PageHeaderButton, SearchInput, EmptyState, Modal,
+} from './ui';
 
 interface User {
   id: string;
-  name: string; 
+  name: string;
   email: string;
   role: 'Admin' | 'Manager' | 'Agent' | 'Viewer';
   department?: string;
@@ -36,11 +26,7 @@ interface User {
   is_active: boolean;
 }
 
-interface Department {
-  id: string;
-  name: string;
-  code: string;
-}
+interface Department { id: string; name: string; code: string; }
 
 export const UserManagement: React.FC = () => {
   const { user: currentUser } = useArchive();
@@ -51,10 +37,7 @@ export const UserManagement: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-    fetchDepartments();
-  }, []);
+  useEffect(() => { fetchUsers(); fetchDepartments(); }, []);
 
   const fetchUsers = async () => {
     try {
@@ -64,9 +47,7 @@ export const UserManagement: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch users:', error);
       toast.error('Failed to fetch users');
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
   const fetchDepartments = async () => {
@@ -81,7 +62,6 @@ export const UserManagement: React.FC = () => {
 
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
-    
     try {
       await userApi.deleteUser(userId);
       toast.success('User deleted successfully');
@@ -92,7 +72,7 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = users.filter(user =>
     user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -100,208 +80,187 @@ export const UserManagement: React.FC = () => {
   );
 
   if (isLoading && users.length === 0) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-      </div>
-    );
+    return <div className="flex justify-center items-center h-64"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>;
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-black text-slate-900 dark:text-white	dark:text-white dark:text-white">User Management</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Create and manage system users with department assignment</p>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <PageHeader
+        title="User Management"
+        subtitle="Create and manage system users with department assignment"
+        icon={UsersIcon}
+        actions={
+          <>
+            <PageHeaderButton icon={RefreshCw} onClick={fetchUsers}>Refresh</PageHeaderButton>
+            <PageHeaderButton icon={UserPlus} variant="solid" onClick={() => setShowAddForm(true)}>
+              Add User
+            </PageHeaderButton>
+          </>
+        }
+      />
+
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search by name, email, role, or department…"
+        />
+      </div>
+
+      {filteredUsers.length === 0 ? (
+        <EmptyState icon={UsersIcon} title="No users found"
+          description="Click 'Add User' to create the first one"
+          action={
+            <button onClick={() => setShowAddForm(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700">
+              Add User
+            </button>
+          } />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredUsers.map(user => (
+            <UserCard
+              key={user.id}
+              user={user}
+              isSelf={user.id === currentUser?.id}
+              onEdit={() => setEditingUser(user)}
+              onDelete={() => handleDeleteUser(user.id)}
+            />
+          ))}
         </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
-        >
-          <UserPlus className="w-5 h-5" />
-          Add New User
-        </button>
-      </div>
+      )}
 
-      {/* Search Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search users by name, email, role, or department..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Users Grid */}
-      <div className="grid grid-cols-1 gap-6">
-        <AnimatePresence>
-          {filteredUsers.length > 0 ? (
-            filteredUsers.map((user) => (
-              <motion.div
-                key={user.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white dark:bg-slate-900 rounded-2xl border  p-6 hover:shadow-lg transition-all"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-black text-lg">
-                      {user.name?.charAt(0) || 'U'}
-                    </div>
-                    <div>
-                      <h3 className="font-black text-slate-900 dark:text-white dark:text-white">{user.name}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
-                    </div>
-                  </div>
-                  <div className="relative group">
-                    <button className="p-2 hover:bg-slate-100 rounded-lg">
-                      <MoreVertical className="w-4 h-4 text-slate-400" />
-                    </button>
-                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700  group-hover:block z-10">
-                      <button
-                        onClick={() => setEditingUser(user)}
-                        className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-2 text-sm"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        Edit User
-                      </button>
-                      {user.id !== currentUser?.id && (
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="w-full text-left px-4 py-3 hover:bg-red-50 text-red-600 flex items-center gap-2 text-sm"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete User
-                        </button>
-                      )}
-                    </div>   :   
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-left">
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Role</span>
-          :       <RoleBadge role={user.role} />
-                  </div>
-                  
-                  {/* Display Department */}
-                  {user.department_name && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Department:  </span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                        <Building2 className="w-3 h-3" />
-                        {user.department_name}
-                      </span>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-left">
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Status:  </span>
-                    <span className={`flex items-center gap-1 text-xs font-bold ${
-                      user.is_active ? 'text-green-600' : 'text-slate-400'
-                    }`}>
-                      {user.is_active? (
-                        <><CheckCircle2 className="w-3 h-3" /> Active</>
-                      ) : (
-                        <><XCircle className="w-3 h-3" /> Inactive</>
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-left">
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Joined:</span>
-                    <span className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-300">  
-                      {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-                    </span>
-                  </div>
-                  {user.lastLogin && (
-                    <div className="flex items-center justify-between">  
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Last Login:</span>
-                      <span className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-300">  
-                        {new Date(user.lastLogin).toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12 text-slate-400">
-              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No users found</p>
-              <p className="text-sm mt-1">Click "Add New User" to create one</p>
-            </div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Add/Edit User Modal */}
-      <AnimatePresence>
-        {(showAddForm || editingUser) && (
-          <UserFormModal
-            user={editingUser}
-            departments={departments}
-            onClose={() => {
-              setShowAddForm(false);
-              setEditingUser(null);
-            }}
-            onSuccess={() => {
-              fetchUsers();
-              setShowAddForm(false);
-              setEditingUser(null);
-            }}
-          />
-        )}
-      </AnimatePresence>
+      <Modal
+        open={showAddForm || !!editingUser}
+        onClose={() => { setShowAddForm(false); setEditingUser(null); }}
+        title={editingUser ? 'Edit User' : 'Create New User'}
+        size="sm"
+      >
+        <UserForm
+          editing={editingUser}
+          departments={departments}
+          onSuccess={() => { fetchUsers(); setShowAddForm(false); setEditingUser(null); }}
+          onCancel={() => { setShowAddForm(false); setEditingUser(null); }}
+        />
+      </Modal>
     </div>
   );
 };
 
+const UserCard: React.FC<{
+  user: User;
+  isSelf: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}> = ({ user, isSelf, onEdit, onDelete }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  return (
+    <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-all">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shrink-0">
+            {user.name?.charAt(0) || 'U'}
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-black text-slate-900 dark:text-white truncate">{user.name}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+          </div>
+        </div>
+        <div className="relative">
+          <button onClick={() => setMenuOpen(o => !o)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+            <MoreVertical className="w-4 h-4 text-slate-400" />
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl z-20 overflow-hidden">
+                <button
+                  onClick={() => { setMenuOpen(false); onEdit(); }}
+                  className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 text-sm"
+                >
+                  <Edit2 className="w-4 h-4" /> Edit User
+                </button>
+                {!isSelf && (
+                  <button
+                    onClick={() => { setMenuOpen(false); onDelete(); }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 flex items-center gap-2 text-sm"
+                  >
+                    <Trash2 className="w-4 h-4" /> Delete User
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-2 text-sm">
+        <Row label="Role"><RoleBadge role={user.role} /></Row>
+        {user.department_name && (
+          <Row label="Department">
+            <span className="text-xs font-bold flex items-center gap-1">
+              <Building2 className="w-3 h-3" /> {user.department_name}
+            </span>
+          </Row>
+        )}
+        <Row label="Status">
+          <span className={`flex items-center gap-1 text-xs font-bold ${user.is_active ? 'text-green-600' : 'text-slate-400'}`}>
+            {user.is_active ? <><CheckCircle2 className="w-3 h-3" /> Active</> : <><XCircle className="w-3 h-3" /> Inactive</>}
+          </span>
+        </Row>
+        <Row label="Joined">
+          <span className="text-xs text-slate-700 dark:text-slate-300">
+            {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+          </span>
+        </Row>
+      </div>
+    </div>
+  );
+};
+
+const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="flex items-center justify-between">
+    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}:</span>
+    {children}
+  </div>
+);
+
 const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
   const styles: Record<string, string> = {
-    Admin: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200',
-    Manager: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200',
-    Agent: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200',
-    Viewer: 'bg-slate-100 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+    Admin: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900',
+    Manager: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900',
+    Agent: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900',
+    Viewer: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
   };
-
   return (
-    <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${styles[role] || 'bg-slate-100 text-slate-700 dark:text-slate-300'}`}>
+    <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${styles[role] || styles.Viewer}`}>
       {role}
     </span>
   );
 };
 
-// Updated UserFormModal with Department Selection
-const UserFormModal: React.FC<{ 
-  user?: User | null; 
+const UserForm: React.FC<{
+  editing: User | null;
   departments: Department[];
-  onClose: () => void; 
   onSuccess: () => void;
-}> = ({ user, departments, onClose, onSuccess }) => {
+  onCancel: () => void;
+}> = ({ editing, departments, onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
+    name: editing?.name || '',
+    email: editing?.email || '',
     password: '',
-    role: user?.role || 'Agent',
-    department: user?.department_name || '',
-    is_active: user?.is_active ?? true
+    role: editing?.role || 'Agent',
+    department: editing?.department_name || '',
+    is_active: editing?.is_active ?? true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-
     try {
-      if (user) {
-        await userApi.updateUser(user.id, formData);
+      if (editing) {
+        await userApi.updateUser(editing.id, formData);
         toast.success('User updated successfully');
       } else {
         await userApi.createUser(formData);
@@ -309,151 +268,79 @@ const UserFormModal: React.FC<{
       }
       onSuccess();
     } catch (error: any) {
-      console.error('User operation error:', error);
       toast.error(error.response?.data?.error || 'Operation failed');
-    } finally {
-      setIsSubmitting(false);
-    }
+    } finally { setIsSubmitting(false); }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
-        className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-8"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-6">
-          {user ? 'Edit User' : 'Create New User'}
-        </h3>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
-              Full Name
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
-              placeholder="John Doe"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
-              Email Address
-            </label>
-            <input
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
-              placeholder="john@example.com"
-            />
-          </div>
-
-          {!user && (
-            <div>
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
-                Password
-              </label>
-              <input
-                type="password"
-                required={!user}
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
-                placeholder="••••••••"
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
-              Role
-            </label>
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-              className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
-            >
-              <option value="Admin">Admin</option>
-              <option value="Manager">Manager</option>
-              <option value="Agent">Agent</option>
-              <option value="Viewer">Viewer</option>
-            </select>
-          </div>
-
-          {/* Department Selection */}
-          <div>
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
-              Department
-            </label>
-            <select
-              value={formData.department}
-              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none"
-            >
-              <option value="">Select Department</option>
-              {departments && departments.length > 0 ? (
-                departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name} ({dept.code})
-                  </option>
-                ))
-              ) : (
-                <option disabled>No departments available</option>
-              )}
-            </select>
-          </div>
-
-          {user && (
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="is_active"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-              />
-              <label htmlFor="is_active" className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-300">
-                User is active
-              </label>
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-4 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (user ? 'Update User' : 'Create User')}
-            </button>
-          </div>
-        </form>
-        
-      </motion.div>
-      
-    </motion.div>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div>
+        <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+          <UserIcon className="w-3 h-3" /> Full Name
+        </label>
+        <input type="text" required value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
+          placeholder="John Doe" />
+      </div>
+      <div>
+        <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+          <Mail className="w-3 h-3" /> Email Address
+        </label>
+        <input type="email" required value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
+          placeholder="john@example.com" />
+      </div>
+      {!editing && (
+        <div>
+          <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+            <Lock className="w-3 h-3" /> Password
+          </label>
+          <input type="password" required value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
+            placeholder="••••••••" />
+        </div>
+      )}
+      <div>
+        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Role</label>
+        <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+          className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none">
+          <option value="Admin">Admin</option>
+          <option value="Manager">Manager</option>
+          <option value="Agent">Agent</option>
+          <option value="Viewer">Viewer</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Department</label>
+        <select value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+          className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none">
+          <option value="">Select Department</option>
+          {departments.length > 0
+            ? departments.map((dept) => <option key={dept.id} value={dept.id}>{dept.name} ({dept.code})</option>)
+            : <option disabled>No departments available</option>}
+        </select>
+      </div>
+      {editing && (
+        <div className="flex items-center gap-3">
+          <input type="checkbox" id="is_active" checked={formData.is_active}
+            onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500" />
+          <label htmlFor="is_active" className="text-sm font-medium text-slate-700 dark:text-slate-300">User is active</label>
+        </div>
+      )}
+      <div className="flex gap-3 pt-4">
+        <button type="button" onClick={onCancel}
+          className="flex-1 py-3 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+          Cancel
+        </button>
+        <button type="submit" disabled={isSubmitting}
+          className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
+          {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (editing ? 'Update User' : 'Create User')}
+        </button>
+      </div>
+    </form>
   );
 };

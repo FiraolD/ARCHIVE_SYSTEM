@@ -180,5 +180,12 @@ export const auditApi = {
   getDocumentLogs: (documentId) => api.get(`/audit/logs/document/${documentId}`),
   getStats: () => api.get('/audit/stats'),
 };
-
+export const boxApi = {
+  list:   (params) => api.get('/boxes', { params }),
+  get:    (id)                    => api.get(`/boxes/${id}`),
+  updateStatus: (id, status, note) =>
+    api.patch(`/boxes/${id}/status`, { status, note }),
+  removeDocument: (boxId, documentId) =>
+    api.delete(`/boxes/${boxId}/documents/${documentId}`),
+};
 export default api;

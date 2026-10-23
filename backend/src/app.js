@@ -122,6 +122,7 @@ app.use('/api/users', authenticate, userRoutes);
 app.use('/api/dashboard', authenticate, dashboardRoutes);
 app.use('/api/reports', authenticate, reportsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/boxes', require('./routes/boxes'));
 
 // Health check
 app.get('/api/health', async (req, res) => {
