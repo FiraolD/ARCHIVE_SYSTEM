@@ -6,7 +6,6 @@ import {
   Copy, CheckCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { DocumentUploader } from './DocumentUploader';
 import { FILE_TYPES } from '../lib/constants';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi } from '../services/api';
@@ -32,7 +31,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
   const [selectedBranchCode, setSelectedBranchCode] = useState<string>('');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('');
-  const [selectedProductCode, setSelectedProductCode] = useState<string>('');
+  const [, setSelectedProductCode] = useState<string>('');
   const [productCustomValues, setProductCustomValues] = useState<Record<string, string>>({});
   const [selectedCabinet, setSelectedCabinet] = useState<string>('');
   const [selectedDrawer, setSelectedDrawer] = useState<string>('');
@@ -53,7 +52,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
     sumInsured: '', dateOfAccident: '', plateNumber: '',
   });
 
-  const { branches, departments, products, fetchBranches, fetchDepartments, fetchProducts, ingestDocument } = useArchive();
+  const { branches, products, fetchBranches, fetchDepartments, fetchProducts, ingestDocument } = useArchive();
 
   useEffect(() => {
     fetchBranches();
