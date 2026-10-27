@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminApi } from '../services/api';
+import { getApiErrorDetails } from '../utils/apiError';
 import { PageHeader } from './ui';
 
 interface QueryResult {
@@ -71,9 +72,9 @@ export const AdminQueryPage: React.FC = () => {
       } else {
         toast.success(`Query OK — ${response.data.rowCount} row(s) in ${response.data.duration}ms`);
       }
-    } catch (err: any) {
-      const errData = err.response?.data || { error: err.message };
-      setError(errData);
+    } catch (err: unknown) {
+      const details = getApiErrorDetails(err);
+      setError({ error: details.error || details.message || 'Query failed' });
       toast.error(errData.error || 'Query failed');
     } finally {
       setIsRunning(false);
