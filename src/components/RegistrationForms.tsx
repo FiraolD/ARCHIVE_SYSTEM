@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { getApiErrorDetails } from '../utils/apiError';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi } from '../services/api';
+import type { Department } from '../types';
 import { DrawerAssignment } from './DrawerAssignment';
 import { AddFileToBox } from './AddFileToBox';
 import { PageHeader } from './ui';
@@ -98,7 +99,7 @@ const DepartmentRegistrationForm: React.FC = () => {
   const [formData, setFormData] = useState({ name: '', code: '' });
   const [, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [existingDepartments, setExistingDepartments] = useState<any[]>([]);
+  const [existingDepartments, setExistingDepartments] = useState<Department[]>([]);
   const [suggestedCode, setSuggestedCode] = useState<string>('');
 
   useEffect(() => {
