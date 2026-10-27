@@ -155,8 +155,8 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, onCl
                       <Layers className="w-3.5 h-3.5" /> Legacy Record
                     </div>
                     <div className="mt-1.5 text-xs text-indigo-800 space-y-0.5">
-                      <div>Source: <span className="font-mono">{legacyFields.legacy_source}</span></div>
-                      {legacyFields.legacy_id && <div>Legacy ID: <span className="font-mono">{legacyFields.legacy_id}</span></div>}
+                      <div>Source: <span className="font-mono">{String(legacyFields.legacy_source)}</span></div>
+                      {legacyFields.legacy_id && <div>Legacy ID: <span className="font-mono">{String(legacyFields.legacy_id)}</span></div>}
                     </div>
                   </div>
                 )}
