@@ -415,7 +415,7 @@ const returnDocument = async (req, res) => {
       const request = requestResult.rows[0];
 
       // Admin can complete a direct return (Approved/Checked-out) or verify a
-      // requester-submitted return (Returned/Returned). Other states are conflicts.
+      // requester-submitted return (Return Pending/Returned). Other states conflict.
       if (!canAdminReturn(request.status, request.document_status)) {
         return { outcome: 'conflict', requestStatus: request.status, documentStatus: request.document_status };
       }
@@ -497,7 +497,7 @@ const returnDocumentByRequester = async (req, res) => {
       if (doc.rowCount === 0) return { outcome: 'conflict', requestStatus: request.status, documentStatus: request.doc_status };
 
       const fr = await client.query(
-        `UPDATE file_requests SET status = 'Returned', actual_return_date = CURRENT_DATE
+        `UPDATE file_requests SET status = 'Return Pending', actual_return_date = CURRENT_DATE
           WHERE id = $1 AND status = 'Approved' RETURNING id`,
         [id]
       );
