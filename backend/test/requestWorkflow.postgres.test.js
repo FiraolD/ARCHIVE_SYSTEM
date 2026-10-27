@@ -21,44 +21,30 @@ test('PostgreSQL prevents double checkout and rolls back failed workflow changes
 
     await t.test('only one of two concurrent approvals can check out the same document', async () => {
       const clients = await Promise.all([pool.connect(), pool.connect()]);
-      let releaseFirstLock;
-      let firstHasLock;
-      const lockReady = new Promise((resolve) => { firstHasLock = resolve; });
-      const letFirstContinue = new Promise((resolve) => { releaseFirstLock = resolve; });
-
       try {
         await clients[0].query('BEGIN');
-        await clients[0].query(`SELECT id FROM ${qname('requests')} WHERE id = 1 FOR UPDATE`);
-        firstHasLock();
+        await clients[0].query(`UPDATE ${qname('documents')} SET status = 'Checked-out' WHERE id = 1 AND status = 'Active' RETURNING id`)
+          .then((result) => assert.equal(result.rowCount, 1));
+        await clients[0].query(`UPDATE ${qname('requests')} SET status = 'Approved' WHERE id = 1 AND status = 'Pending'`);
 
-        const firstWork = (async () => {
-          const update = await clients[0].query(
-            `UPDATE ${qname('documents')} SET status = 'Checked-out' WHERE id = 1 AND status = 'Active' RETURNING id`
-          );
-          assert.equal(update.rowCount, 1);
-          await clients[0].query(`UPDATE ${qname('requests')} SET status = 'Approved' WHERE id = 1 AND status = 'Pending'`);
-          await letFirstContinue;
-          await clients[0].query('COMMIT');
-        })();
-
-        await lockReady;
         await clients[1].query('BEGIN');
-        await clients[1].query(`SELECT id FROM ${qname('requests')} WHERE id = 2 FOR UPDATE`);
-        const secondUpdate = await clients[1].query(
+        const secondUpdatePromise = clients[1].query(
           `UPDATE ${qname('documents')} SET status = 'Checked-out' WHERE id = 1 AND status = 'Active' RETURNING id`
         );
+        await clients[0].query('COMMIT');
+        const secondUpdate = await secondUpdatePromise;
         assert.equal(secondUpdate.rowCount, 0, 'second request must not claim an already checked-out document');
         await clients[1].query('ROLLBACK');
-        releaseFirstLock();
-        await firstWork;
 
         const document = await pool.query(`SELECT status FROM ${qname('documents')} WHERE id = 1`);
         const requests = await pool.query(`SELECT id, status FROM ${qname('requests')} ORDER BY id`);
         assert.equal(document.rows[0].status, 'Checked-out');
         assert.deepEqual(requests.rows, [{ id: 1, status: 'Approved' }, { id: 2, status: 'Pending' }]);
       } finally {
-        releaseFirstLock();
-        clients.forEach((client) => client.release());
+        for (const client of clients) {
+          try { await client.query('ROLLBACK'); } catch {}
+          client.release();
+        }
       }
     });
 
