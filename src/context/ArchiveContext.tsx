@@ -69,7 +69,7 @@ interface ArchiveContextType {
   // Documents
   fetchDocuments: (params?: DocumentFilters) => Promise<void>;
   fetchDocument: (id: string) => Promise<Document>;
-  ingestDocument: (formData: FormData) => Promise<any>;
+  ingestDocument: (formData: FormData) => Promise<Document>;
   updateDocumentStatus: (id: string, status: string) => Promise<void>;
   updatePhysicalPlacement: (id: string, placement: string) => Promise<void>;
 
@@ -81,16 +81,16 @@ interface ArchiveContextType {
   fetchProducts: () => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   fetchBoxes: () => Promise<void>;
-  addBox: (box: any) => Promise<void>;
+  addBox: (box: { branchCode: string; fileType: string }) => Promise<void>;
   fetchCabinets: () => Promise<void>;
   addCabinet: (cabinet: { number: string; drawers: string[] }) => Promise<void>;
-  assignCabinet: (assignment: any) => Promise<void>;
-  assignBox: (assignment: any) => Promise<void>;
+  assignCabinet: (assignment: { cabinetId: string; branchId: string }) => Promise<void>;
+  assignBox: (assignment: { boxId: string; cabinetId: string; drawerNumber: string }) => Promise<void>;
 
   // File Requests
   fetchMyRequests: () => Promise<void>;
-  fetchAllRequests: (params?: any) => Promise<void>;
-  addFileRequest: (request: any) => Promise<void>;
+  fetchAllRequests: (params?: Record<string, unknown>) => Promise<void>;
+  addFileRequest: (request: { documentId: string; [key: string]: unknown }) => Promise<void>;
   approveRequest: (id: string) => Promise<void>;
   returnDocument: (id: string) => Promise<void>;
 
@@ -375,7 +375,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const addBox = async (box: any) => {
+  const addBox = async (box: { branchCode: string; fileType: string }) => {
     try {
       setIsLoading(true);
       const response = await registrationApi.createBox(box);
@@ -412,7 +412,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const assignCabinet = async (assignment: any) => {
+  const assignCabinet = async (assignment: { cabinetId: string; branchId: string }) => {
     try {
       setIsLoading(true);
       await registrationApi.assignCabinet(assignment);
@@ -426,7 +426,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const assignBox = async (assignment: any) => {
+  const assignBox = async (assignment: { boxId: string; cabinetId: string; drawerNumber: string }) => {
     try {
       setIsLoading(true);
       await registrationApi.assignBox(assignment);
@@ -452,7 +452,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const fetchAllRequests = async (params?: any) => {
+  const fetchAllRequests = async (params?: Record<string, unknown>) => {
     try {
       const response = await requestApi.getAllRequests(params);
       setFileRequests(response.data);
@@ -461,7 +461,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const addFileRequest = async (request: any) => {
+  const addFileRequest = async (request: { documentId: string; [key: string]: unknown }) => {
     try {
       setIsLoading(true);
       const response = await requestApi.createRequest(request);
