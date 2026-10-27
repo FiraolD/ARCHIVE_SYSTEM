@@ -60,3 +60,5 @@ jobs:
           while IFS= read -r -d '' file; do
             node --check "$file"
           done < <(find server.js src -type f -name '*.js' -not -path '*/node_modules/*' -print0)
+      - name: Run backend unit tests
+        run: npm test
