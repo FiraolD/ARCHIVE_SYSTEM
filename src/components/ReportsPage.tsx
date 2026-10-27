@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  BarChart3, TrendingUp, PieChart, Download, ArrowUpRight, FileBarChart,
+  BarChart3, TrendingUp, PieChart, Download, FileBarChart,
   Calendar, Loader2, RefreshCw, FileText, Trash2, CheckCircle, Clock,
   Users, Archive, AlertCircle,
 } from 'lucide-react';
@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { reportsApi } from '../services/api';
-import { useArchive } from '../context/ArchiveContext';
 import {
   PageHeader, PageHeaderButton, StatCard, EmptyState, Modal,
 } from './ui';
@@ -84,7 +83,7 @@ export const ReportsPage: React.FC = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
       toast.success('Download started');
-    } catch (error) { toast.error('Failed to download report'); }
+    } catch { toast.error('Failed to download report'); }
   };
 
   const handleDeleteReport = async (reportId: string) => {
@@ -94,7 +93,7 @@ export const ReportsPage: React.FC = () => {
       await reportsApi.deleteReport(reportId);
       toast.success('Report deleted successfully');
       await loadGeneratedReports();
-    } catch (error) { toast.error('Failed to delete report'); } finally { setDeletingId(null); }
+    } catch { toast.error('Failed to delete report'); } finally { setDeletingId(null); }
   };
 
   const getMaxTrendValue = () => {
