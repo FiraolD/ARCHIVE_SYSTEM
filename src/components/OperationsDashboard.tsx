@@ -52,7 +52,7 @@ export const OperationsDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [claimDocuments, setClaimDocuments] = useState<DashboardDocument[]>([]);
-  const [policyDocuments, setPolicyDocuments] = useState<any[]>([]);
+  const [policyDocuments, setPolicyDocuments] = useState<DashboardDocument[]>([]);
 
   useEffect(() => { loadDashboard(); loadDocumentsByType(); }, []);
 
