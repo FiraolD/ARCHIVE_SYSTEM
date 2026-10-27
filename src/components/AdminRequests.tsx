@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { getApiErrorDetails } from '../utils/apiError';
 import { format } from 'date-fns';
 import { requestApi } from '../services/api';
 import { PageHeader, PageHeaderButton, SearchInput, FilterBar, EmptyState, Modal } from './ui';
@@ -62,10 +63,10 @@ export const AdminRequests: React.FC = () => {
       const params = statusFilter !== 'all' ? { status: statusFilter } : {};
       const response = await requestApi.getAllRequests(params);
       setRequests(response.data);
-    } catch (error: any) {
-      const msg = error.response?.status === 403
+    } catch (error: unknown) {
+      const msg = getApiErrorDetails(error).status === 403
         ? 'You do not have permission to view requests'
-        : error.response?.data?.error || 'Failed to load requests';
+        : getApiErrorDetails(error).error || 'Failed to load requests';
       toast.error(msg);
       setRequests([]);
     } finally {
@@ -100,8 +101,8 @@ export const AdminRequests: React.FC = () => {
       setRejectReason('');
       await loadRequests();
       setSelectedRequest(null);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to reject request');
+    } catch (error: unknown) {
+      toast.error(getApiErrorDetails(error).error || 'Failed to reject request');
     } finally {
       setProcessingId(null);
     }
