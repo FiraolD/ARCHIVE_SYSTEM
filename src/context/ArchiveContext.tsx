@@ -567,7 +567,6 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       fetchMyRequests();
     }
     // documents + facets fetched by the filters effect
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // ---------------------------------------------------------------------------
