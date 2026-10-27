@@ -54,7 +54,7 @@ const AppContent: React.FC = () => {
       fetchDocuments();
       fetchNotifications();
     }
-  }, [user]);
+  }, [user, fetchDocuments, fetchNotifications]);
 
 
   const menuItems = [
