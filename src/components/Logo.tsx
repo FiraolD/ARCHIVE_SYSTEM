@@ -5,7 +5,7 @@ interface LogoProps {
   variant?: 'light' | 'dark';
 }
 
-export const Logo: React.FC<LogoProps> = ({ className = "w-8 h-8", variant = 'light' }) => {
+export const Logo: React.FC<LogoProps> = ({ className = "w-8 h-8" }) => {
   return (
     <img 
       src="/logo.png" 
