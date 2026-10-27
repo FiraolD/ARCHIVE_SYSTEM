@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   FileText, AlertCircle, CheckCircle2, User, Calendar,
   History, RefreshCw, Hash, FileSearch, MapPin, Building2,
-  Archive, Loader2, LayoutDashboard,
+  Archive, Loader2, LayoutDashboard, Clock,
 } from 'lucide-react';
 import { useArchive } from '../context/ArchiveContext';
 import { dashboardApi, documentApi } from '../services/api';
