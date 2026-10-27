@@ -195,6 +195,7 @@ async function createTables(client) {
       document_id UUID REFERENCES documents(id),
       requested_by UUID REFERENCES users(id),
       request_date DATE NOT NULL,
+      requester_name VARCHAR(150),
       expected_return_date DATE NOT NULL,
       actual_return_date DATE,
       status request_status NOT NULL DEFAULT 'Pending',
@@ -265,6 +266,7 @@ async function upgradeExistingTables(client) {
   const columnUpgrades = [
     { table: 'users', column: 'department_name', type: 'VARCHAR(100)' },
     { table: 'documents', column: 'product_custom_fields', type: 'JSONB' },
+    { table: 'file_requests', column: 'requester_name', type: 'VARCHAR(150)' },
     { table: 'file_requests', column: 'request_reference', type: 'VARCHAR(50)' },
     { table: 'file_requests', column: 'rejection_reason', type: 'TEXT' },
     { table: 'file_requests', column: 'approved_by', type: 'UUID REFERENCES users(id)' },
