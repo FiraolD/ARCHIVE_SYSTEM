@@ -8,7 +8,7 @@ import {
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
 import { documentApi, requestApi } from '../services/api';
-import { Document } from '../types';
+import { Document, FileRequest } from '../types';
 import { format } from 'date-fns';
 import { getApiErrorDetails } from '../utils/apiError';
 import { PageHeader, EmptyState } from './ui';
@@ -24,7 +24,7 @@ export const FileRequestPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<Document[]>([]);
   const [debugInfo, setDebugInfo] = useState<string>('');
 
-  const [myRequests, setMyRequests] = useState<any[]>([]);
+  const [myRequests, setMyRequests] = useState<FileRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [returningId, setReturningId] = useState<string | null>(null);
 
