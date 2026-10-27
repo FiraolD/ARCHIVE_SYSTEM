@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { 
-  FileText, UploadCloud, ShieldCheck, History, Settings, Bell, Menu,
-  User as UserIcon, Search, Building2, RefreshCcw, ChevronRight,
+  UploadCloud, Settings, Bell, Menu,
+  User as UserIcon, Building2, RefreshCcw, ChevronRight,
   FileSearch, CheckCircle2, LogOut, TrendingUp, Users, Package,
   Archive, Grid, FolderOpen, Layers, Box, Square, Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DocumentPreview } from './components/DocumentPreview';
-import { Document, Role } from './types';
+import { Document } from './types';
 import { Toaster, toast } from 'sonner';
 import { UI_LABELS } from './lib/constants';
 import { useArchive } from './context/ArchiveContext';
@@ -47,7 +47,6 @@ const AppContent: React.FC = () => {
   const [registrationTab, setRegistrationTab] = useState('branch'); // Tracks sub-menu
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
@@ -57,20 +56,6 @@ const AppContent: React.FC = () => {
     }
   }, [user]);
 
-  const filteredDocs = useMemo(() => {
-    if (!searchQuery.trim()) return documents;
-    const query = searchQuery.toLowerCase();
-    return documents.filter(doc => 
-      doc.title?.toLowerCase().includes(query) ||
-      doc.id?.toLowerCase().includes(query) ||
-      doc.archiveReferenceNumber?.toLowerCase().includes(query) ||
-      (doc.physicalPlacement && doc.physicalPlacement.toLowerCase().includes(query)) ||
-      (doc.policyNumber && doc.policyNumber.toLowerCase().includes(query)) ||
-      (doc.claimNumber && doc.claimNumber.toLowerCase().includes(query)) ||
-      (doc.insuredName && doc.insuredName.toLowerCase().includes(query)) ||
-      (doc.plateNumber && doc.plateNumber.toLowerCase().includes(query))
-    );
-  }, [searchQuery, documents]);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
