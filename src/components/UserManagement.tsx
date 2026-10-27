@@ -3,7 +3,6 @@ import {
   Users as UsersIcon, UserPlus, Mail, Lock, User as UserIcon, Edit2, Trash2,
   CheckCircle2, XCircle, MoreVertical, Building2, Loader2, RefreshCw,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
 import { userApi, registrationApi } from '../services/api';
