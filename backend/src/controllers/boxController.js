@@ -19,7 +19,7 @@ async function audit(user, action, resource, details) {
 /* ================================================================
  * Box lifecycle state machine
  * ================================================================ */
-const { allowedFor } = require('../utils/boxTransitions');
+const { ALLOWED_TRANSITIONS, allowedFor } = require('../utils/boxTransitions');
 
 /* ================================================================
  * GET /api/boxes
