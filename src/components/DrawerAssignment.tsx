@@ -7,6 +7,14 @@ import { registrationApi } from '../services/api';
 import { PageHeader, SectionCard, PageHeaderButton, Modal } from './ui';
 
 interface Cabinet { id: string; number: string; drawers: string[]; }
+interface DrawerAssignmentHistory {
+  id: string;
+  branch_name: string;
+  assigned_at: string;
+  ended_at?: string;
+  assigned_by_name?: string;
+}
+
 interface DrawerAssignment {
   id: string; cabinet_id: string; drawer_number: string;
   branch_id: string; branch_name: string; branch_code: string;
@@ -21,7 +29,7 @@ export const DrawerAssignment: React.FC = () => {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedDrawer, setSelectedDrawer] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyData, setHistoryData] = useState<DrawerAssignmentHistory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => { loadData(); }, []);
