@@ -4,6 +4,7 @@ const { query, withTransaction } = require('../config/database');
 const { validationResult } = require('express-validator');
 const RequestReferenceGenerator = require('../services/RequestReferenceGenerator');
 const { normalizePagination } = require('../utils/pagination');
+const { canApproveRequest, canRejectRequest, canRequesterReturn, canAdminReturn } = require('../utils/requestTransitions');
 
 // ==================== USER FUNCTIONS ====================
 
@@ -159,7 +160,7 @@ const approveRequest = async (req, res) => {
       );
       if (requestResult.rows.length === 0) return { outcome: 'not_found' };
       const request = requestResult.rows[0];
-      if (request.status !== 'Pending') return { outcome: 'conflict', status: request.status };
+      if (!canApproveRequest(request.status)) return { outcome: 'conflict', status: request.status };
 
       // Conditional update prevents checkout if another request already checked out this document.
       const documentResult = await client.query(
@@ -243,7 +244,7 @@ const rejectRequest = async (req, res) => {
       );
       if (requestResult.rows.length === 0) return { outcome: 'not_found' };
       const request = requestResult.rows[0];
-      if (request.status !== 'Pending') return { outcome: 'conflict', status: request.status };
+      if (!canRejectRequest(request.status)) return { outcome: 'conflict', status: request.status };
 
       const updated = await client.query(
         `UPDATE file_requests
@@ -415,9 +416,7 @@ const returnDocument = async (req, res) => {
 
       // Admin can complete a direct return (Approved/Checked-out) or verify a
       // requester-submitted return (Returned/Returned). Other states are conflicts.
-      const directReturn = request.status === 'Approved' && request.document_status === 'Checked-out';
-      const verifyReturn = request.status === 'Returned' && request.document_status === 'Returned';
-      if (!directReturn && !verifyReturn) {
+      if (!canAdminReturn(request.status, request.document_status)) {
         return { outcome: 'conflict', requestStatus: request.status, documentStatus: request.document_status };
       }
 
@@ -486,7 +485,7 @@ const returnDocumentByRequester = async (req, res) => {
       );
       if (requestResult.rows.length === 0) return { outcome: 'not_found' };
       const request = requestResult.rows[0];
-      if (request.status !== 'Approved' || request.doc_status !== 'Checked-out') {
+      if (!canRequesterReturn(request.status, request.doc_status)) {
         return { outcome: 'conflict', requestStatus: request.status, documentStatus: request.doc_status };
       }
 
