@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   BarChart3, TrendingUp, PieChart, Download, FileBarChart,
   Calendar, Loader2, RefreshCw, FileText, Trash2, CheckCircle, Clock,
@@ -37,9 +37,7 @@ export const ReportsPage: React.FC = () => {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => { loadDashboardData(); loadGeneratedReports(); }, [period]);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await reportsApi.getStats({ period });
@@ -48,14 +46,16 @@ export const ReportsPage: React.FC = () => {
       console.error('Failed to load report stats:', error);
       toast.error('Failed to load report data');
     } finally { setIsLoading(false); }
-  };
+  }, [period]);
 
-  const loadGeneratedReports = async () => {
+  const loadGeneratedReports = useCallback(async () => {
     try {
       const response = await reportsApi.getGeneratedReports();
       setGeneratedReports(response.data);
     } catch (error) { console.error('Failed to load generated reports:', error); }
-  };
+  }, []);
+
+  useEffect(() => { loadDashboardData(); loadGeneratedReports(); }, [loadDashboardData, loadGeneratedReports]);
 
   const handleGenerateReport = async () => {
     try {
@@ -65,8 +65,8 @@ export const ReportsPage: React.FC = () => {
       await loadGeneratedReports();
       await loadDashboardData();
       setShowGenerateModal(false);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to generate report');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to generate report');
     } finally { setIsGenerating(false); }
   };
 
@@ -124,7 +124,7 @@ export const ReportsPage: React.FC = () => {
           <>
             <select
               value={period}
-              onChange={(e) => setPeriod(e.target.value as any)}
+              onChange={(e) => setPeriod(e.target.value as typeof period)}
               className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm font-bold text-white backdrop-blur-sm"
             >
               <option value="6months" className="text-slate-900">Last 6 Months</option>
