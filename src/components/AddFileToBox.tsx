@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Package, Search, Loader2, FileText, Hash, User, Trash2,
   CheckCircle2, FolderOpen, Files, Building2, RefreshCw,
-  AlertCircle, Plus, Boxes, Truck, Archive, Lock,
+  AlertCircle, Plus, Boxes, Truck, Archive,
   RotateCcw,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { documentApi, boxApi } from '../services/api';
 import { useArchive } from '../context/ArchiveContext';
