@@ -1,9 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
 import {
-  Building2, Layers, Package, Box as BoxIcon, Archive, Plus,
-  AlertCircle, Grid, FolderOpen,
+  Layers, Plus, AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
@@ -47,7 +45,7 @@ const FormSection: React.FC<{
 const BranchRegistrationForm: React.FC = () => {
   const { addBranch } = useArchive();
   const [formData, setFormData] = useState({ name: '', code: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
