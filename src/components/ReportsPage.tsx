@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { reportsApi } from '../services/api';
 import { useArchive } from '../context/ArchiveContext';
 import {
-  PageHeader, PageHeaderButton, SectionCard, StatCard, EmptyState, Modal,
+  PageHeader, PageHeaderButton, StatCard, EmptyState, Modal,
 } from './ui';
 
 interface ReportStats {
