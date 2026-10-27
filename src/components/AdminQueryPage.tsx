@@ -75,7 +75,7 @@ export const AdminQueryPage: React.FC = () => {
     } catch (err: unknown) {
       const details = getApiErrorDetails(err);
       setError({ error: details.error || details.message || 'Query failed' });
-      toast.error(errData.error || 'Query failed');
+      toast.error(details.error || details.message || 'Query failed');
     } finally {
       setIsRunning(false);
     }
