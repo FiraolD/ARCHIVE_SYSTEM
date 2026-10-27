@@ -6,6 +6,7 @@ import {
   Copy, CheckCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorDetails } from '../utils/apiError';
 import { FILE_TYPES } from '../lib/constants';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi } from '../services/api';
@@ -212,8 +213,8 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       setSelectedProduct('');
       setProductCustomValues({});
       if (fileInput) fileInput.value = '';
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to ingest document';
+    } catch (error: unknown) {
+      const errorMessage = getApiErrorDetails(error).message || 'Failed to ingest document';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
