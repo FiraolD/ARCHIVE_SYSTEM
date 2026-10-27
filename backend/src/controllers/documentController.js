@@ -1,6 +1,7 @@
 // src/controllers/documentController.js
 const pool = require('../config/database');
 const notificationService = require('../services/notificationService');
+const { normalizePagination } = require('../utils/pagination');
 
 /* ================================================================
  * Helpers
@@ -114,9 +115,7 @@ function buildWhere(filters, exclude = []) {
  * ================================================================ */
 exports.getDocuments = async (req, res) => {
   try {
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
-    const offset = (page - 1) * limit;
+    const { page, limit, offset } = normalizePagination(req.query);
     const sort = req.query.sort === 'title' ? 'title'
       : req.query.sort === 'status' ? 'status'
       : 'created_at';
