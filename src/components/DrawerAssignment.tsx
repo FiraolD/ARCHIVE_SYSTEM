@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Archive, Grid, Building2, CheckCircle2, History, User } from 'lucide-react';
 
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi } from '../services/api';
