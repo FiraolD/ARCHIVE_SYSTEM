@@ -21,3 +21,11 @@ test('existing databases receive the requester_name compatibility migration', ()
     'existing databases must add file_requests.requester_name idempotently'
   );
 });
+
+test('request_status enum includes a distinct return verification state', () => {
+  assert.match(
+    setupDatabase,
+    /name: 'request_status', values: \['Pending', 'Approved', 'Return Pending', 'Returned', 'Rejected', 'Overdue'\]/,
+    'new and existing databases must support Return Pending requests'
+  );
+});
