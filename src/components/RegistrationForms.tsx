@@ -4,6 +4,7 @@ import {
   Layers, Plus, AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorDetails } from '../utils/apiError';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi } from '../services/api';
 import { DrawerAssignment } from './DrawerAssignment';
@@ -150,11 +151,11 @@ const DepartmentRegistrationForm: React.FC = () => {
       setSuggestedCode('');
       await loadDepartments();
       toast.success('Department registered successfully');
-    } catch (error: any) {
-      if (error.response?.data?.error?.includes('already exists')) {
+    } catch (error: unknown) {
+      if (getApiErrorDetails(error).error?.includes('already exists')) {
         setError(`Department code "${formData.code}" already exists`);
       } else {
-        toast.error(error.response?.data?.error || 'Failed to register department');
+        toast.error(getApiErrorDetails(error).error || 'Failed to register department');
       }
     } finally {
       setIsSubmitting(false);
