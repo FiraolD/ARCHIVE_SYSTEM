@@ -125,7 +125,7 @@ export const FacetedSearch: React.FC<FacetedSearchProps> = ({ filters, facets, b
             <select value={filters.branch_id ?? ''} onChange={(e) => update({ branch_id: e.target.value || undefined })}
               className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
               <option value="">All branches</option>
-              {(facets?.by_branch ?? branches).map((b: any) => (
+              {(facets?.by_branch ?? branches).map((b) => (
                 <option key={b.id ?? b.value} value={b.id ?? ''}>{b.value ?? b.name} ({b.count ?? ''})</option>
               ))}
             </select>
@@ -150,7 +150,7 @@ export const FacetedSearch: React.FC<FacetedSearchProps> = ({ filters, facets, b
               className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" />
           </Field>
           <Field label="Source" icon={<Sparkles className="w-3.5 h-3.5" />}>
-            <select value={filters.legacy ?? ''} onChange={(e) => update({ legacy: (e.target.value || undefined) as any })}
+            <select value={filters.legacy ?? ''} onChange={(e) => update({ legacy: e.target.value === 'true' || e.target.value === 'false' ? e.target.value : undefined })}
               className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
               <option value="">All sources</option>
               <option value="true">Legacy only (AIC)</option>

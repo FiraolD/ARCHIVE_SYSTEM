@@ -30,6 +30,14 @@ import {
 } from '../services/api';
 import { toast } from 'sonner';
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { data?: { error?: unknown } } }).response;
+    if (typeof response?.data?.error === 'string') return response.data.error;
+  }
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -61,7 +69,7 @@ interface ArchiveContextType {
   // Documents
   fetchDocuments: (params?: DocumentFilters) => Promise<void>;
   fetchDocument: (id: string) => Promise<Document>;
-  ingestDocument: (formData: FormData) => Promise<any>;
+  ingestDocument: (formData: FormData) => Promise<Document>;
   updateDocumentStatus: (id: string, status: string) => Promise<void>;
   updatePhysicalPlacement: (id: string, placement: string) => Promise<void>;
 
@@ -73,16 +81,16 @@ interface ArchiveContextType {
   fetchProducts: () => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   fetchBoxes: () => Promise<void>;
-  addBox: (box: any) => Promise<void>;
+  addBox: (box: { branchCode: string; fileType: string }) => Promise<void>;
   fetchCabinets: () => Promise<void>;
   addCabinet: (cabinet: { number: string; drawers: string[] }) => Promise<void>;
-  assignCabinet: (assignment: any) => Promise<void>;
-  assignBox: (assignment: any) => Promise<void>;
+  assignCabinet: (assignment: { cabinetId: string; branchId: string }) => Promise<void>;
+  assignBox: (assignment: { boxId: string; cabinetId: string; drawerNumber: string }) => Promise<void>;
 
   // File Requests
   fetchMyRequests: () => Promise<void>;
-  fetchAllRequests: (params?: any) => Promise<void>;
-  addFileRequest: (request: any) => Promise<void>;
+  fetchAllRequests: (params?: Record<string, unknown>) => Promise<void>;
+  addFileRequest: (request: { documentId: string; [key: string]: unknown }) => Promise<void>;
   approveRequest: (id: string) => Promise<void>;
   returnDocument: (id: string) => Promise<void>;
 
@@ -144,12 +152,12 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     async (params: DocumentFilters) => {
       try {
         setIsLoading(true);
-        const response = await documentApi.getDocuments(params);
+        const response = await documentApi.getDocuments({ ...params });
         setDocuments(response.data.documents || []);
         setPagination(response.data.pagination ?? null);
         setFacets(response.data.facets ?? null);
-      } catch (error: any) {
-        toast.error(error.response?.data?.error || 'Failed to fetch documents');
+      } catch (error: unknown) {
+        toast.error(getErrorMessage(error, 'Failed to fetch documents'));
       } finally {
         setIsLoading(false);
       }
@@ -182,7 +190,6 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       fetchUserProfile();
       fetchNotifications();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const fetchUserProfile = async () => {
@@ -204,8 +211,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       setToken(token);
       setUser(user);
       toast.success(`Welcome back, ${user.name}!`);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Login failed');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Login failed'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -236,8 +243,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const response = await documentApi.getDocument(id);
       return response.data;
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to fetch document');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to fetch document'));
       throw error;
     }
   };
@@ -251,8 +258,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Refresh list + facets in background (non-blocking)
       fetchDocumentsAndFacets(filters).catch(() => {});
       return response.data;
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to ingest document');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to ingest document'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -265,8 +272,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       const response = await documentApi.updateStatus(id, status);
       setDocuments((prev) => prev.map((d) => (d.id === id ? response.data : d)));
       toast.success(`Status updated to ${status}`);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to update status');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to update status'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -279,8 +286,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       const response = await documentApi.updatePlacement(id, placement);
       setDocuments((prev) => prev.map((d) => (d.id === id ? response.data : d)));
       toast.success('Physical placement updated');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to update placement');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to update placement'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -294,8 +301,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const response = await registrationApi.getBranches();
       setBranches(response.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to fetch branches');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to fetch branches'));
     }
   };
 
@@ -305,8 +312,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       const response = await registrationApi.createBranch(branch);
       setBranches((prev) => [...prev, response.data]);
       toast.success('Branch added successfully');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to add branch');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to add branch'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -317,8 +324,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const response = await registrationApi.getDepartments();
       setDepartments(response.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to fetch departments');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to fetch departments'));
     }
   };
 
@@ -328,8 +335,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       const response = await registrationApi.createDepartment(dept);
       setDepartments((prev) => [...prev, response.data]);
       toast.success('Department added successfully');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to add department');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to add department'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -340,8 +347,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const response = await registrationApi.getProducts();
       setProducts(response.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to fetch products');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to fetch products'));
     }
   };
 
@@ -351,8 +358,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       const response = await registrationApi.createProduct(product);
       setProducts((prev) => [...prev, response.data]);
       toast.success('Product added successfully');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to add product');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to add product'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -363,19 +370,19 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const response = await registrationApi.getBoxes();
       setBoxes(response.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to fetch boxes');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to fetch boxes'));
     }
   };
 
-  const addBox = async (box: any) => {
+  const addBox = async (box: { branchCode: string; fileType: string }) => {
     try {
       setIsLoading(true);
       const response = await registrationApi.createBox(box);
       setBoxes((prev) => [...prev, response.data]);
       toast.success('Box added successfully');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to add box');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to add box'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -386,8 +393,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const response = await registrationApi.getCabinets();
       setCabinets(response.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to fetch cabinets');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to fetch cabinets'));
     }
   };
 
@@ -397,36 +404,36 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       const response = await registrationApi.createCabinet(cabinet);
       setCabinets((prev) => [...prev, response.data]);
       toast.success('Cabinet added successfully');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to add cabinet');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to add cabinet'));
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const assignCabinet = async (assignment: any) => {
+  const assignCabinet = async (assignment: { cabinetId: string; branchId: string }) => {
     try {
       setIsLoading(true);
       await registrationApi.assignCabinet(assignment);
       toast.success('Cabinet assigned successfully');
       await fetchCabinets();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to assign cabinet');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to assign cabinet'));
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const assignBox = async (assignment: any) => {
+  const assignBox = async (assignment: { boxId: string; cabinetId: string; drawerNumber: string }) => {
     try {
       setIsLoading(true);
       await registrationApi.assignBox(assignment);
       toast.success('Box assigned successfully');
       await fetchBoxes();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to assign box');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to assign box'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -440,21 +447,21 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const response = await requestApi.getMyRequests();
       setFileRequests(response.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to fetch requests');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to fetch requests'));
     }
   };
 
-  const fetchAllRequests = async (params?: any) => {
+  const fetchAllRequests = async (params?: Record<string, unknown>) => {
     try {
       const response = await requestApi.getAllRequests(params);
       setFileRequests(response.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to fetch requests');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to fetch requests'));
     }
   };
 
-  const addFileRequest = async (request: any) => {
+  const addFileRequest = async (request: { documentId: string; [key: string]: unknown }) => {
     try {
       setIsLoading(true);
       const response = await requestApi.createRequest(request);
@@ -465,8 +472,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
         )
       );
       toast.success('File request submitted successfully');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to submit request');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to submit request'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -481,8 +488,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
         prev.map((req) => (req.id === id ? { ...req, status: 'Approved' } : req))
       );
       toast.success('Request approved');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to approve request');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to approve request'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -497,8 +504,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
         prev.map((req) => (req.id === id ? { ...req, status: 'Returned' } : req))
       );
       toast.success('Document returned');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to return document');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to return document'));
       throw error;
     } finally {
       setIsLoading(false);
@@ -512,7 +519,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const response = await notificationApi.getNotifications();
       setNotifications(response.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to fetch notifications:', error);
     }
   };
@@ -523,7 +530,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to mark notification as read:', error);
     }
   };
@@ -533,7 +540,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       await notificationApi.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       toast.success('All notifications marked as read');
-    } catch (error: any) {
+    } catch {
       toast.error('Failed to mark notifications as read');
     }
   };
@@ -567,7 +574,6 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       fetchMyRequests();
     }
     // documents + facets fetched by the filters effect
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // ---------------------------------------------------------------------------
@@ -641,6 +647,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
   );
 };
 
+// The context hook intentionally lives beside its provider to keep the context private.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useArchive = () => {
   const context = useContext(ArchiveContext);
   if (context === undefined) {
