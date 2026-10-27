@@ -3,6 +3,7 @@
 const { query, withTransaction } = require('../config/database');
 const { validationResult } = require('express-validator');
 const RequestReferenceGenerator = require('../services/RequestReferenceGenerator');
+const { normalizePagination } = require('../utils/pagination');
 
 // ==================== USER FUNCTIONS ====================
 
@@ -309,8 +310,8 @@ const getPendingRequests = async (req, res) => {
 
 const getAllRequests = async (req, res) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
-    const offset = (page - 1) * limit;
+    const { status } = req.query;
+    const { limit, offset } = normalizePagination(req.query);
 
     let queryText = `
       SELECT 
