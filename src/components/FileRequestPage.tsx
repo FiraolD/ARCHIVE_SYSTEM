@@ -10,6 +10,7 @@ import { useArchive } from '../context/ArchiveContext';
 import { documentApi, requestApi } from '../services/api';
 import { Document } from '../types';
 import { format } from 'date-fns';
+import { getApiErrorDetails } from '../utils/apiError';
 import { PageHeader, EmptyState } from './ui';
 
 export const FileRequestPage: React.FC = () => {
@@ -50,8 +51,8 @@ export const FileRequestPage: React.FC = () => {
         const response = await documentApi.getDocuments({ search: searchQuery });
         setSearchResults(response.data.documents);
         setDebugInfo(`Found ${response.data.documents.length} documents`);
-      } catch (error: any) {
-        setDebugInfo(`Error: ${error.message}`);
+      } catch (error: unknown) {
+        setDebugInfo(`Error: ${getApiErrorDetails(error).message}`);
         toast.error('Search failed');
       } finally {
         setIsSearching(false);
@@ -88,8 +89,8 @@ export const FileRequestPage: React.FC = () => {
       await requestApi.returnByRequester(requestId);
       toast.success('Document returned. Awaiting admin verification.');
       fetchMyRequests();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to return document');
+    } catch (error: unknown) {
+      toast.error(getApiErrorDetails(error).error || 'Failed to return document');
     } finally {
       setReturningId(null);
     }
