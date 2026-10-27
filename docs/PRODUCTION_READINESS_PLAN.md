@@ -27,11 +27,11 @@ Harden the existing React/TypeScript + Express + PostgreSQL application in small
 5. Review the large legacy SQL export before deciding whether it contains production/customer data or is required for reproducible migration. Do not publish sensitive data.
 
 ### Phase 2 — Establish a verified baseline
-1. Install from lockfiles in a clean environment.
-2. Run frontend typecheck, lint, and production build; record all failures.
-3. Add backend smoke tests and database migration tests.
+1. [In progress] Add GitHub Actions checks on `hardening/**` pushes and pull requests targeting `full`.
+2. [In progress] Run frontend lint, TypeScript typecheck, and production build in a clean Node.js 22 environment; use CI failures to establish the real baseline before fixing issues.
+3. [In progress] Run backend dependency installation and JavaScript syntax checks. Add automated backend smoke tests and database migration tests next.
 4. Document supported Node.js and PostgreSQL versions and environment variables.
-5. Add CI checks for lint, typecheck, tests, dependency audit, and build.
+5. Extend CI with automated tests, dependency audit, and migration checks after the initial baseline is known.
 
 ### Phase 3 — Security and access control
 1. Validate JWT secret presence/strength at startup; reject missing or weak production configuration.

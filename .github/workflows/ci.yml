@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - full
+      - "hardening/**"
+  pull_request:
+    branches:
+      - full
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend quality gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+
+  backend:
+    name: Backend dependency and syntax checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend dependencies
+        run: npm ci
+      - name: Check backend JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find server.js src -type f -name '*.js' -not -path '*/node_modules/*' -print0)
