@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { getApiErrorDetails } from '../utils/apiError';
 import { useArchive } from '../context/ArchiveContext';
 import { userApi, registrationApi } from '../services/api';
+import type { Role } from '../types';
 import {
   PageHeader, PageHeaderButton, SearchInput, EmptyState, Modal,
 } from './ui';
@@ -305,7 +306,7 @@ const UserForm: React.FC<{
       )}
       <div>
         <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Role</label>
-        <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+        <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
           className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none">
           <option value="Admin">Admin</option>
           <option value="Manager">Manager</option>
