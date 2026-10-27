@@ -4,6 +4,7 @@ import {
   CheckCircle2, XCircle, MoreVertical, Building2, Loader2, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorDetails } from '../utils/apiError';
 import { useArchive } from '../context/ArchiveContext';
 import { userApi, registrationApi } from '../services/api';
 import {
@@ -266,8 +267,8 @@ const UserForm: React.FC<{
         toast.success('User created successfully');
       }
       onSuccess();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Operation failed');
+    } catch (error: unknown) {
+      toast.error(getApiErrorDetails(error).error || 'Operation failed');
     } finally { setIsSubmitting(false); }
   };
 
