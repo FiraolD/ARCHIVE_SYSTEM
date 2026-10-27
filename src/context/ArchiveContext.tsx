@@ -647,6 +647,8 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
   );
 };
 
+// The context hook intentionally lives beside its provider to keep the context private.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useArchive = () => {
   const context = useContext(ArchiveContext);
   if (context === undefined) {
