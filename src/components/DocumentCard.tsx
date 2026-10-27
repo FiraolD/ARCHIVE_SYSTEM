@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   FileText, Eye, History, MapPin, CheckCircle, Package,
-  ArrowLeft, Calendar, DollarSign, Hash, User, Building2,
+  ArrowLeft, Calendar, DollarSign, Hash, Building2,
   Layers, ChevronDown, CheckCircle2, Ban,
 } from 'lucide-react';
 import { Document } from '../types';
