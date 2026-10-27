@@ -54,7 +54,9 @@ const AppContent: React.FC = () => {
       fetchDocuments();
       fetchNotifications();
     }
-  }, [user, fetchDocuments, fetchNotifications]);
+    // The context currently recreates these action functions on each render; depending on them here would retrigger this bootstrap effect after every context update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
 
   const menuItems = [
