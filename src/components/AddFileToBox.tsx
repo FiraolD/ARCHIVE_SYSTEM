@@ -114,7 +114,7 @@ const TRANSITION_META: Record<string, {
 /* Main component                                                      */
 /* ------------------------------------------------------------------ */
 export const AddFileToBox: React.FC = () => {
-  const { user } = useArchive();
+  // Archive context is used below for shared document actions.
 
   /* Boxes */
   const [boxes, setBoxes] = useState<Box[]>([]);
