@@ -95,7 +95,7 @@ const BranchRegistrationForm: React.FC = () => {
 const DepartmentRegistrationForm: React.FC = () => {
   const { addDepartment } = useArchive();
   const [formData, setFormData] = useState({ name: '', code: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingDepartments, setExistingDepartments] = useState<any[]>([]);
   const [suggestedCode, setSuggestedCode] = useState<string>('');
@@ -227,7 +227,7 @@ const DepartmentRegistrationForm: React.FC = () => {
 const ProductRegistrationForm: React.FC = () => {
   const { addProduct } = useArchive();
   const [productName, setProductName] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -329,7 +329,7 @@ const BoxRegistrationForm: React.FC = () => {
 const CabinetRegistrationForm: React.FC = () => {
   const { addCabinet } = useArchive();
   const [formData, setFormData] = useState({ number: '', drawers: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
