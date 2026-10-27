@@ -18,7 +18,7 @@ async function createEnumTypes(client) {
     { name: 'user_role', values: ['Admin', 'Manager', 'Agent', 'Viewer'] },
     { name: 'file_type', values: ['Claim File', 'Circular', 'Policy', 'Billing', 'Correspondence'] },
     { name: 'file_status', values: ['Active', 'Checked-out', 'Settled Claims', 'Returned'] },
-    { name: 'request_status', values: ['Pending', 'Approved', 'Returned', 'Rejected', 'Overdue'] },
+    { name: 'request_status', values: ['Pending', 'Approved', 'Return Pending', 'Returned', 'Rejected', 'Overdue'] },
     { name: 'notification_type', values: ['info', 'warning', 'error', 'success'] },
   ];
 
