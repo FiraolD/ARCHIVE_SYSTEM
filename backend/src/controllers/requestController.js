@@ -147,77 +147,80 @@ const getUserRequests = async (req, res) => {
 const approveRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    const { notes } = req.body;
-
-    // Get request details
-    const requestResult = await query(
-      `SELECT fr.*, d.title, d.archive_reference_number, 
-              u.name as requester_name, u.email as requester_email, d.claim_number, d.policy_number, d.insured_name
-       FROM file_requests fr
-       JOIN documents d ON fr.document_id = d.id
-       JOIN users u ON fr.requested_by = u.id
-       WHERE fr.id = $1`,
-      [id]
-    );
-
-    if (requestResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Request not found' });
-    }
-
-    const request = requestResult.rows[0];
-
-    // Update request, document status, notification and audit log atomically
-    await withTransaction(async (client) => {
-      // Update request status
-      await client.query(
-        `UPDATE file_requests 
-         SET status = $1, 
-             approved_by = $2, 
-             approved_at = CURRENT_TIMESTAMP,
-             processed_by = $2,
-             processed_at = CURRENT_TIMESTAMP
-         WHERE id = $3`,
-        ['Approved', req.user.id, id]
+    const result = await withTransaction(async (client) => {
+      // Lock the request first so concurrent approve/reject actions serialize.
+      const requestResult = await client.query(
+        `SELECT fr.*, d.title, d.archive_reference_number
+           FROM file_requests fr
+           JOIN documents d ON d.id = fr.document_id
+          WHERE fr.id = $1
+          FOR UPDATE OF fr`,
+        [id]
       );
+      if (requestResult.rows.length === 0) return { outcome: 'not_found' };
+      const request = requestResult.rows[0];
+      if (request.status !== 'Pending') return { outcome: 'conflict', status: request.status };
 
-      // Update document status to Checked-out
-      await client.query(
-        'UPDATE documents SET status = $1 WHERE id = $2',
-        ['Checked-out', request.document_id]
+      // Conditional update prevents checkout if another request already checked out this document.
+      const documentResult = await client.query(
+        `UPDATE documents
+            SET status = 'Checked-out', updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND status = 'Active'
+          RETURNING id`,
+        [request.document_id]
       );
+      if (documentResult.rowCount === 0) return { outcome: 'document_unavailable' };
 
-      // Create notification for requester
+      const updated = await client.query(
+        `UPDATE file_requests
+            SET status = 'Approved', approved_by = $1, approved_at = CURRENT_TIMESTAMP,
+                processed_by = $1, processed_at = CURRENT_TIMESTAMP
+          WHERE id = $2 AND status = 'Pending'
+          RETURNING id`,
+        [req.user.id, id]
+      );
+      if (updated.rowCount === 0) {
+        // Transaction rollback ensures the document status change is not committed.
+        const error = new Error('Request state changed while approving');
+        error.code = 'REQUEST_STATE_CONFLICT';
+        throw error;
+      }
+
       await client.query(
         `INSERT INTO notifications (title, message, type, user_id, related_id)
          VALUES ($1, $2, $3, $4, $5)`,
-        [
-          'Request Approved',
-          `Your request for "${request.title}" (Ref: ${request.request_reference}) has been approved. ` +
-          `Please collect the file from the archive with this reference number.`,
-          'success',
-          request.requested_by,
-          id
-        ]
+        ['Request Approved',
+         `Your request for "${request.title}" (Ref: ${request.request_reference}) has been approved. Please collect the file from the archive with this reference number.`,
+         'success', request.requested_by, id]
       );
-
-      // Create audit log
       await client.query(
         `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address, user_agent)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [req.user.id, req.user.name, 'Request Approved', request.archive_reference_number,
-         `Request ${request.request_reference} approved. User can collect file.`, 
+         `Request ${request.request_reference} approved. User can collect file.`,
          req.ip, req.get('user-agent')]
       );
+      return { outcome: 'approved', reference: request.request_reference };
     });
 
-    res.json({ 
+    if (result.outcome === 'not_found') return res.status(404).json({ error: 'Request not found' });
+    if (result.outcome === 'conflict') {
+      return res.status(409).json({ error: 'Only pending requests can be approved', currentStatus: result.status });
+    }
+    if (result.outcome === 'document_unavailable') {
+      return res.status(409).json({ error: 'Document is no longer available for checkout' });
+    }
+    return res.json({
       message: 'Request approved successfully',
-      requestReference: request.request_reference,
+      requestReference: result.reference,
       instructions: 'User can now collect the file from the archive using this reference number.'
     });
   } catch (error) {
     console.error('Approve request error:', error);
-    res.status(500).json({ error: 'Server error' });
+    if (error.code === 'REQUEST_STATE_CONFLICT') {
+      return res.status(409).json({ error: 'Request state changed; refresh and try again' });
+    }
+    return res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -225,58 +228,58 @@ const rejectRequest = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
-
-    if (!reason) {
+    if (typeof reason !== 'string' || !reason.trim()) {
       return res.status(400).json({ error: 'Rejection reason is required' });
     }
 
-    // Get request details
-    const requestResult = await query(
-      `SELECT fr.*, d.title, d.archive_reference_number 
-       FROM file_requests fr
-       JOIN documents d ON fr.document_id = d.id
-       WHERE fr.id = $1`,
-      [id]
-    );
-
-    if (requestResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Request not found' });
-    }
-
-    const request = requestResult.rows[0];
-
-    // Update request status and notify requester atomically
-    await withTransaction(async (client) => {
-      // Update request status to 'Rejected' (must match enum value)
-      await client.query(
-        `UPDATE file_requests 
-         SET status = $1, 
-             rejection_reason = $2,
-             processed_by = $3,
-             processed_at = CURRENT_TIMESTAMP
-         WHERE id = $4`,
-        ['Rejected', reason, req.user.id, id]  // 'Rejected' must match enum
+    const result = await withTransaction(async (client) => {
+      const requestResult = await client.query(
+        `SELECT fr.*, d.title
+           FROM file_requests fr
+           JOIN documents d ON d.id = fr.document_id
+          WHERE fr.id = $1
+          FOR UPDATE OF fr`,
+        [id]
       );
+      if (requestResult.rows.length === 0) return { outcome: 'not_found' };
+      const request = requestResult.rows[0];
+      if (request.status !== 'Pending') return { outcome: 'conflict', status: request.status };
 
-      // Create notification for requester
+      const updated = await client.query(
+        `UPDATE file_requests
+            SET status = 'Rejected', rejection_reason = $1,
+                processed_by = $2, processed_at = CURRENT_TIMESTAMP
+          WHERE id = $3 AND status = 'Pending'
+          RETURNING id`,
+        [reason.trim(), req.user.id, id]
+      );
+      if (updated.rowCount === 0) return { outcome: 'conflict', status: request.status };
+
       await client.query(
         `INSERT INTO notifications (title, message, type, user_id, related_id)
          VALUES ($1, $2, $3, $4, $5)`,
-        [
-          'Request Rejected',
-          `Your request for "${request.title}" (Ref: ${request.request_reference}) has been rejected. ` +
-          `Reason: ${reason}`,
-          'error',
-          request.requested_by,
-          id
-        ]
+        ['Request Rejected',
+         `Your request for "${request.title}" (Ref: ${request.request_reference}) has been rejected. Reason: ${reason.trim()}`,
+         'error', request.requested_by, id]
       );
+      await client.query(
+        `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address, user_agent)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [req.user.id, req.user.name, 'Request Rejected', request.request_reference,
+         `Request ${request.request_reference} rejected: ${reason.trim()}`,
+         req.ip, req.get('user-agent')]
+      );
+      return { outcome: 'rejected' };
     });
 
-    res.json({ message: 'Request rejected successfully' });
+    if (result.outcome === 'not_found') return res.status(404).json({ error: 'Request not found' });
+    if (result.outcome === 'conflict') {
+      return res.status(409).json({ error: 'Only pending requests can be rejected', currentStatus: result.status });
+    }
+    return res.json({ message: 'Request rejected successfully' });
   } catch (error) {
     console.error('Reject request error:', error);
-    res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 };
 
