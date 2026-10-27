@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminApi } from '../services/api';
-import { PageHeader, SectionCard } from './ui';
+import { PageHeader } from './ui';
 
 interface QueryResult {
   statementType: string;
@@ -14,7 +14,7 @@ interface QueryResult {
   rowCount: number;
   duration: number;
   truncated: boolean;
-  rows: Record<string, any>[];
+  rows: Record<string, unknown>[];
   fields: { name: string; dataTypeID: number }[];
   isWrite?: boolean;
   isDDL?: boolean;
