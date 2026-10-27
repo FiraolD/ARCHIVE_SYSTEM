@@ -152,7 +152,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     async (params: DocumentFilters) => {
       try {
         setIsLoading(true);
-        const response = await documentApi.getDocuments(params);
+        const response = await documentApi.getDocuments({ ...params });
         setDocuments(response.data.documents || []);
         setPagination(response.data.pagination ?? null);
         setFacets(response.data.facets ?? null);
