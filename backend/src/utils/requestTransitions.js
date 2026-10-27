@@ -19,7 +19,7 @@ function canRequesterReturn(requestStatus, documentStatus) {
 function canAdminReturn(requestStatus, documentStatus) {
   return (
     (requestStatus === 'Approved' && documentStatus === 'Checked-out') ||
-    (requestStatus === 'Returned' && documentStatus === 'Returned')
+    (requestStatus === 'Return Pending' && documentStatus === 'Returned')
   );
 }
 
