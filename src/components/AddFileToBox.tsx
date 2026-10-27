@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { getApiErrorDetails } from '../utils/apiError';
 import { documentApi, boxApi } from '../services/api';
 import {
   PageHeader, PageHeaderButton, SectionCard, SearchInput,
@@ -148,8 +149,8 @@ export const AddFileToBox: React.FC = () => {
       setBoxesLoading(true);
       const res = await boxApi.list();
       setBoxes(res.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to load boxes');
+    } catch (error: unknown) {
+      toast.error(getApiErrorDetails(error).error || 'Failed to load boxes');
     } finally {
       setBoxesLoading(false);
     }
@@ -162,8 +163,8 @@ export const AddFileToBox: React.FC = () => {
       setBoxDocs(res.data.documents || []);
       setAllowedTransitions(res.data.allowed_transitions || []);
       setSelectedBox(prev => prev ? { ...prev, ...res.data } : res.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to load box');
+    } catch (error: unknown) {
+      toast.error(getApiErrorDetails(error).error || 'Failed to load box');
       setBoxDocs([]);
       setAllowedTransitions([]);
     } finally {
@@ -194,8 +195,8 @@ export const AddFileToBox: React.FC = () => {
         setDocSearchLoading(true);
         const res = await documentApi.getDocuments({ search: docSearch, limit: 25 });
         setDocResults(res.data.documents || []);
-      } catch (error: any) {
-        toast.error(error.response?.data?.error || 'Document search failed');
+      } catch (error: unknown) {
+        toast.error(getApiErrorDetails(error).error || 'Document search failed');
         setDocResults([]);
       } finally {
         setDocSearchLoading(false);
@@ -233,9 +234,9 @@ export const AddFileToBox: React.FC = () => {
       toast.success(`Added "${doc.title || doc.archive_reference_number}" to ${selectedBox.identifier}`);
       await loadBoxDetail(selectedBox.id);
       loadBoxes();
-    } catch (error: any) {
-      if (error.response?.status === 409) toast.error(error.response.data.error || 'Box cannot accept documents in its current state');
-      else toast.error(error.response?.data?.error || 'Failed to add document');
+    } catch (error: unknown) {
+      if (getApiErrorDetails(error).status === 409) toast.error(getApiErrorDetails(error).error || 'Box cannot accept documents in its current state');
+      else toast.error(getApiErrorDetails(error).error || 'Failed to add document');
     } finally {
       setAddingId(null);
     }
@@ -251,8 +252,8 @@ export const AddFileToBox: React.FC = () => {
       toast.success('Document removed from box');
       setBoxDocs(prev => prev.filter(d => d.id !== doc.id));
       loadBoxes();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to remove document');
+    } catch (error: unknown) {
+      toast.error(getApiErrorDetails(error).error || 'Failed to remove document');
     } finally {
       setRemovingId(null);
     }
@@ -275,8 +276,8 @@ export const AddFileToBox: React.FC = () => {
       setPendingTransition(null);
       setTransitionNote('');
       loadBoxes();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to update box status');
+    } catch (error: unknown) {
+      toast.error(getApiErrorDetails(error).error || 'Failed to update box status');
     } finally {
       setTransitionSubmitting(false);
     }
