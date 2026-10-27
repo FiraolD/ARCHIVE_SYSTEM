@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { reportsApi } from '../services/api';
 import {
-  PageHeader, PageHeaderButton, StatCard, EmptyState, Modal,
+  PageHeader, PageHeaderButton, StatCard, EmptyState, Modal, SectionCard,
 } from './ui';
 
 interface ReportStats {
