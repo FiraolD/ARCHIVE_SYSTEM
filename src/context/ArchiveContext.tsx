@@ -540,7 +540,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       await notificationApi.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       toast.success('All notifications marked as read');
-    } catch (error: unknown) {
+    } catch {
       toast.error('Failed to mark notifications as read');
     }
   };
