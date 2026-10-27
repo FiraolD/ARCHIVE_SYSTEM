@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { 
   UploadCloud, Settings, Bell, Menu,
   User as UserIcon, Building2, RefreshCcw, ChevronRight,
@@ -39,7 +39,7 @@ type AppTab = 'file-request' | 'dashboard' | 'documents' | 'user-management' | '
 
 const AppContent: React.FC = () => {
   const { 
-    user, documents, notifications, markNotificationRead, markAllNotificationsRead,
+    user, notifications, markNotificationRead, markAllNotificationsRead,
     logout, fetchDocuments, fetchNotifications
   } = useArchive();
   
