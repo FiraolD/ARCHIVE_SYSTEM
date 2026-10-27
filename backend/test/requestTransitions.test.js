@@ -37,13 +37,14 @@ test('requester can submit a return only for an approved checked-out document', 
 
 test('admin can complete direct returns or verify requester-submitted returns only', () => {
   assert.equal(canAdminReturn('Approved', 'Checked-out'), true);
-  assert.equal(canAdminReturn('Returned', 'Returned'), true);
+  assert.equal(canAdminReturn('Return Pending', 'Returned'), true);
   for (const [requestStatus, documentStatus] of [
     ['Pending', 'Active'],
     ['Pending', 'Checked-out'],
     ['Approved', 'Active'],
     ['Approved', 'Returned'],
     ['Rejected', 'Returned'],
+    ['Returned', 'Returned'],
     ['Returned', 'Active'],
     ['Returned', 'Checked-out'],
     ['Overdue', 'Checked-out'],
