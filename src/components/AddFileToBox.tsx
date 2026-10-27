@@ -8,7 +8,6 @@ import {
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { documentApi, boxApi } from '../services/api';
-import { useArchive } from '../context/ArchiveContext';
 import {
   PageHeader, PageHeaderButton, SectionCard, SearchInput,
   EmptyState, Modal,
