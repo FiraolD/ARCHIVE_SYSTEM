@@ -10,6 +10,29 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { PageHeader, PageHeaderButton, SectionCard, StatCard, EmptyState } from './ui';
 
+interface DashboardDocument {
+  id: string;
+  archive_reference_number?: string;
+  branch_name?: string;
+  cabinet_number?: string;
+  drawer_number?: string;
+  claim_number?: string;
+  policy_number?: string;
+  insured_name?: string;
+  physical_placement?: string;
+  status?: string;
+  created_at?: string;
+}
+
+interface DashboardActivity {
+  id?: string;
+  status?: string;
+  document_title?: string;
+  request_date?: string;
+  requester_name?: string;
+  archive_reference_number?: string;
+}
+
 interface DashboardStats {
   totalDocuments?: number;
   activeDocuments?: number;
@@ -19,8 +42,8 @@ interface DashboardStats {
   myRequests?: number;
   myActiveRequests?: number;
   myOverdueRequests?: number;
-  recentActivity?: any[];
-  recentDocuments?: any[];
+  recentActivity?: DashboardActivity[];
+  recentDocuments?: DashboardDocument[];
 }
 
 export const OperationsDashboard: React.FC = () => {
@@ -28,7 +51,7 @@ export const OperationsDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({ recentActivity: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [claimDocuments, setClaimDocuments] = useState<any[]>([]);
+  const [claimDocuments, setClaimDocuments] = useState<DashboardDocument[]>([]);
   const [policyDocuments, setPolicyDocuments] = useState<any[]>([]);
 
   useEffect(() => { loadDashboard(); loadDocumentsByType(); }, []);
@@ -138,7 +161,7 @@ export const OperationsDashboard: React.FC = () => {
   );
 };
 
-const DocumentRow: React.FC<{ document: any }> = ({ document }) => (
+const DocumentRow: React.FC<{ document: DashboardDocument }> = ({ document }) => (
   <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
     <div className="flex items-start justify-between gap-4">
       <div className="flex-1 min-w-0">
@@ -195,7 +218,7 @@ const DocumentRow: React.FC<{ document: any }> = ({ document }) => (
   </div>
 );
 
-const RecentActivity: React.FC<{ activities: any[]; title?: string }> = ({ activities, title = 'Recent Activity' }) => (
+const RecentActivity: React.FC<{ activities: DashboardActivity[]; title?: string }> = ({ activities, title = 'Recent Activity' }) => (
   <SectionCard title={title} icon={History}>
     <div className="space-y-4">
       {activities.length > 0 ? (
