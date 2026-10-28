@@ -8,7 +8,8 @@ const bcrypt = require('bcryptjs');
  * - Creates ENUM types (and adds missing values on existing databases).
  * - Creates all tables used by the application.
  * - Adds columns that later versions of the code rely on.
- * - Seeds a default Admin/Agent user and reference data (only when empty).
+ * - Seeds Admin/Agent accounts only when explicit, strong seed passwords are configured.
+ * - Seeds reference data only when the corresponding tables are empty.
  */
 
 async function createEnumTypes(client) {
@@ -307,23 +308,44 @@ async function createIndexes(client) {
 }
 
 async function seedData(client) {
-  // Default admin user (CHANGE THIS PASSWORD in production immediately)
-  const hashedPassword = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD || 'admin123', 10);
-  await client.query(
-    `INSERT INTO users (name, email, password_hash, role, avatar)
-     SELECT 'Admin User', 'admin@insurearch.com', $1, 'Admin', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330'
-     WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'admin@insurearch.com')`,
-    [hashedPassword]
-  );
+  // Never create privileged accounts with predictable fallback credentials.
+  // Existing accounts do not need seed passwords; new accounts require explicit,
+  // independently configured secrets supplied by the operator.
+  const seedAccounts = [
+    {
+      email: 'admin@insurearch.com',
+      name: 'Admin User',
+      role: 'Admin',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
+      passwordEnv: 'SEED_ADMIN_PASSWORD',
+    },
+    {
+      email: 'agent@insurearch.com',
+      name: 'Agent User',
+      role: 'Agent',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4f',
+      passwordEnv: 'SEED_AGENT_PASSWORD',
+    },
+  ];
 
-  // Default agent user
-  const agentHashedPassword = await bcrypt.hash(process.env.SEED_AGENT_PASSWORD || 'agent123', 10);
-  await client.query(
-    `INSERT INTO users (name, email, password_hash, role, avatar)
-     SELECT 'Agent User', 'agent@insurearch.com', $1, 'Agent', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e'
-     WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'agent@insurearch.com')`,
-    [agentHashedPassword]
-  );
+  for (const account of seedAccounts) {
+    const existing = await client.query('SELECT 1 FROM users WHERE email = $1 LIMIT 1', [account.email]);
+    if (existing.rowCount > 0) continue;
+
+    const password = process.env[account.passwordEnv];
+    if (typeof password !== 'string' || password.length < 16) {
+      throw new Error(
+        `Cannot seed ${account.role} account: set ${account.passwordEnv} to a unique password of at least 16 characters.`
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await client.query(
+      `INSERT INTO users (name, email, password_hash, role, avatar)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [account.name, account.email, passwordHash, account.role, account.avatar]
+    );
+  }
 
   // Sample branches if none exist
   const branchCount = await client.query('SELECT COUNT(*) FROM branches');
