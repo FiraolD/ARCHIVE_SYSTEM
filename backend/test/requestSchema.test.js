@@ -29,3 +29,11 @@ test('request_status enum includes a distinct return verification state', () => 
     'new and existing databases must support Return Pending requests'
   );
 });
+
+test('legacy unverified returns are migrated into the explicit verification state', () => {
+  assert.match(
+    setupDatabase,
+    /UPDATE file_requests fr[\\s\\S]*?SET status = 'Return Pending'[\\s\\S]*?fr\.status = 'Returned'[\\s\\S]*?d\.status = 'Returned'/,
+    'legacy requests with a Returned document must remain pending verification after upgrade'
+  );
+});
