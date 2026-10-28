@@ -402,13 +402,8 @@ async function setupDatabase(options = {}) {
     // before tables/data use any newly-added enum labels; PostgreSQL does not
     // allow a newly-added enum value to be used until its transaction commits.
     await client.query('BEGIN');
-    try {
-      await createEnumTypes(client);
-      await client.query('COMMIT');
-    } catch (enumError) {
-      await client.query('ROLLBACK');
-      throw enumError;
-    }
+    await createEnumTypes(client);
+    await client.query('COMMIT');
 
     // Phase 2: schema, indexes, legacy data repair, and seed data are atomic.
     await client.query('BEGIN');
