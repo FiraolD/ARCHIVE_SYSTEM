@@ -94,3 +94,46 @@ test('database setup is repeatable and preserves existing schema and records', {
     await adminPool.end();
   }
 });
+
+
+test('enum migration phase rolls back all enum changes when one type cannot be upgraded', {
+  skip: !connectionString && 'Set TEST_DATABASE_URL to run PostgreSQL migration tests',
+}, async () => {
+  const adminPool = new Pool({ connectionString, max: 2 });
+  const schema = `setup_enum_rollback_it_${randomUUID().replace(/-/g, '')}`;
+  const dbPool = new Pool({
+    connectionString,
+    max: 2,
+    options: `-c search_path=${schema}`,
+  });
+  const logger = { log() {}, error() {} };
+
+  try {
+    await adminPool.query(`CREATE SCHEMA "${schema}"`);
+    await adminPool.query(`CREATE DOMAIN "${schema}".file_type AS TEXT`);
+
+    await assert.rejects(
+      setupDatabase({ dbPool, env: {}, logger }),
+      /file_type|enum|ALTER TYPE/i,
+    );
+
+    const createdUserRole = await adminPool.query(
+      `SELECT count(*)::int AS count FROM pg_type t
+       JOIN pg_namespace n ON n.oid = t.typnamespace
+       WHERE n.nspname = $1 AND t.typname = 'user_role'`,
+      [schema],
+    );
+    assert.equal(createdUserRole.rows[0].count, 0);
+
+    const userTables = await adminPool.query(
+      `SELECT count(*)::int AS count FROM information_schema.tables
+       WHERE table_schema = $1 AND table_name = 'users'`,
+      [schema],
+    );
+    assert.equal(userTables.rows[0].count, 0);
+  } finally {
+    await dbPool.end().catch(() => {});
+    await adminPool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await adminPool.end();
+  }
+});
