@@ -1,5 +1,11 @@
-const { pool } = require('../config/database');
+let defaultPool;
+
+function getDefaultPool() {
+  if (!defaultPool) defaultPool = require('../config/database').pool;
+  return defaultPool;
+}
 const bcrypt = require('bcryptjs');
+const { getRequiredSeedPassword } = require('../utils/seedCredentials');
 
 /**
  * INSUREARCH database setup / migration script.
@@ -8,12 +14,13 @@ const bcrypt = require('bcryptjs');
  * - Creates ENUM types (and adds missing values on existing databases).
  * - Creates all tables used by the application.
  * - Adds columns that later versions of the code rely on.
- * - Seeds a default Admin/Agent user and reference data (only when empty).
+ * - Seeds Admin/Agent accounts only when explicit, strong seed passwords are configured.
+ * - Seeds reference data only when the corresponding tables are empty.
  */
 
 async function createEnumTypes(client) {
-  // Enum creation cannot share a transaction with ALTER TYPE ADD VALUE,
-  // so each statement is executed and guarded individually.
+  // Run enum creation and additions in a dedicated transaction. This phase is
+  // committed before the schema/data transaction consumes new enum labels.
   const enums = [
     { name: 'user_role', values: ['Admin', 'Manager', 'Agent', 'Viewer'] },
     { name: 'file_type', values: ['Claim File', 'Circular', 'Policy', 'Billing', 'Correspondence'] },
@@ -23,22 +30,23 @@ async function createEnumTypes(client) {
   ];
 
   for (const enumType of enums) {
-    try {
-      await client.query(`CREATE TYPE ${enumType.name} AS ENUM (${enumType.values.map(v => `'${v}'`).join(', ')})`);
-      console.log(`Created ENUM type: ${enumType.name}`);
-    } catch (err) {
-      if (err.code === '42710') {
-        // Type already exists - add any missing values
-        for (const value of enumType.values) {
-          try {
-            await client.query(`ALTER TYPE ${enumType.name} ADD VALUE IF NOT EXISTS '${value}'`);
-          } catch (addErr) {
-            if (addErr.code !== '42710') throw addErr;
-          }
-        }
-      } else {
-        throw err;
-      }
+    const values = enumType.values.map(value => `'${value}'`).join(', ');
+    // Catch duplicate_object inside a DO block's subtransaction. Catching a
+    // failed CREATE TYPE in JavaScript leaves the surrounding transaction
+    // aborted, so subsequent ALTER TYPE statements would fail with 25P02.
+    await client.query(`
+      DO $enum_create$
+      BEGIN
+        CREATE TYPE ${enumType.name} AS ENUM (${values});
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END
+      $enum_create$;
+    `);
+
+    // Values are fixed constants defined above, not user input.
+    for (const value of enumType.values) {
+      await client.query(`ALTER TYPE ${enumType.name} ADD VALUE IF NOT EXISTS '${value}'`);
     }
   }
 }
@@ -306,24 +314,45 @@ async function createIndexes(client) {
   `);
 }
 
-async function seedData(client) {
-  // Default admin user (CHANGE THIS PASSWORD in production immediately)
-  const hashedPassword = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD || 'admin123', 10);
-  await client.query(
-    `INSERT INTO users (name, email, password_hash, role, avatar)
-     SELECT 'Admin User', 'admin@insurearch.com', $1, 'Admin', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330'
-     WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'admin@insurearch.com')`,
-    [hashedPassword]
-  );
+async function seedData(client, env = process.env) {
+  // Never create privileged accounts with predictable fallback credentials.
+  // Existing accounts do not need seed passwords; new accounts require explicit,
+  // independently configured secrets supplied by the operator.
+  const seedAccounts = [
+    {
+      email: 'admin@insurearch.com',
+      name: 'Admin User',
+      role: 'Admin',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
+      passwordEnv: 'SEED_ADMIN_PASSWORD',
+    },
+    {
+      email: 'agent@insurearch.com',
+      name: 'Agent User',
+      role: 'Agent',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4f',
+      passwordEnv: 'SEED_AGENT_PASSWORD',
+    },
+  ];
 
-  // Default agent user
-  const agentHashedPassword = await bcrypt.hash(process.env.SEED_AGENT_PASSWORD || 'agent123', 10);
-  await client.query(
-    `INSERT INTO users (name, email, password_hash, role, avatar)
-     SELECT 'Agent User', 'agent@insurearch.com', $1, 'Agent', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e'
-     WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'agent@insurearch.com')`,
-    [agentHashedPassword]
-  );
+  for (const account of seedAccounts) {
+    const existing = await client.query('SELECT 1 FROM users WHERE email = $1 LIMIT 1', [account.email]);
+    if (existing.rowCount > 0) continue;
+
+    let password;
+    try {
+      password = getRequiredSeedPassword(account.passwordEnv, env);
+    } catch (error) {
+      throw new Error(`Cannot seed ${account.role} account: ${error.message}`);
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await client.query(
+      `INSERT INTO users (name, email, password_hash, role, avatar)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [account.name, account.email, passwordHash, account.role, account.avatar]
+    );
+  }
 
   // Sample branches if none exist
   const branchCount = await client.query('SELECT COUNT(*) FROM branches');
@@ -360,13 +389,24 @@ async function seedData(client) {
   }
 }
 
-async function setupDatabase() {
-  const client = await pool.connect();
+async function setupDatabase(options = {}) {
+  const {
+    dbPool = getDefaultPool(),
+    env = process.env,
+    logger = console,
+    closePool = true,
+  } = options;
+  const client = await dbPool.connect();
 
   try {
-    // ENUM types first (tables reference them)
+    // Phase 1: apply enum creation/value additions atomically. Commit this phase
+    // before tables/data use any newly-added enum labels; PostgreSQL does not
+    // allow a newly-added enum value to be used until its transaction commits.
+    await client.query('BEGIN');
     await createEnumTypes(client);
+    await client.query('COMMIT');
 
+    // Phase 2: schema, indexes, legacy data repair, and seed data are atomic.
     await client.query('BEGIN');
     await createTables(client);
     await upgradeExistingTables(client);
@@ -385,22 +425,35 @@ async function setupDatabase() {
     `);
 
     await createIndexes(client);
-    await seedData(client);
+    await seedData(client, env);
     await client.query('COMMIT');
 
-    console.log('✅ Database setup completed successfully');
+    logger.log('✅ Database setup completed successfully');
   } catch (error) {
     try {
       await client.query('ROLLBACK');
     } catch (rollbackError) {
       // A ROLLBACK failure means we are outside the failed transaction; ignore.
     }
-    console.error('❌ Error setting up database:', error);
-    process.exitCode = 1;
+    logger.error('❌ Error setting up database:', error);
+    throw error;
   } finally {
     client.release();
-    await pool.end();
+    if (closePool) await dbPool.end();
   }
 }
 
-setupDatabase();
+if (require.main === module) {
+  setupDatabase().catch(() => {
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  createEnumTypes,
+  createTables,
+  upgradeExistingTables,
+  createIndexes,
+  seedData,
+  setupDatabase,
+};
