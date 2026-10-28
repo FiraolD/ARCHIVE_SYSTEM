@@ -124,22 +124,16 @@ app.use('/api/reports', authenticate, reportsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/boxes', require('./routes/boxes'));
 
-// Health check
-app.get('/api/health', async (req, res) => {
-  try {
-    const dbResult = await query('SELECT 1 as connected');
-    res.json({ 
-      status: 'OK', 
-      timestamp: new Date().toISOString(),
-      database: { connected: true }
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      status: 'ERROR',
-      database: { connected: false, error: error.message }
-    });
-  }
-});
+// Health endpoints: liveness is independent of downstream dependencies;
+// readiness verifies that the service can reach PostgreSQL.
+const { createHealthChecks } = require('./utils/healthChecks');
+const healthChecks = createHealthChecks({ query });
+
+app.get('/health/live', healthChecks.liveness);
+app.get('/health/ready', healthChecks.readiness);
+
+// Keep the existing endpoint for clients that already use it.
+app.get('/api/health', healthChecks.readiness);
 
 // Error handling
 app.use((err, req, res, next) => {
