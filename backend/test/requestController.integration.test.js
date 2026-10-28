@@ -23,6 +23,10 @@ function makeHarness({ requestStatus = 'Approved', documentStatus = 'Checked-out
       if (normalized === 'BEGIN' || normalized === 'COMMIT' || normalized === 'ROLLBACK') {
         return { rows: [], rowCount: null };
       }
+      if (normalized.startsWith('SELECT fr.*, d.title, d.archive_reference_number, d.status AS document_status')) {
+        if (params[0] !== state.request.id) return { rows: [], rowCount: 0 };
+        return { rows: [{ ...state.request, document_status: state.document.status }], rowCount: 1 };
+      }
       if (normalized.startsWith('SELECT fr.*, d.id AS document_id')) {
         if (params[1] !== state.request.requested_by || params[0] !== state.request.id) return { rows: [], rowCount: 0 };
         return { rows: [{ ...state.request, doc_status: state.document.status }], rowCount: 1 };
