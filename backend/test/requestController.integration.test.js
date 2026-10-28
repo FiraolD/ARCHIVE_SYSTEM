@@ -1,6 +1,5 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 // Exercise the real Express controller with a deterministic transactional client.
 // PostgreSQL locking and rollback semantics are covered separately by the
@@ -32,22 +31,26 @@ function makeHarness({ requestStatus = 'Approved', documentStatus = 'Checked-out
         return { rows: [{ ...state.request, doc_status: state.document.status }], rowCount: 1 };
       }
       if (normalized.startsWith("UPDATE documents SET status = 'Returned'")) {
-        if (state.document.status !== params[1]) return { rows: [], rowCount: 0 };
+        // The controller's SQL fixes the expected current status in the WHERE
+        // clause; document_id is its only bind parameter.
+        if (state.document.status !== 'Checked-out' || params[0] !== state.document.id) {
+          return { rows: [], rowCount: 0 };
+        }
         state.document.status = 'Returned';
         return { rows: [{ id: state.document.id }], rowCount: 1 };
       }
       if (normalized.startsWith("UPDATE documents SET status = 'Active'")) {
-        if (state.document.status !== params[1]) return { rows: [], rowCount: 0 };
+        if (state.document.status !== params[1] || params[0] !== state.document.id) return { rows: [], rowCount: 0 };
         state.document.status = 'Active';
         return { rows: [{ id: state.document.id }], rowCount: 1 };
       }
       if (normalized.startsWith("UPDATE file_requests SET status = 'Return Pending'")) {
-        if (state.request.status !== 'Approved') return { rows: [], rowCount: 0 };
+        if (state.request.status !== 'Approved' || params[0] !== state.request.id) return { rows: [], rowCount: 0 };
         state.request.status = 'Return Pending';
         return { rows: [{ id: state.request.id }], rowCount: 1 };
       }
       if (normalized.startsWith("UPDATE file_requests SET status = 'Returned'")) {
-        if (!['Approved', 'Return Pending'].includes(state.request.status)) return { rows: [], rowCount: 0 };
+        if (state.request.status !== params[1] || params[0] !== state.request.id) return { rows: [], rowCount: 0 };
         state.request.status = 'Returned';
         return { rows: [{ id: state.request.id }], rowCount: 1 };
       }
