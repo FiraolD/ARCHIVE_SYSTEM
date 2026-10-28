@@ -136,3 +136,41 @@ test('enum migration phase rolls back all enum changes when one type cannot be u
     await adminPool.end();
   }
 });
+
+
+test('failed seed phase rolls back schema changes while keeping the committed enum phase', {
+  skip: !connectionString && 'Set TEST_DATABASE_URL to run PostgreSQL migration tests',
+}, async () => {
+  const adminPool = new Pool({ connectionString, max: 2 });
+  const schema = `setup_schema_rollback_it_${randomUUID().replace(/-/g, '')}`;
+  const dbPool = new Pool({
+    connectionString,
+    max: 2,
+    options: `-c search_path=${schema}`,
+  });
+
+  try {
+    await adminPool.query(`CREATE SCHEMA "${schema}"`);
+    await assert.rejects(
+      setupDatabase({ dbPool, env: {}, logger: { log() {}, error() {} } }),
+      /Cannot seed Admin account.*SEED_ADMIN_PASSWORD/,
+    );
+
+    const state = await adminPool.query(
+      `SELECT
+        (SELECT count(*)::int FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE n.nspname = $1 AND t.typname IN
+            ('user_role', 'file_type', 'file_status', 'request_status', 'notification_type')) AS enum_count,
+        (SELECT count(*)::int FROM information_schema.tables
+          WHERE table_schema = $1) AS table_count`,
+      [schema],
+    );
+
+    assert.equal(state.rows[0].enum_count, 5);
+    assert.equal(state.rows[0].table_count, 0);
+  } finally {
+    await adminPool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await adminPool.end();
+  }
+});
