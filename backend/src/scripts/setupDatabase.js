@@ -383,8 +383,8 @@ async function seedData(client, env = process.env) {
   }
 }
 
-async function setupDatabase() {
-  const client = await pool.connect();
+async function setupDatabase({ dbPool = pool, env = process.env, logger = console, closePool = true } = {}) {
+  const client = await dbPool.connect();
 
   try {
     // ENUM types first (tables reference them)
@@ -408,26 +408,28 @@ async function setupDatabase() {
     `);
 
     await createIndexes(client);
-    await seedData(client);
+    await seedData(client, env);
     await client.query('COMMIT');
 
-    console.log('✅ Database setup completed successfully');
+    logger.log('✅ Database setup completed successfully');
   } catch (error) {
     try {
       await client.query('ROLLBACK');
     } catch (rollbackError) {
       // A ROLLBACK failure means we are outside the failed transaction; ignore.
     }
-    console.error('❌ Error setting up database:', error);
-    process.exitCode = 1;
+    logger.error('❌ Error setting up database:', error);
+    throw error;
   } finally {
     client.release();
-    await pool.end();
+    if (closePool) await dbPool.end();
   }
 }
 
 if (require.main === module) {
-  setupDatabase();
+  setupDatabase().catch(() => {
+    process.exitCode = 1;
+  });
 }
 
 module.exports = {
