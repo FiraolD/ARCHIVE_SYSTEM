@@ -370,6 +370,20 @@ async function setupDatabase() {
     await client.query('BEGIN');
     await createTables(client);
     await upgradeExistingTables(client);
+
+    // Legacy workflow used request status 'Returned' while the document was
+    // still in document status 'Returned' awaiting archive staff verification.
+    // Reclassify only that unmistakably pending pair; completed returns have an
+    // Active document and remain Returned.
+    await client.query(`
+      UPDATE file_requests fr
+         SET status = 'Return Pending'
+        FROM documents d
+       WHERE d.id = fr.document_id
+         AND fr.status = 'Returned'
+         AND d.status = 'Returned'
+    `);
+
     await createIndexes(client);
     await seedData(client);
     await client.query('COMMIT');
