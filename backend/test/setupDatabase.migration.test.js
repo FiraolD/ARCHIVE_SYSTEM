@@ -132,7 +132,6 @@ test('enum migration phase rolls back all enum changes when one type cannot be u
     );
     assert.equal(userTables.rows[0].count, 0);
   } finally {
-    await dbPool.end().catch(() => {});
     await adminPool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
     await adminPool.end();
   }
