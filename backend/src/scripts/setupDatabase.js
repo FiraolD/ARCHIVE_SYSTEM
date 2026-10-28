@@ -19,8 +19,8 @@ const { getRequiredSeedPassword } = require('../utils/seedCredentials');
  */
 
 async function createEnumTypes(client) {
-  // Enum creation cannot share a transaction with ALTER TYPE ADD VALUE,
-  // so each statement is executed and guarded individually.
+  // Run enum creation and additions in a dedicated transaction. This phase is
+  // committed before the schema/data transaction consumes new enum labels.
   const enums = [
     { name: 'user_role', values: ['Admin', 'Manager', 'Agent', 'Viewer'] },
     { name: 'file_type', values: ['Claim File', 'Circular', 'Policy', 'Billing', 'Correspondence'] },
@@ -30,22 +30,23 @@ async function createEnumTypes(client) {
   ];
 
   for (const enumType of enums) {
-    try {
-      await client.query(`CREATE TYPE ${enumType.name} AS ENUM (${enumType.values.map(v => `'${v}'`).join(', ')})`);
-      console.log(`Created ENUM type: ${enumType.name}`);
-    } catch (err) {
-      if (err.code === '42710') {
-        // Type already exists - add any missing values
-        for (const value of enumType.values) {
-          try {
-            await client.query(`ALTER TYPE ${enumType.name} ADD VALUE IF NOT EXISTS '${value}'`);
-          } catch (addErr) {
-            if (addErr.code !== '42710') throw addErr;
-          }
-        }
-      } else {
-        throw err;
-      }
+    const values = enumType.values.map(value => `'${value}'`).join(', ');
+    // Catch duplicate_object inside a DO block's subtransaction. Catching a
+    // failed CREATE TYPE in JavaScript leaves the surrounding transaction
+    // aborted, so subsequent ALTER TYPE statements would fail with 25P02.
+    await client.query(`
+      DO $enum_create$
+      BEGIN
+        CREATE TYPE ${enumType.name} AS ENUM (${values});
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END
+      $enum_create$;
+    `);
+
+    // Values are fixed constants defined above, not user input.
+    for (const value of enumType.values) {
+      await client.query(`ALTER TYPE ${enumType.name} ADD VALUE IF NOT EXISTS '${value}'`);
     }
   }
 }
