@@ -57,7 +57,12 @@ test('request controller return workflow works against PostgreSQL', {
         expected_return_date DATE NOT NULL,
         actual_return_date DATE,
         status "${schema}".request_status NOT NULL,
-        request_reference VARCHAR(50) NOT NULL
+        request_reference VARCHAR(50) NOT NULL,
+        rejection_reason TEXT,
+        approved_by UUID,
+        approved_at TIMESTAMP,
+        processed_by UUID,
+        processed_at TIMESTAMP
       );
       CREATE TABLE "${schema}".notifications (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -198,6 +203,77 @@ test('request controller return workflow works against PostgreSQL', {
         await appPool.query('DROP FUNCTION IF EXISTS fail_integration_audit_insert()');
       }
     });
+
+    await t.test('admin rejection persists the reason and writes notification and audit rows', async () => {
+      await reset('Pending', 'Active');
+      const res = responseRecorder();
+      await controller.rejectRequest({
+        params: { id: REQUEST_ID },
+        body: { reason: 'Required documentation is incomplete' },
+        user: { id: ADMIN_ID, name: 'Integration Admin' },
+        ip: '127.0.0.1',
+        get: () => 'integration-test',
+      }, res);
+
+      assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+      const request = await appPool.query(
+        'SELECT status, rejection_reason FROM file_requests WHERE id = $1',
+        [REQUEST_ID],
+      );
+      const document = await appPool.query('SELECT status FROM documents WHERE id = $1', [DOCUMENT_ID]);
+      assert.equal(request.rows[0].status, 'Rejected');
+      assert.equal(request.rows[0].rejection_reason, 'Required documentation is incomplete');
+      assert.equal(document.rows[0].status, 'Active');
+      assert.equal((await appPool.query('SELECT count(*)::int AS count FROM notifications')).rows[0].count, 1);
+      assert.equal((await appPool.query('SELECT count(*)::int AS count FROM audit_logs')).rows[0].count, 1);
+    });
+
+    await t.test('concurrent approval and rejection allow only one terminal decision', async () => {
+      await reset('Pending', 'Active');
+      const approveRes = responseRecorder();
+      const rejectRes = responseRecorder();
+
+      await Promise.all([
+        controller.approveRequest({
+          params: { id: REQUEST_ID },
+          body: {},
+          user: { id: ADMIN_ID, name: 'Integration Admin' },
+          ip: '127.0.0.1',
+          get: () => 'integration-test',
+        }, approveRes),
+        controller.rejectRequest({
+          params: { id: REQUEST_ID },
+          body: { reason: 'Concurrent decision test' },
+          user: { id: ADMIN_ID, name: 'Integration Admin' },
+          ip: '127.0.0.1',
+          get: () => 'integration-test',
+        }, rejectRes),
+      ]);
+
+      const outcomes = [approveRes.statusCode, rejectRes.statusCode].sort((a, b) => a - b);
+      assert.deepEqual(outcomes, [200, 409]);
+      const request = await appPool.query(
+        'SELECT status, rejection_reason FROM file_requests WHERE id = $1',
+        [REQUEST_ID],
+      );
+      const document = await appPool.query('SELECT status FROM documents WHERE id = $1', [DOCUMENT_ID]);
+      const notificationCount = (await appPool.query('SELECT count(*)::int AS count FROM notifications')).rows[0].count;
+      const auditCount = (await appPool.query('SELECT count(*)::int AS count FROM audit_logs')).rows[0].count;
+
+      assert.ok(['Approved', 'Rejected'].includes(request.rows[0].status));
+      assert.equal(notificationCount, 1);
+      assert.equal(auditCount, 1);
+      if (request.rows[0].status === 'Approved') {
+        assert.equal(document.rows[0].status, 'Checked-out');
+        assert.equal(approveRes.statusCode, 200);
+        assert.equal(rejectRes.statusCode, 409);
+      } else {
+        assert.equal(document.rows[0].status, 'Active');
+        assert.equal(rejectRes.statusCode, 200);
+        assert.equal(approveRes.statusCode, 409);
+      }
+    });
+
   } finally {
     if (originalDatabaseModule) require.cache[databasePath] = originalDatabaseModule;
     else delete require.cache[databasePath];
