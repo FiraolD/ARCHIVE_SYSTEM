@@ -22,7 +22,7 @@ interface Request {
   requester_department_name?: string;
   request_date: string;
   expected_return_date: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Returned';
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Return Pending' | 'Returned';
   notes?: string;
   rejection_reason?: string;
 }
@@ -88,6 +88,20 @@ export const AdminRequests: React.FC = () => {
     }
   };
 
+  const handleVerifyReturn = async (requestId: string) => {
+    try {
+      setProcessingId(requestId);
+      await requestApi.returnDocument(requestId);
+      toast.success('Return verified. Document is available again.');
+      await loadRequests();
+      setSelectedRequest(null);
+    } catch (error: unknown) {
+      toast.error(getApiErrorDetails(error).error || 'Failed to verify return');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const handleReject = async () => {
     if (!selectedRequest || !rejectReason.trim()) {
       toast.error('Please provide a rejection reason');
@@ -132,7 +146,8 @@ export const AdminRequests: React.FC = () => {
           <option value="Pending">Pending</option>
           <option value="Approved">Approved</option>
           <option value="Rejected">Rejected</option>
-          <option value="Returned">Returned</option>
+          <option value="Return Pending">Awaiting Return Verification</option>
+          <option value="Returned">Returned (Verified)</option>
         </select>
       </FilterBar>
 
@@ -191,6 +206,20 @@ export const AdminRequests: React.FC = () => {
                     ? format(new Date(request.expected_return_date), 'MMM dd, yyyy') : 'N/A'} icon={Calendar} />
                   <Meta label="Requester" value={request.requester_name} icon={User} />
                 </div>
+
+                {request.status === 'Return Pending' && (
+                  <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      onClick={() => handleVerifyReturn(request.id)}
+                      disabled={processingId === request.id}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {processingId === request.id
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <><CheckCircle2 className="w-4 h-4" /> Verify Return</>}
+                    </button>
+                  </div>
+                )}
 
                 {request.status === 'Pending' && (
                   <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -274,6 +303,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     Pending: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900',
     Approved: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900',
     Rejected: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900',
+    'Return Pending': 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900',
     Returned: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900',
   };
   return (

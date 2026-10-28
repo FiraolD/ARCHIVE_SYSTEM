@@ -191,10 +191,11 @@ export const FileRequestPage: React.FC = () => {
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             req.status === 'Pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
                             : req.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300'
+                            : req.status === 'Return Pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
                             : req.status === 'Returned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
                             : req.status === 'Rejected' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300'
                             : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                          }`}>{req.status}</span>
+                          }`}>{req.status === 'Return Pending' ? 'Awaiting verification' : req.status === 'Returned' ? 'Returned (verified)' : req.status}</span>
                         </div>
                         <p className="text-xs text-blue-600 font-mono mt-1">Request Ref: {req.request_reference}</p>
                         <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400">

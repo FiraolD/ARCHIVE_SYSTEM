@@ -174,7 +174,7 @@ export interface FileRequest {
   requestedBy: string;
   requestDate: string;
   expectedReturnDate: string;
-  status: 'Pending' | 'Approved' | 'Returned' | 'Rejected' | 'Overdue';
+  status: 'Pending' | 'Approved' | 'Return Pending' | 'Returned' | 'Rejected' | 'Overdue';
   claimNumber?: string;
   policyNumber?: string;
   insuredName?: string;

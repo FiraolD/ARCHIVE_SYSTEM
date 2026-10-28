@@ -19,22 +19,7 @@ async function audit(user, action, resource, details) {
 /* ================================================================
  * Box lifecycle state machine
  * ================================================================ */
-const ALLOWED_TRANSITIONS = {
-  'Draft':      [{ to: 'Packed',     roles: ['Admin', 'Manager'] }],
-  'Packed':     [{ to: 'In Transit', roles: ['Admin', 'Manager'] },
-                 { to: 'Draft',      roles: ['Admin'] }],
-  'In Transit': [{ to: 'Archived',   roles: ['Admin', 'Manager'] },
-                 { to: 'Packed',     roles: ['Admin'] }],
-  'Archived':   [{ to: 'Dissolved',  roles: ['Admin'] },
-                 { to: 'In Transit', roles: ['Admin'] }],
-  'Dissolved':  [],
-};
-
-function allowedFor(currentStatus, role) {
-  return (ALLOWED_TRANSITIONS[currentStatus] || [])
-    .filter(t => t.roles.includes(role))
-    .map(t => t.to);
-}
+const { ALLOWED_TRANSITIONS, allowedFor } = require('../utils/boxTransitions');
 
 /* ================================================================
  * GET /api/boxes

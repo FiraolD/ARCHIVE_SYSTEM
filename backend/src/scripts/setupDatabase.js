@@ -18,7 +18,7 @@ async function createEnumTypes(client) {
     { name: 'user_role', values: ['Admin', 'Manager', 'Agent', 'Viewer'] },
     { name: 'file_type', values: ['Claim File', 'Circular', 'Policy', 'Billing', 'Correspondence'] },
     { name: 'file_status', values: ['Active', 'Checked-out', 'Settled Claims', 'Returned'] },
-    { name: 'request_status', values: ['Pending', 'Approved', 'Returned', 'Rejected', 'Overdue'] },
+    { name: 'request_status', values: ['Pending', 'Approved', 'Return Pending', 'Returned', 'Rejected', 'Overdue'] },
     { name: 'notification_type', values: ['info', 'warning', 'error', 'success'] },
   ];
 
@@ -195,6 +195,7 @@ async function createTables(client) {
       document_id UUID REFERENCES documents(id),
       requested_by UUID REFERENCES users(id),
       request_date DATE NOT NULL,
+      requester_name VARCHAR(150),
       expected_return_date DATE NOT NULL,
       actual_return_date DATE,
       status request_status NOT NULL DEFAULT 'Pending',
@@ -265,6 +266,7 @@ async function upgradeExistingTables(client) {
   const columnUpgrades = [
     { table: 'users', column: 'department_name', type: 'VARCHAR(100)' },
     { table: 'documents', column: 'product_custom_fields', type: 'JSONB' },
+    { table: 'file_requests', column: 'requester_name', type: 'VARCHAR(150)' },
     { table: 'file_requests', column: 'request_reference', type: 'VARCHAR(50)' },
     { table: 'file_requests', column: 'rejection_reason', type: 'TEXT' },
     { table: 'file_requests', column: 'approved_by', type: 'UUID REFERENCES users(id)' },
@@ -368,6 +370,20 @@ async function setupDatabase() {
     await client.query('BEGIN');
     await createTables(client);
     await upgradeExistingTables(client);
+
+    // Legacy workflow used request status 'Returned' while the document was
+    // still in document status 'Returned' awaiting archive staff verification.
+    // Reclassify only that unmistakably pending pair; completed returns have an
+    // Active document and remain Returned.
+    await client.query(`
+      UPDATE file_requests fr
+         SET status = 'Return Pending'
+        FROM documents d
+       WHERE d.id = fr.document_id
+         AND fr.status = 'Returned'
+         AND d.status = 'Returned'
+    `);
+
     await createIndexes(client);
     await seedData(client);
     await client.query('COMMIT');
