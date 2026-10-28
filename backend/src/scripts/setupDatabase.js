@@ -308,7 +308,7 @@ async function createIndexes(client) {
   `);
 }
 
-async function seedData(client) {
+async function seedData(client, env = process.env) {
   // Never create privileged accounts with predictable fallback credentials.
   // Existing accounts do not need seed passwords; new accounts require explicit,
   // independently configured secrets supplied by the operator.
@@ -335,7 +335,7 @@ async function seedData(client) {
 
     let password;
     try {
-      password = getRequiredSeedPassword(account.passwordEnv);
+      password = getRequiredSeedPassword(account.passwordEnv, env);
     } catch (error) {
       throw new Error(`Cannot seed ${account.role} account: ${error.message}`);
     }
@@ -426,4 +426,15 @@ async function setupDatabase() {
   }
 }
 
-setupDatabase();
+if (require.main === module) {
+  setupDatabase();
+}
+
+module.exports = {
+  createEnumTypes,
+  createTables,
+  upgradeExistingTables,
+  createIndexes,
+  seedData,
+  setupDatabase,
+};
