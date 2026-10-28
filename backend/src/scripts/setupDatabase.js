@@ -1,5 +1,6 @@
 const { pool } = require('../config/database');
 const bcrypt = require('bcryptjs');
+const { getRequiredSeedPassword } = require('../utils/seedCredentials');
 
 /**
  * INSUREARCH database setup / migration script.
@@ -332,11 +333,11 @@ async function seedData(client) {
     const existing = await client.query('SELECT 1 FROM users WHERE email = $1 LIMIT 1', [account.email]);
     if (existing.rowCount > 0) continue;
 
-    const password = process.env[account.passwordEnv];
-    if (typeof password !== 'string' || password.length < 16) {
-      throw new Error(
-        `Cannot seed ${account.role} account: set ${account.passwordEnv} to a unique password of at least 16 characters.`
-      );
+    let password;
+    try {
+      password = getRequiredSeedPassword(account.passwordEnv);
+    } catch (error) {
+      throw new Error(`Cannot seed ${account.role} account: ${error.message}`);
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
