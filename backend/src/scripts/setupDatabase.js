@@ -1,4 +1,9 @@
-const { pool } = require('../config/database');
+let defaultPool;
+
+function getDefaultPool() {
+  if (!defaultPool) defaultPool = require('../config/database').pool;
+  return defaultPool;
+}
 const bcrypt = require('bcryptjs');
 const { getRequiredSeedPassword } = require('../utils/seedCredentials');
 
@@ -383,7 +388,13 @@ async function seedData(client, env = process.env) {
   }
 }
 
-async function setupDatabase({ dbPool = pool, env = process.env, logger = console, closePool = true } = {}) {
+async function setupDatabase(options = {}) {
+  const {
+    dbPool = getDefaultPool(),
+    env = process.env,
+    logger = console,
+    closePool = true,
+  } = options;
   const client = await dbPool.connect();
 
   try {
