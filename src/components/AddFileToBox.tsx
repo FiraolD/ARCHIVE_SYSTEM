@@ -2,17 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Package, Search, Loader2, FileText, Hash, User, Trash2,
   CheckCircle2, FolderOpen, Files, Building2, RefreshCw,
-  AlertCircle, Plus, Boxes, Truck, Archive, Lock,
-  RotateCcw,
+  AlertCircle, Plus, Boxes, Truck, Archive, Lock, Unlock,
+  RotateCcw, X, Clock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { getApiErrorDetails } from '../utils/apiError';
 import { documentApi, boxApi } from '../services/api';
-import {
-  PageHeader, PageHeaderButton, SectionCard, SearchInput,
-  EmptyState, Modal,
-} from './ui';
+import { useArchive } from '../context/ArchiveContext';
+import { Modal, PageHeader, PageHeaderButton, SectionCard, SearchInput, EmptyState } from './ui';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -114,7 +111,7 @@ const TRANSITION_META: Record<string, {
 /* Main component                                                      */
 /* ------------------------------------------------------------------ */
 export const AddFileToBox: React.FC = () => {
-  // Archive context is used below for shared document actions.
+  const { user } = useArchive();
 
   /* Boxes */
   const [boxes, setBoxes] = useState<Box[]>([]);
@@ -149,8 +146,8 @@ export const AddFileToBox: React.FC = () => {
       setBoxesLoading(true);
       const res = await boxApi.list();
       setBoxes(res.data);
-    } catch (error: unknown) {
-      toast.error(getApiErrorDetails(error).error || 'Failed to load boxes');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to load boxes');
     } finally {
       setBoxesLoading(false);
     }
@@ -163,8 +160,8 @@ export const AddFileToBox: React.FC = () => {
       setBoxDocs(res.data.documents || []);
       setAllowedTransitions(res.data.allowed_transitions || []);
       setSelectedBox(prev => prev ? { ...prev, ...res.data } : res.data);
-    } catch (error: unknown) {
-      toast.error(getApiErrorDetails(error).error || 'Failed to load box');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to load box');
       setBoxDocs([]);
       setAllowedTransitions([]);
     } finally {
@@ -195,8 +192,8 @@ export const AddFileToBox: React.FC = () => {
         setDocSearchLoading(true);
         const res = await documentApi.getDocuments({ search: docSearch, limit: 25 });
         setDocResults(res.data.documents || []);
-      } catch (error: unknown) {
-        toast.error(getApiErrorDetails(error).error || 'Document search failed');
+      } catch (error: any) {
+        toast.error(error.response?.data?.error || 'Document search failed');
         setDocResults([]);
       } finally {
         setDocSearchLoading(false);
@@ -234,9 +231,9 @@ export const AddFileToBox: React.FC = () => {
       toast.success(`Added "${doc.title || doc.archive_reference_number}" to ${selectedBox.identifier}`);
       await loadBoxDetail(selectedBox.id);
       loadBoxes();
-    } catch (error: unknown) {
-      if (getApiErrorDetails(error).status === 409) toast.error(getApiErrorDetails(error).error || 'Box cannot accept documents in its current state');
-      else toast.error(getApiErrorDetails(error).error || 'Failed to add document');
+    } catch (error: any) {
+      if (error.response?.status === 409) toast.error(error.response.data.error || 'Box cannot accept documents in its current state');
+      else toast.error(error.response?.data?.error || 'Failed to add document');
     } finally {
       setAddingId(null);
     }
@@ -252,8 +249,8 @@ export const AddFileToBox: React.FC = () => {
       toast.success('Document removed from box');
       setBoxDocs(prev => prev.filter(d => d.id !== doc.id));
       loadBoxes();
-    } catch (error: unknown) {
-      toast.error(getApiErrorDetails(error).error || 'Failed to remove document');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to remove document');
     } finally {
       setRemovingId(null);
     }
@@ -276,8 +273,8 @@ export const AddFileToBox: React.FC = () => {
       setPendingTransition(null);
       setTransitionNote('');
       loadBoxes();
-    } catch (error: unknown) {
-      toast.error(getApiErrorDetails(error).error || 'Failed to update box status');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to update box status');
     } finally {
       setTransitionSubmitting(false);
     }
@@ -360,7 +357,7 @@ export const AddFileToBox: React.FC = () => {
                         <p className="text-xs font-mono text-blue-600 dark:text-blue-400 font-bold">
                           {selectedBox.identifier}
                         </p>
-                        <h2 className="text-xl font-black text-slate-900 dark:text-white truncate">
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white truncate">
                           {selectedBox.file_type} Box
                         </h2>
                         {selectedBox.branch_name && (
@@ -374,7 +371,7 @@ export const AddFileToBox: React.FC = () => {
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">
                       <StatusBadge status={selectedBox.status} />
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                         {boxDocs.length} doc{boxDocs.length === 1 ? '' : 's'}
                       </span>
                     </div>
@@ -384,7 +381,7 @@ export const AddFileToBox: React.FC = () => {
                 {/* Allowed transitions */}
                 {allowedTransitions.length > 0 && (
                   <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30">
-                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
                       Available Actions
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -543,7 +540,7 @@ export const AddFileToBox: React.FC = () => {
               {TRANSITION_META[pendingTransition].message}
             </p>
             <div>
-              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 block">
                 Note {TRANSITION_META[pendingTransition].requiresNote
                   ? <span className="text-red-500">*</span>
                   : <span className="text-slate-400 normal-case font-normal">(optional)</span>}
@@ -575,7 +572,7 @@ const StatusBadge: React.FC<{ status: BoxStatus }> = ({ status }) => {
   const meta = STATUS_META[status] || STATUS_META.Draft;
   const Icon = meta.icon;
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap ${meta.badge}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${meta.badge}`}>
       <Icon className="w-3 h-3" />
       {meta.label}
     </span>
@@ -629,7 +626,7 @@ const BoxCard: React.FC<{
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400">
+          <p className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
             {box.identifier}
           </p>
           <p className="font-bold text-slate-900 dark:text-white text-sm truncate mt-0.5">
@@ -637,11 +634,11 @@ const BoxCard: React.FC<{
           </p>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <StatusBadge status={box.status} />
-            <span className="text-[10px] text-slate-400">
+            <span className="text-xs text-slate-400">
               {box.document_count ?? 0} docs
             </span>
             {box.branch_code && (
-              <span className="text-[10px] text-slate-400">• {box.branch_code}</span>
+              <span className="text-xs text-slate-400">• {box.branch_code}</span>
             )}
           </div>
         </div>
@@ -670,7 +667,7 @@ const BoxDocRow: React.FC<{
         <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
           {doc.title || doc.archive_reference_number || 'Untitled'}
         </p>
-        <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
+        <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
           {doc.archive_reference_number && (
             <span className="font-mono text-blue-600 dark:text-blue-400">
               {doc.archive_reference_number}
@@ -719,7 +716,7 @@ const DocumentAddRow: React.FC<{
         <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
           {doc.title || doc.archive_reference_number || 'Untitled'}
         </p>
-        <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
+        <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
           {doc.archive_reference_number && <span className="font-mono">{doc.archive_reference_number}</span>}
           {doc.claim_number && (
             <span className="flex items-center gap-0.5"><Hash className="w-2.5 h-2.5" />{doc.claim_number}</span>
@@ -735,7 +732,7 @@ const DocumentAddRow: React.FC<{
     </div>
 
     {alreadyInBox ? (
-      <span className="text-[10px] font-bold text-green-600 dark:text-green-400 flex items-center gap-1 shrink-0 whitespace-nowrap">
+      <span className="text-xs font-bold text-green-600 dark:text-green-400 flex items-center gap-1 shrink-0 whitespace-nowrap">
         <CheckCircle2 className="w-3.5 h-3.5" /> Added
       </span>
     ) : (

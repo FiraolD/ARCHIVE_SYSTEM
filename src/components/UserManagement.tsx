@@ -3,11 +3,9 @@ import {
   Plus, Edit2, Lock, Power, Loader2, Users as UsersIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getApiErrorDetails } from '../utils/apiError';
 import { useArchive } from '../context/ArchiveContext';
 import { userApi, registrationApi } from '../services/api';
-<<<<<<< HEAD
-import { PageHeader, PageHeaderButton, Modal } from './ui';
+import { Modal, PageHeader, PageHeaderButton } from './ui';
 
 const timeAgo = (iso: string): string => {
   const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
@@ -17,12 +15,6 @@ const timeAgo = (iso: string): string => {
   if (s < 2592000) return `${Math.round(s / 86400)} d ago`;
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
-=======
-import type { Role } from '../types';
-import {
-  PageHeader, PageHeaderButton, SearchInput, EmptyState, Modal,
-} from './ui';
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 
 interface User {
   id: string;
@@ -342,17 +334,11 @@ const UserForm: React.FC<{
         toast.success('User created. Default password is Insurance123');
       }
       onSuccess();
-<<<<<<< HEAD
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Operation failed');
     } finally {
       setIsSubmitting(false);
     }
-=======
-    } catch (error: unknown) {
-      toast.error(getApiErrorDetails(error).error || 'Operation failed');
-    } finally { setIsSubmitting(false); }
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
   };
 
   return (
@@ -386,19 +372,6 @@ const UserForm: React.FC<{
             {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
           </select>
         </div>
-<<<<<<< HEAD
-=======
-      )}
-      <div>
-        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Role</label>
-        <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
-          className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none">
-          <option value="Admin">Admin</option>
-          <option value="Manager">Manager</option>
-          <option value="Agent">Agent</option>
-          <option value="Viewer">Viewer</option>
-        </select>
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
       </div>
       <div>
         <label className="text-xs font-medium text-slate-500 mb-2 block">Department</label>

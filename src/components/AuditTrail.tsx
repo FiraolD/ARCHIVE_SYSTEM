@@ -3,6 +3,11 @@ import { format } from 'date-fns';
 import { Shield, User, Search, Info, Loader2 } from 'lucide-react';
 import { SectionCard } from './ui';
 
+const safeFormat = (value: string, pattern: string) => {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '—' : format(d, pattern);
+};
+
 interface AuditLog {
   id: string;
   timestamp: string;
@@ -54,11 +59,11 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({ logs, isLoading = false 
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/50 dark:bg-slate-800/40">
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Timestamp</th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">User</th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Action</th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Resource</th>
-                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Details</th>
+                <th className="px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Timestamp</th>
+                <th className="px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">User</th>
+                <th className="px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Action</th>
+                <th className="px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Resource</th>
+                <th className="px-6 py-3 text-xs font-medium text-slate-500 dark:text-slate-400">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -76,8 +81,8 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({ logs, isLoading = false 
                   <tr key={log.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{format(new Date(log.timestamp), 'MMM dd, yyyy')}</span>
-                        <span className="text-xs text-slate-400">{format(new Date(log.timestamp), 'HH:mm:ss')}</span>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{safeFormat(log.timestamp, 'MMM dd, yyyy')}</span>
+                        <span className="text-xs text-slate-400">{safeFormat(log.timestamp, 'HH:mm:ss')}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -118,7 +123,7 @@ const ActionBadge: React.FC<{ action: string }> = ({ action }) => {
     'Document Returned': 'text-teal-600 bg-teal-50 border-teal-100',
   };
   return (
-    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${styles[action] || 'text-slate-600 dark:text-slate-400 bg-slate-50 border-slate-100 dark:border-slate-800'}`}>
+    <span className={`px-2 py-0.5 rounded text-xs font-bold border ${styles[action] || 'text-slate-600 dark:text-slate-400 bg-slate-50 border-slate-100 dark:border-slate-800'}`}>
       {action}
     </span>
   );

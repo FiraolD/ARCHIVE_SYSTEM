@@ -8,9 +8,8 @@ import {
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
 import { documentApi, requestApi } from '../services/api';
-import { Document, FileRequest } from '../types';
+import { Document } from '../types';
 import { format } from 'date-fns';
-import { getApiErrorDetails } from '../utils/apiError';
 import { PageHeader, EmptyState } from './ui';
 
 export const FileRequestPage: React.FC = () => {
@@ -23,7 +22,7 @@ export const FileRequestPage: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Document[]>([]);
 
-  const [myRequests, setMyRequests] = useState<FileRequest[]>([]);
+  const [myRequests, setMyRequests] = useState<any[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [returningId, setReturningId] = useState<string | null>(null);
 
@@ -47,19 +46,10 @@ export const FileRequestPage: React.FC = () => {
       if (!searchQuery.trim()) { setSearchResults([]); return; }
       setIsSearching(true);
       try {
-<<<<<<< HEAD
         const response = await documentApi.getDocuments({ search: searchQuery.trim() });
         if (!cancelled) setSearchResults(response.data.documents);
       } catch {
         if (!cancelled) toast.error('Search failed');
-=======
-        const response = await documentApi.getDocuments({ search: searchQuery });
-        setSearchResults(response.data.documents);
-        setDebugInfo(`Found ${response.data.documents.length} documents`);
-      } catch (error: unknown) {
-        setDebugInfo(`Error: ${getApiErrorDetails(error).message}`);
-        toast.error('Search failed');
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
       } finally {
         if (!cancelled) setIsSearching(false);
       }
@@ -95,8 +85,8 @@ export const FileRequestPage: React.FC = () => {
       await requestApi.returnByRequester(requestId);
       toast.success('Document returned. Awaiting admin verification.');
       fetchMyRequests();
-    } catch (error: unknown) {
-      toast.error(getApiErrorDetails(error).error || 'Failed to return document');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to return document');
     } finally {
       setReturningId(null);
     }
@@ -194,11 +184,10 @@ export const FileRequestPage: React.FC = () => {
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                             req.status === 'Pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
                             : req.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300'
-                            : req.status === 'Return Pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
                             : req.status === 'Returned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
                             : req.status === 'Rejected' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300'
                             : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                          }`}>{req.status === 'Return Pending' ? 'Awaiting verification' : req.status === 'Returned' ? 'Returned (verified)' : req.status}</span>
+                          }`}>{req.status}</span>
                         </div>
                         <p className="text-xs text-blue-600 font-mono mt-1">Request Ref: {req.request_reference}</p>
                         <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400">

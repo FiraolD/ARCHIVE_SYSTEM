@@ -63,13 +63,13 @@ const PolicyAccordion: React.FC<{ policy: RetentionPolicy }> = ({ policy }) => {
             <div className="p-4 pt-0 border-t border-slate-100 dark:border-slate-800 mt-2 space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
                     <Info className="w-3 h-3" /> Description
                   </div>
                   <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{policy.description}</p>
                 </div>
                 <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
                     <Scale className="w-3 h-3" /> Legal Reference
                   </div>
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{policy.legalRequirement}</p>

@@ -6,8 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminApi } from '../services/api';
-import { getApiErrorDetails } from '../utils/apiError';
-import { PageHeader } from './ui';
+import { PageHeader, SectionCard } from './ui';
 
 interface QueryResult {
   statementType: string;
@@ -15,7 +14,7 @@ interface QueryResult {
   rowCount: number;
   duration: number;
   truncated: boolean;
-  rows: Record<string, unknown>[];
+  rows: Record<string, any>[];
   fields: { name: string; dataTypeID: number }[];
   isWrite?: boolean;
   isDDL?: boolean;
@@ -72,10 +71,10 @@ export const AdminQueryPage: React.FC = () => {
       } else {
         toast.success(`Query OK — ${response.data.rowCount} row(s) in ${response.data.duration}ms`);
       }
-    } catch (err: unknown) {
-      const details = getApiErrorDetails(err);
-      setError({ error: details.error || details.message || 'Query failed' });
-      toast.error(details.error || details.message || 'Query failed');
+    } catch (err: any) {
+      const errData = err.response?.data || { error: err.message };
+      setError(errData);
+      toast.error(errData.error || 'Query failed');
     } finally {
       setIsRunning(false);
     }
@@ -101,7 +100,7 @@ export const AdminQueryPage: React.FC = () => {
         icon={Database}
       />
 
-      <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-900 rounded-2xl p-4 flex gap-3">
+      <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-900 rounded-xl p-4 flex gap-3">
         <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
         <div className="text-sm text-red-800 dark:text-red-300">
           <p className="font-bold mb-1">Read-only by default.</p>
@@ -109,7 +108,7 @@ export const AdminQueryPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
@@ -134,7 +133,7 @@ export const AdminQueryPage: React.FC = () => {
             </label>
             <button
               onClick={() => { setSql(''); setResult(null); setError(null); }}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" /> Clear
             </button>
@@ -145,7 +144,7 @@ export const AdminQueryPage: React.FC = () => {
             >
               {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
               Run
-              <span className="text-[10px] opacity-70 font-mono">Ctrl+Enter</span>
+              <span className="text-xs opacity-70 font-mono">Ctrl+Enter</span>
             </button>
           </div>
         </div>
@@ -183,15 +182,15 @@ export const AdminQueryPage: React.FC = () => {
           />
           {sql && (isWriteDetected || isDDLDetected) && (
             <div className="absolute bottom-3 right-3 flex flex-col items-end gap-1">
-              {isDDLDetected && <span className="px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 text-[10px] font-bold uppercase tracking-wider">⚠️ DDL detected</span>}
-              {isWriteDetected && !isDDLDetected && <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-[10px] font-bold uppercase tracking-wider">Write operation detected</span>}
+              {isDDLDetected && <span className="px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 text-xs font-bold">⚠️ DDL detected</span>}
+              {isWriteDetected && !isDDLDetected && <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-xs font-bold">Write operation detected</span>}
             </div>
           )}
         </div>
       </div>
 
       {history.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           <button onClick={() => setShowHistory(!showHistory)} className="w-full px-5 py-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
               <History className="w-4 h-4" /> Recent queries ({history.length})
@@ -209,7 +208,7 @@ export const AdminQueryPage: React.FC = () => {
                       className="w-full text-left p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
                       <p className="text-xs font-mono text-slate-700 dark:text-slate-300 line-clamp-2">{h.sql.slice(0, 200)}{h.sql.length > 200 ? '...' : ''}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">{new Date(h.at).toLocaleTimeString()}</p>
+                      <p className="text-xs text-slate-400 mt-1">{new Date(h.at).toLocaleTimeString()}</p>
                     </button>
                   ))}
                 </div>
@@ -220,7 +219,7 @@ export const AdminQueryPage: React.FC = () => {
       )}
 
       {result && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-700 bg-green-50 dark:bg-green-950/30 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -234,7 +233,7 @@ export const AdminQueryPage: React.FC = () => {
                 </p>
               </div>
             </div>
-            <button onClick={copyResult} className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 flex items-center gap-1.5 transition-colors">
+            <button onClick={copyResult} className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 flex items-center gap-1.5 transition-colors">
               {copied ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Copy JSON
             </button>
           </div>
@@ -244,7 +243,7 @@ export const AdminQueryPage: React.FC = () => {
                 <thead className="bg-slate-50 dark:bg-slate-800/50 sticky top-0">
                   <tr>
                     {result.fields.map((f) => (
-                      <th key={f.name} className="px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap border-b border-slate-200 dark:border-slate-700">
+                      <th key={f.name} className="px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap border-b border-slate-200 dark:border-slate-700">
                         {f.name}
                       </th>
                     ))}
@@ -279,7 +278,7 @@ export const AdminQueryPage: React.FC = () => {
       )}
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl border-2 border-red-200 dark:border-red-900 p-5">
+        <div className="bg-red-50 dark:bg-red-950/30 rounded-xl border-2 border-red-200 dark:border-red-900 p-5">
           <div className="flex items-start gap-3">
             <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             <div className="flex-1">

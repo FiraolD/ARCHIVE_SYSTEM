@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  BarChart3, TrendingUp, PieChart, Download, FileBarChart,
+  BarChart3, TrendingUp, PieChart, Download, ArrowUpRight, FileBarChart,
   Calendar, Loader2, RefreshCw, FileText, Trash2, CheckCircle, Clock,
   Users, Archive, AlertCircle,
 } from 'lucide-react';
@@ -8,9 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { reportsApi } from '../services/api';
-import {
-  PageHeader, PageHeaderButton, StatCard, EmptyState, Modal, SectionCard,
-} from './ui';
+import { useArchive } from '../context/ArchiveContext';
+import { Modal, PageHeader, PageHeaderButton, SectionCard, StatCard, EmptyState } from './ui';
 
 interface ReportStats {
   summary: { totalDocuments: number; totalRequests: number; totalUsers: number; activeBranches: number; activeDepartments: number };
@@ -37,7 +36,9 @@ export const ReportsPage: React.FC = () => {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const loadDashboardData = useCallback(async () => {
+  useEffect(() => { loadDashboardData(); loadGeneratedReports(); }, [period]);
+
+  const loadDashboardData = async () => {
     try {
       setIsLoading(true);
       const response = await reportsApi.getStats({ period });
@@ -46,16 +47,14 @@ export const ReportsPage: React.FC = () => {
       console.error('Failed to load report stats:', error);
       toast.error('Failed to load report data');
     } finally { setIsLoading(false); }
-  }, [period]);
+  };
 
-  const loadGeneratedReports = useCallback(async () => {
+  const loadGeneratedReports = async () => {
     try {
       const response = await reportsApi.getGeneratedReports();
       setGeneratedReports(response.data);
     } catch (error) { console.error('Failed to load generated reports:', error); }
-  }, []);
-
-  useEffect(() => { loadDashboardData(); loadGeneratedReports(); }, [loadDashboardData, loadGeneratedReports]);
+  };
 
   const handleGenerateReport = async () => {
     try {
@@ -65,8 +64,8 @@ export const ReportsPage: React.FC = () => {
       await loadGeneratedReports();
       await loadDashboardData();
       setShowGenerateModal(false);
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Failed to generate report');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to generate report');
     } finally { setIsGenerating(false); }
   };
 
@@ -83,7 +82,7 @@ export const ReportsPage: React.FC = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
       toast.success('Download started');
-    } catch { toast.error('Failed to download report'); }
+    } catch (error) { toast.error('Failed to download report'); }
   };
 
   const handleDeleteReport = async (reportId: string) => {
@@ -93,7 +92,7 @@ export const ReportsPage: React.FC = () => {
       await reportsApi.deleteReport(reportId);
       toast.success('Report deleted successfully');
       await loadGeneratedReports();
-    } catch { toast.error('Failed to delete report'); } finally { setDeletingId(null); }
+    } catch (error) { toast.error('Failed to delete report'); } finally { setDeletingId(null); }
   };
 
   const getMaxTrendValue = () => {
@@ -124,7 +123,7 @@ export const ReportsPage: React.FC = () => {
           <>
             <select
               value={period}
-              onChange={(e) => setPeriod(e.target.value as typeof period)}
+              onChange={(e) => setPeriod(e.target.value as any)}
               className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm font-bold text-white backdrop-blur-sm"
             >
               <option value="6months" className="text-slate-900">Last 6 Months</option>

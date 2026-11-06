@@ -1,15 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { 
-  UploadCloud, Settings, Bell, Menu,
-  User as UserIcon, Building2, RefreshCcw, ChevronRight,
-  FileSearch, CheckCircle2, LogOut, TrendingUp, Users, Package,
-  Archive, Grid, FolderOpen, Layers, Box, Square, Database
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { DocumentPreview } from './components/DocumentPreview';
-import { Document } from './types';
 import { Toaster, toast } from 'sonner';
 import { useArchive, ArchiveProvider } from './context/ArchiveContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -17,8 +7,8 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { CommandPalette } from './components/layout/CommandPalette';
 import type { Command } from './components/layout/CommandPalette';
-import { NAV_ITEMS, canSee } from './components/layout/nav.ts';
-import type { AppTab } from './components/layout/nav.ts';
+import { NAV_ITEMS, canSee } from './components/layout/nav';
+import type { AppTab } from './components/layout/nav';
 
 /* ---------------------------------------------------------------------------
    Pages are loaded on demand. The same loader functions are used to PRELOAD a
@@ -76,9 +66,6 @@ const AppContent: React.FC = () => {
   const {
     user, notifications, markNotificationRead, markAllNotificationsRead,
     logout, fetchDocuments, fetchNotifications, filters, setFilters,
-  const { 
-    user, notifications, markNotificationRead, markAllNotificationsRead,
-    logout, fetchDocuments, fetchNotifications
   } = useArchive();
 
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
@@ -95,11 +82,6 @@ const AppContent: React.FC = () => {
   // ==========================================
   // COMBINED SESSION & HIDDEN ROUTE CHECK (unchanged)
   // ==========================================
-  const [registrationTab, setRegistrationTab] = useState('branch'); // Tracks sub-menu
-  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showNotifications, setShowNotifications] = useState(false);
-
   useEffect(() => {
     if (!user) return;
 
@@ -127,41 +109,8 @@ const AppContent: React.FC = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    if (user) {
-      fetchDocuments();
-      fetchNotifications();
-    }
-    // The context currently recreates these action functions on each render; depending on them here would retrigger this bootstrap effect after every context update.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
-    { id: 'documents', label: 'Documents', icon: Archive },
-    { id: 'file-request', label: UI_LABELS.SIDEBAR.FILE_REQUEST, icon: FileSearch },
-    { 
-      id: 'registration', 
-      label: 'Registration', 
-      icon: Building2, 
-      roles: ['Admin', 'Manager'],
-      subItems: [
-        { id: 'branch', label: 'Branch Registration', icon: Building2 },
-        { id: 'department', label: 'Department', icon: Layers },
-        { id: 'product', label: 'Product', icon: Package },
-        { id: 'box', label: 'Box Registration', icon: Box },
-        { id: 'cabinet', label: 'File Box', icon: Archive }, 
-        { id: 'drawer-assignment', label: 'Drawer Assignment', icon: Square },
-        { id: 'add-to-box', label: 'Add File to Box', icon: FolderOpen }
-      ]
-    },
-    { id: 'status-update', label: UI_LABELS.SIDEBAR.STATUS_UPDATE, icon: RefreshCcw, roles: ['Admin', 'Manager'] },
-    { id: 'upload', label: UI_LABELS.SIDEBAR.UPLOAD, icon: UploadCloud, roles: ['Admin', 'Manager'] },
-    { id: 'user-management', label: 'User Management', icon: Users, roles: ['Admin'] },
-    { id: 'request-management', label: 'Request Management', icon: CheckCircle2, roles: ['Admin', 'Manager'] },
-    { id: 'admin-query', label: 'SQL Console', icon: Database, roles: ['Admin'] },
-    { id: 'reports', label: 'Reports', icon: Grid, roles: ['Admin', 'Manager'] }
-  ];
   // Ctrl/⌘ + K opens the search palette
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

@@ -192,7 +192,7 @@ text
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │  Renderer Process                                      │  │
 │  │  - Loads React SPA from resources/app.asar/dist/       │  │
-│  │  - Calls backend at http://localhost:7000/api          │  │
+│  │  - Calls backend at http://localhost:5000/api          │  │
 │  └────────────────────────────────────────────────────────┘  │
 │                          │                                   │
 │                          ▼                                   │
@@ -228,7 +228,7 @@ User clicks "Search" in File Request page
 React calls documentApi.getDocuments({ search: "ABC-123" })
     │
     ▼
-Axios sends GET http://localhost:7000/api/documents?search=ABC-123
+Axios sends GET http://localhost:5000/api/documents?search=ABC-123
     │
     ▼
 Express route → documentController.getDocuments()
@@ -718,8 +718,8 @@ text
 9. API Reference
 9.1 Base URL
 
-Development: http://localhost:7000/api
-Production (desktop): http://localhost:7000/api
+Development: http://localhost:5000/api
+Production (desktop): http://localhost:5000/api
 
 All responses are JSON. Authenticated endpoints require Authorization: Bearer <token>.
 9.2 Authentication
@@ -827,7 +827,7 @@ npm install --save-dev electron electron-builder
 
 # 5. Configure frontend environment
 # .env
-# VITE_API_URL=http://localhost:7000/api
+# VITE_API_URL=http://localhost:5000/api
 
 # 6. Configure backend environment
 # backend/.env

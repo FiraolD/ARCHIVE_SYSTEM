@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import {
-  Layers, Plus, AlertCircle,
+  Building2, Layers, Package, Box as BoxIcon, Archive, Plus,
+  AlertCircle, Grid, FolderOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getApiErrorDetails } from '../utils/apiError';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi } from '../services/api';
-import type { Department } from '../types';
 import { DrawerAssignment } from './DrawerAssignment';
 import { AddFileToBox } from './AddFileToBox';
 import { PageHeader } from './ui';
@@ -47,7 +47,7 @@ const FormSection: React.FC<{
 const BranchRegistrationForm: React.FC = () => {
   const { addBranch } = useArchive();
   const [formData, setFormData] = useState({ name: '', code: '' });
-  const [, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,9 +97,9 @@ const BranchRegistrationForm: React.FC = () => {
 const DepartmentRegistrationForm: React.FC = () => {
   const { addDepartment } = useArchive();
   const [formData, setFormData] = useState({ name: '', code: '' });
-  const [, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [existingDepartments, setExistingDepartments] = useState<Department[]>([]);
+  const [existingDepartments, setExistingDepartments] = useState<any[]>([]);
   const [suggestedCode, setSuggestedCode] = useState<string>('');
 
   useEffect(() => {
@@ -152,11 +152,11 @@ const DepartmentRegistrationForm: React.FC = () => {
       setSuggestedCode('');
       await loadDepartments();
       toast.success('Department registered successfully');
-    } catch (error: unknown) {
-      if (getApiErrorDetails(error).error?.includes('already exists')) {
+    } catch (error: any) {
+      if (error.response?.data?.error?.includes('already exists')) {
         setError(`Department code "${formData.code}" already exists`);
       } else {
-        toast.error(getApiErrorDetails(error).error || 'Failed to register department');
+        toast.error(error.response?.data?.error || 'Failed to register department');
       }
     } finally {
       setIsSubmitting(false);
@@ -204,7 +204,7 @@ const DepartmentRegistrationForm: React.FC = () => {
       </div>
       {existingDepartments.length > 0 && (
         <div className="md:col-span-2 mt-4">
-          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
             Existing Department Codes
           </p>
           <div className="flex flex-wrap gap-2">
@@ -229,7 +229,7 @@ const DepartmentRegistrationForm: React.FC = () => {
 const ProductRegistrationForm: React.FC = () => {
   const { addProduct } = useArchive();
   const [productName, setProductName] = useState('');
-  const [, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -313,11 +313,11 @@ const BoxRegistrationForm: React.FC = () => {
         </select>
       </div>
       <div className="md:col-span-2">
-        <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-2xl border border-blue-100 dark:border-blue-900 flex items-center gap-3">
+        <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-100 dark:border-blue-900 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-blue-600" />
           <div>
-            <p className="text-xs font-black uppercase text-blue-600 tracking-widest">Box ID Preview</p>
-            <p className="text-lg font-black text-blue-900 dark:text-blue-200 font-mono">{previewId}</p>
+            <p className="text-xs font-bold text-blue-600">Box ID Preview</p>
+            <p className="text-lg font-bold text-blue-900 dark:text-blue-200 font-mono">{previewId}</p>
           </div>
         </div>
       </div>
@@ -331,7 +331,7 @@ const BoxRegistrationForm: React.FC = () => {
 const CabinetRegistrationForm: React.FC = () => {
   const { addCabinet } = useArchive();
   const [formData, setFormData] = useState({ number: '', drawers: '' });
-  const [, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -387,7 +387,7 @@ export const RegistrationPage: React.FC<{ activeTab?: string }> = ({ activeTab =
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <PageHeader title="Registration" subtitle="..." icon={Layers} />
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 md:p-8">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 md:p-8">
         <motion.div key={activeTab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
           
           {/* ADMIN ONLY TABS */}

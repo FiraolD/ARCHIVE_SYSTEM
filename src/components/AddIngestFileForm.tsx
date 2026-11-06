@@ -6,15 +6,11 @@ import {
   Copy, CheckCheck, Edit3, Trash2, Search, AlertTriangle, Save
 } from 'lucide-react';
 import { toast } from 'sonner';
-<<<<<<< HEAD
-=======
-import { getApiErrorDetails } from '../utils/apiError';
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 import { FILE_TYPES } from '../lib/constants';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi, documentApi } from '../services/api';
 import { getProductCustomFields } from '../config/productCustomFields';
-import { PageHeader, FormInput, FormSelect, SectionCard, Modal } from './ui';
+import { FormInput, FormSelect, Modal, PageHeader, SectionCard } from './ui';
 
 interface Cabinet {
   id: string;
@@ -41,7 +37,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
         <div className="w-20 h-20 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500">
           <Lock size={40} />
         </div>
-        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Access Restricted</h2>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Access Restricted</h2>
         <p className="text-slate-500 dark:text-slate-400 font-medium">Only administrators are authorized to manage files.</p>
       </div>
     );
@@ -56,7 +52,7 @@ export const AddIngestFileForm: React.FC<{ userRole?: string }> = ({ userRole = 
       />
 
       {/* Mode Tabs */}
-      <div className="flex gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/60 rounded-2xl w-fit">
+      <div className="flex gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/60 rounded-xl w-fit">
         <button onClick={() => setMode('add')} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${mode === 'add' ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}>
           <FilePlus className="w-4 h-4" /> Add New
         </button>
@@ -87,7 +83,7 @@ const AddMode: React.FC = () => {
   const [selectedBranchCode, setSelectedBranchCode] = useState<string>('');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('');
-  const [, setSelectedProductCode] = useState<string>('');
+  const [selectedProductCode, setSelectedProductCode] = useState<string>('');
   const [productCustomValues, setProductCustomValues] = useState<Record<string, string>>({});
   const [selectedCabinet, setSelectedCabinet] = useState<string>('');
   const [selectedDrawer, setSelectedDrawer] = useState<string>('');
@@ -108,17 +104,7 @@ const AddMode: React.FC = () => {
     sumInsured: '', dateOfAccident: '', plateNumber: '',
   });
 
-<<<<<<< HEAD
   const { branches, products, fetchBranches, fetchProducts, ingestDocument } = useArchive();
-=======
-  const { branches, products, fetchBranches, fetchDepartments, fetchProducts, ingestDocument } = useArchive();
-
-  useEffect(() => {
-    fetchBranches();
-    fetchDepartments();
-    fetchProducts();
-  }, []);
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 
   useEffect(() => { fetchBranches(); fetchProducts(); }, []);
   useEffect(() => {
@@ -237,31 +223,25 @@ const AddMode: React.FC = () => {
       setFormData({ insuredName: '', policyNumber: '', claimNumber: '', dateAdded: new Date().toISOString().split('T')[0], receivedBy: '', deliveredBy: '', receiverRemark: '', estimatedLoss: '', title: '', sumInsured: '', dateOfAccident: '', plateNumber: '' });
       setPolicyFromDate(''); setPolicyToDate(''); setSelectedCabinet(''); setSelectedDrawer(''); setSelectedProduct(''); setProductCustomValues({});
       if (fileInput) fileInput.value = '';
-<<<<<<< HEAD
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to ingest document');
-=======
-    } catch (error: unknown) {
-      const errorMessage = getApiErrorDetails(error).message || 'Failed to ingest document';
-      toast.error(errorMessage);
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
       <AnimatePresence>
         {showReference && generatedReference && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="p-6">
-            <div className="bg-gradient-to-r from-blue-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-2xl border-2 border-blue-300 dark:border-green-800 p-6 shadow-lg flex items-center justify-between gap-4">
+            <div className="bg-gradient-to-r from-blue-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-xl border-2 border-blue-300 dark:border-green-800 p-6 shadow-lg flex items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="w-5 h-5 text-blue-600" />
-                  <p className="text-sm font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Document Ingested!</p>
+                  <p className="text-sm font-bold text-blue-700 dark:text-blue-300">Document Ingested!</p>
                 </div>
-                <p className="text-2xl font-mono font-black text-blue-900 dark:text-green-200">{generatedReference}</p>
+                <p className="text-2xl font-mono font-bold text-blue-900 dark:text-green-200">{generatedReference}</p>
               </div>
               <button onClick={() => copyToClipboard(generatedReference)} className="p-4 bg-white dark:bg-slate-800 rounded-xl border-2 border-blue-300 hover:bg-green-100 dark:hover:bg-green-900 transition-colors">
                 {copied ? <CheckCheck className="w-6 h-6 text-green-600" /> : <Copy className="w-6 h-6 text-green-600" />}
@@ -322,16 +302,16 @@ const AddMode: React.FC = () => {
             <FormInput label="Estimated Loss" icon={ShieldCheck} name="estimatedLoss" type="number" placeholder="e.g. 5000000" value={formData.estimatedLoss} onChange={handleInputChange} />
 
             <div className="md:col-span-2">
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
                 <Calendar className="w-3 h-3" /> Period of Policy
               </label>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">From</span>
+                  <span className="text-xs font-medium text-slate-400">From</span>
                   <input type="date" value={policyFromDate} onChange={(e) => setPolicyFromDate(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-slate-800 dark:text-slate-100" />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">To</span>
+                  <span className="text-xs font-medium text-slate-400">To</span>
                   <input type="date" value={policyToDate} min={policyFromDate || undefined} onChange={(e) => setPolicyToDate(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-slate-800 dark:text-slate-100" />
                 </div>
               </div>
@@ -343,7 +323,7 @@ const AddMode: React.FC = () => {
             <FormInput label="Delivered By" icon={User} name="deliveredBy" placeholder="Sender name" value={formData.deliveredBy} onChange={handleInputChange} required />
 
             <div className="md:col-span-2">
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
                 <MessageSquare className="w-3 h-3" /> Receiver Remarks
               </label>
               <textarea name="receiverRemark" rows={3} placeholder="Any specific observations or notes..." value={formData.receiverRemark} onChange={handleInputChange} className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none resize-none font-medium text-slate-800 dark:text-slate-100" />
@@ -352,7 +332,7 @@ const AddMode: React.FC = () => {
         </AnimatePresence>
 
         <div className="flex justify-end gap-4 pt-4">
-          <button type="submit" disabled={isSubmitting} className="px-10 py-4 bg-blue-600 text-white rounded-xl font-black shadow-xl shadow-blue-500/30 hover:bg-blue-700 transition-all flex items-center gap-2 disabled:opacity-50">
+          <button type="submit" disabled={isSubmitting} className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-xl shadow-blue-500/30 hover:bg-blue-700 transition-all flex items-center gap-2 disabled:opacity-50">
             {isSubmitting ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</> : <>Complete Ingestion <ArrowRight className="w-5 h-5" /></>}
           </button>
         </div>
@@ -604,16 +584,16 @@ const ModifyMode: React.FC = () => {
             <FormInput label="Estimated Loss" icon={ShieldCheck} name="estimatedLoss" type="number" value={formData.estimatedLoss} onChange={handleInputChange} />
 
             <div className="md:col-span-2">
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
                 <Calendar className="w-3 h-3" /> Period of Policy
               </label>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">From</span>
+                  <span className="text-xs font-medium text-slate-400">From</span>
                   <input type="date" value={policyFromDate} onChange={(e) => setPolicyFromDate(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-slate-800 dark:text-slate-100" />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">To</span>
+                  <span className="text-xs font-medium text-slate-400">To</span>
                   <input type="date" value={policyToDate} min={policyFromDate || undefined} onChange={(e) => setPolicyToDate(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-slate-800 dark:text-slate-100" />
                 </div>
               </div>
@@ -626,7 +606,7 @@ const ModifyMode: React.FC = () => {
             <FormInput label="Plate Number" icon={Hash} name="plateNumber" value={formData.plateNumber} onChange={handleInputChange} />
 
             <div className="md:col-span-2">
-              <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
                 <MessageSquare className="w-3 h-3" /> Receiver Remarks
               </label>
               <textarea name="receiverRemark" rows={3} value={formData.receiverRemark} onChange={handleInputChange} className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500/20 outline-none resize-none font-medium text-slate-800 dark:text-slate-100" />
@@ -714,7 +694,7 @@ const DeleteMode: React.FC = () => {
     return (
       <SectionCard title="Confirm Deletion" icon={AlertTriangle}>
         <div className="p-6 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl mb-6">
-          <h3 className="font-black text-red-800 dark:text-red-400 text-lg mb-2">Warning: This action cannot be undone.</h3>
+          <h3 className="font-bold text-red-800 dark:text-red-400 text-lg mb-2">Warning: This action cannot be undone.</h3>
           <p className="text-red-600 dark:text-red-300 text-sm mb-4">You are about to permanently delete the following document:</p>
           
           <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-red-100 dark:border-red-900/50 space-y-1">
