@@ -52,8 +52,7 @@ export const CabinetAssignment: React.FC = () => {
             {cabinets.map((cabinet) => (
               <motion.div
                 key={cabinet.id}
-                whileHover={{ scale: 1.02 }}
-                className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${
+                className={`p-6 rounded-xl border-2 cursor-pointer transition-all ${
                   selectedCabinet?.id === cabinet.id
                     ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/40'
                     : 'border-slate-200 dark:border-slate-700 hover:border-blue-200'
@@ -88,7 +87,7 @@ export const CabinetAssignment: React.FC = () => {
           {selectedCabinet ? (
             <div className="space-y-6">
               <div>
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Select Branch</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 block">Select Branch</label>
                 <select
                   value={selectedBranch}
                   onChange={(e) => setSelectedBranch(e.target.value)}
@@ -101,7 +100,7 @@ export const CabinetAssignment: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Select Drawer</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 block">Select Drawer</label>
                 <select
                   value={selectedDrawer}
                   onChange={(e) => setSelectedDrawer(e.target.value)}
@@ -115,7 +114,8 @@ export const CabinetAssignment: React.FC = () => {
               </div>
               <button
                 onClick={handleAssignDrawer}
-                className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                disabled={!selectedBranch || !selectedDrawer}
+                className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Assign Drawer to Branch
               </button>

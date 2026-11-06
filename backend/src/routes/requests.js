@@ -25,28 +25,28 @@ router.get('/my-requests',
   requestController.getUserRequests
 );
 
-// Admin/Manager routes - require specific roles
+// Admin/File Clerk routes - require specific roles
 router.get('/pending', 
   authenticate,
-  authorize('Admin', 'Manager'),  // Allow both Admin and Manager
+  authorize('Admin', 'File Clerk'),  // Allow both Admin and File Clerk
   requestController.getPendingRequests
 );
 
 router.get('/all', 
   authenticate,
-  authorize('Admin', 'Manager'),  // Changed from just 'Admin' to include Manager
+  authorize('Admin', 'File Clerk'),  // Changed from just 'Admin' to include File Clerk
   requestController.getAllRequests
 );
 
 router.patch('/:id/approve', 
   authenticate,
-  authorize('Admin', 'Manager'),
+  authorize('Admin', 'File Clerk'),
   requestController.approveRequest
 );
 
 router.patch('/:id/reject', 
   authenticate,
-  authorize('Admin', 'Manager'),
+  authorize('Admin', 'File Clerk'),
   [
     body('reason').notEmpty().withMessage('Rejection reason is required')
   ],
@@ -61,7 +61,7 @@ router.patch('/:id/return-by-requester',
 
 router.patch('/:id/return', 
   authenticate,
-  authorize('Admin', 'Manager'),
+  authorize('Admin', 'File Clerk'),
   requestController.returnDocument
 );
 

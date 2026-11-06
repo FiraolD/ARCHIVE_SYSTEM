@@ -1,20 +1,21 @@
 const { query } = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { DEFAULT_PASSWORD } = require('../utils/passwords');
 
 class User {
   static async create(userData) {
-    const { name, email, password, role, avatar } = userData;
+    const { name, email, role, avatar } = userData;
     
     // Whitelist role - never trust client-supplied values
-    const VALID_ROLES = ['Admin', 'Manager', 'Agent', 'Viewer'];
+    const VALID_ROLES = ['Admin', 'File Clerk', 'Agent', 'Viewer'];
     const safeRole = VALID_ROLES.includes(role) ? role : 'Agent';
     
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
     
     const result = await query(
-      `INSERT INTO users (name, email, password_hash, role, avatar)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO users (name, email, password_hash, role, avatar, must_change_password)
+       VALUES ($1, $2, $3, $4, $5, TRUE)
        RETURNING id, name, email, role, avatar, created_at`,
       [name, email, hashedPassword, safeRole, avatar]
     );

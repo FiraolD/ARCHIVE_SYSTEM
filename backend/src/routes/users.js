@@ -3,27 +3,44 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
-
-// Get all users (Admin only)
+const { DEFAULT_PASSWORD } = require('../utils/passwords');
+const VALID_ROLES = ['Admin', 'File Clerk', 'Agent', 'Viewer']; // <--- CHANGED
+// ==================== GET ALL USERS ====================
 router.get('/', authenticate, authorize('Admin'), async (req, res) => {
   try {
     const result = await query(
-      `SELECT id, name, email, role, avatar, created_at, last_login 
-       FROM users ORDER BY created_at DESC`
+      `SELECT 
+        id, name, email, role, avatar, 
+        department_name, is_active, must_change_password, 
+        created_at, last_login 
+       FROM users 
+       ORDER BY created_at DESC`
     );
-    res.json(result.rows);
+    
+    // Format response for frontend
+    const users = result.rows.map(user => ({
+      ...user,
+      // Fallback for UI if branch is not a DB column
+      branch_name: user.department_name || 'Awash Head Office',
+      username: user.email.split('@')[0]
+    }));
+
+    res.json(users);
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Get single user
+// ==================== GET SINGLE USER ====================
 router.get('/:id', authenticate, authorize('Admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const result = await query(
-      `SELECT id, name, email, role, avatar, created_at, last_login 
+      `SELECT 
+        id, name, email, role, avatar, 
+        department_name, is_active, must_change_password, 
+        created_at, last_login 
        FROM users WHERE id = $1`,
       [id]
     );
@@ -39,21 +56,16 @@ router.get('/:id', authenticate, authorize('Admin'), async (req, res) => {
   }
 });
 
-// Create user (Admin only)
+// ==================== CREATE USER ====================
 router.post('/', authenticate, authorize('Admin'), async (req, res) => {
   try {
-    const { name, email, password, role, avatar } = req.body;
+    const { name, email, role, avatar, department } = req.body;
 
-    // Validate input
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email and password are required' });
-    }
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
     }
 
-    // Whitelist role - never trust client-supplied values
-    const VALID_ROLES = ['Admin', 'Manager', 'Agent', 'Viewer'];
+    const VALID_ROLES = ['Admin', 'File Clerk', 'Agent', 'Viewer'];
     const safeRole = VALID_ROLES.includes(role) ? role : 'Agent';
 
     // Check if user exists
@@ -62,42 +74,101 @@ router.post('/', authenticate, authorize('Admin'), async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash the default password
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
     const result = await query(
-      `INSERT INTO users (name, email, password_hash, role, avatar, created_at)
-       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-       RETURNING id, name, email, role, avatar, created_at`,
-      [name, email, hashedPassword, safeRole, avatar]
+      `INSERT INTO users (
+        name, email, password_hash, role, avatar, 
+        department_name, is_active, must_change_password, created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, TRUE, TRUE, CURRENT_TIMESTAMP)
+      RETURNING id, name, email, role, department_name, is_active`,
+      [name, email, hashedPassword, safeRole, avatar || null, department || null]
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Create user error:', error);
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Update user (Admin only)
+// ==================== RESET PASSWORD ====================
+router.patch('/:id/reset-password', authenticate, authorize('Admin'), async (req, res) => {
+  try {
+    const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+    
+    const result = await query(
+      `UPDATE users
+       SET password_hash = $1, must_change_password = TRUE, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2
+       RETURNING id`,
+      [passwordHash, req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ message: 'Password reset successfully. The user must change it at next login.' });
+  } catch (error) {
+    console.error('Reset user password error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ==================== UPDATE USER ====================
 router.patch('/:id', authenticate, authorize('Admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, role, isActive } = req.body;
+    const { name, email, role, department, is_active } = req.body;
 
-    // Whitelist role on update as well
-    const VALID_ROLES = ['Admin', 'Manager', 'Agent', 'Viewer'];
+    const VALID_ROLES = ['Admin', 'File Clerk', 'Agent', 'Viewer'];
     const safeRole = role && VALID_ROLES.includes(role) ? role : undefined;
 
-    const result = await query(
-      `UPDATE users 
-       SET name = COALESCE($1, name),
-           email = COALESCE($2, email),
-           role = COALESCE($3, role)
-       WHERE id = $4
-       RETURNING id, name, email, role, avatar, created_at, last_login`,
-      [name, email, safeRole, id]
-    );
+    // Build dynamic query to only update provided fields
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramCount++}`);
+      values.push(name);
+    }
+    if (email !== undefined) {
+      updates.push(`email = $${paramCount++}`);
+      values.push(email);
+    }
+    if (safeRole !== undefined) {
+      updates.push(`role = $${paramCount++}`);
+      values.push(safeRole);
+    }
+    if (department !== undefined) {
+      updates.push(`department_name = $${paramCount++}`);
+      values.push(department);
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramCount++}`);
+      values.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields provided to update' });
+    }
+
+    values.push(id);
+    const queryText = `
+      UPDATE users 
+      SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $${paramCount}
+      RETURNING id, name, email, role, department_name, is_active, avatar, created_at, last_login
+    `;
+
+    const result = await query(queryText, values);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -106,16 +177,18 @@ router.patch('/:id', authenticate, authorize('Admin'), async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Update user error:', error);
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Email already in use by another user' });
+    }
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Delete user (Admin only)
+// ==================== DELETE USER ====================
 router.delete('/:id', authenticate, authorize('Admin'), async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Don't allow deleting yourself
     if (id === req.user.id) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }

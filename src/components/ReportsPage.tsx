@@ -17,7 +17,7 @@ interface ReportStats {
   summary: { totalDocuments: number; totalRequests: number; totalUsers: number; activeBranches: number; activeDepartments: number };
   documents: { byType: { claims: number; policies: number; circulars: number; correspondence: number; billing: number }; byStatus: { active: number; checkedOut: number; settled: number } };
   requests: { byStatus: { pending: number; approved: number; returned: number; rejected: number; overdue: number } };
-  users: { byRole: { admins: number; managers: number; agents: number; viewers: number } };
+  users: { byRole: { admins: number; 'File Clerks': number; agents: number; viewers: number } };
   trends: { ingestionRate: number; ingestionTrend: string; monthlyTrends: Array<{ month: string; year: number; count: number; claimCount: number; policyCount: number }> };
   storage: { used: string; total: string; percentage: number; details: string };
   generatedAt: string;
@@ -98,8 +98,8 @@ export const ReportsPage: React.FC = () => {
   };
 
   const getMaxTrendValue = () => {
-    if (!stats?.trends?.monthlyTrends?.length) return 100;
-    return Math.max(...stats.trends.monthlyTrends.map(t => t.count), 100);
+    if (!stats?.trends?.monthlyTrends?.length) return 1;
+    return Math.max(...stats.trends.monthlyTrends.map(t => t.count), 1);
   };
 
   const getReportTypeIcon = (type: string) => {
@@ -157,25 +157,29 @@ export const ReportsPage: React.FC = () => {
         <SectionCard title="Document Ingestion Trends" icon={TrendingUp}>
           {stats?.trends?.monthlyTrends && stats.trends.monthlyTrends.length > 0 ? (
             <>
-              <div className="h-64 bg-slate-50 dark:bg-slate-800/60 rounded-2xl flex items-end justify-around p-6 gap-2">
+              <div className="h-64 bg-slate-50 dark:bg-slate-800/60 rounded-xl flex items-end justify-around p-6 gap-2">
                 {stats.trends.monthlyTrends.map((item, i) => {
                   const height = (item.count / getMaxTrendValue()) * 100;
                   return (
-                    <div key={i} className="w-full max-w-[40px] flex flex-col items-center group">
+                    <div key={i} className="h-full w-full max-w-[40px] flex flex-col items-center group">
+                      <div className="flex w-full flex-1 items-end">
                       <div className="w-full bg-blue-500 rounded-t-lg transition-all hover:bg-blue-600 relative cursor-pointer"
                         style={{ height: `${Math.max(height, 5)}%` }}>
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                           {item.count} docs
                         </div>
                       </div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">{item.month}</span>
+                      </div>
+                      <span className="text-xs font-medium text-slate-400 mt-2">{item.month}</span>
                     </div>
                   );
                 })}
               </div>
               <div className="flex justify-between mt-4 text-xs text-slate-400">
                 <span>Ingestion Rate: {stats.trends.ingestionRate} docs/month</span>
-                <span className={stats.trends.ingestionTrend.includes('+') ? 'text-green-600' : 'text-red-600'}>{stats.trends.ingestionTrend}</span>
+                {!/^-100(\.0+)?%/.test(stats.trends.ingestionTrend) && (
+                  <span className={stats.trends.ingestionTrend.includes('+') ? 'text-green-600' : 'text-red-600'}>{stats.trends.ingestionTrend}</span>
+                )}
               </div>
             </>
           ) : (
@@ -192,7 +196,7 @@ export const ReportsPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 dark:text-slate-400">Total Users</p>
-                  <p className="text-xl font-black text-slate-900 dark:text-white">{stats?.summary.totalUsers || 0}</p>
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{stats?.summary.totalUsers || 0}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -207,7 +211,7 @@ export const ReportsPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 dark:text-slate-400">Active Branches</p>
-                  <p className="text-xl font-black text-slate-900 dark:text-white">{stats?.summary.activeBranches || 0}</p>
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{stats?.summary.activeBranches || 0}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -221,7 +225,7 @@ export const ReportsPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 dark:text-slate-400">Request Breakdown</p>
-                  <p className="text-xl font-black text-slate-900 dark:text-white">{stats?.summary.totalRequests || 0}</p>
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{stats?.summary.totalRequests || 0}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -254,7 +258,7 @@ export const ReportsPage: React.FC = () => {
                         <p className="font-bold text-slate-900 dark:text-white truncate">{report.name}</p>
                         <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
                           <span>{report.type}</span><span>•</span>
-                          <span className="uppercase">{report.format}</span><span>•</span>
+                          <span className="">{report.format}</span><span>•</span>
                           <span>{report.size}</span><span>•</span>
                           <span>{format(new Date(report.generated_at), 'MMM dd, yyyy HH:mm')}</span>
                         </div>
@@ -307,7 +311,7 @@ export const ReportsPage: React.FC = () => {
       >
         <div className="space-y-6">
           <div>
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Report Type</label>
+            <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 block">Report Type</label>
             <div className="grid grid-cols-1 gap-2">
               {(['Monthly Summary', 'Claims Analysis', 'Department Usage'] as const).map((type) => (
                 <button
@@ -329,7 +333,7 @@ export const ReportsPage: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Export Format</label>
+            <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 block">Export Format</label>
             <div className="grid grid-cols-3 gap-2">
               {(['PDF', 'EXCEL', 'CSV'] as const).map((format) => (
                 <button

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Archive, Grid, Building2, CheckCircle2, History, User } from 'lucide-react';
+import { Archive, Grid, Building2, CheckCircle2, History, RefreshCw, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi } from '../services/api';
-import { PageHeader, SectionCard, PageHeaderButton, Modal } from './ui';
+import { Modal, PageHeader, SectionCard, PageHeaderButton } from './ui';
 
 interface Cabinet { id: string; number: string; drawers: string[]; }
 interface DrawerAssignment {
@@ -79,7 +79,7 @@ export const DrawerAssignment: React.FC = () => {
         title="Drawer Assignment"
         subtitle="Assign cabinet drawers to branches for organized file storage"
         icon={Grid}
-        actions={<PageHeaderButton icon={History} onClick={loadData}>Refresh</PageHeaderButton>}
+        actions={<PageHeaderButton icon={RefreshCw} onClick={loadData} disabled={isLoading}>Refresh</PageHeaderButton>}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -88,8 +88,7 @@ export const DrawerAssignment: React.FC = () => {
             {cabinets.map((cabinet) => (
               <motion.div
                 key={cabinet.id}
-                whileHover={{ scale: 1.01 }}
-                className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${
+                className={`p-6 rounded-xl border-2 cursor-pointer transition-all ${
                   selectedCabinet?.id === cabinet.id
                     ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/40'
                     : 'border-slate-200 dark:border-slate-700 hover:border-blue-200'
@@ -115,7 +114,7 @@ export const DrawerAssignment: React.FC = () => {
                         <span className="text-xs font-medium block">Drawer {drawer}</span>
                         {assignment && (
                           <>
-                            <span className="text-[10px] text-green-600 font-bold mt-1 block truncate">{assignment.branch_code}</span>
+                            <span className="text-xs text-green-600 font-bold mt-1 block truncate">{assignment.branch_code}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); viewHistory(cabinet.id, drawer); }}
                               className="absolute -top-1 -right-1 w-5 h-5 bg-slate-800 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
@@ -137,7 +136,7 @@ export const DrawerAssignment: React.FC = () => {
           {selectedCabinet ? (
             <div className="space-y-6">
               <div>
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Selected Cabinet</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 block">Selected Cabinet</label>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center gap-3">
                     <Archive className="w-5 h-5 text-blue-600" />
@@ -146,7 +145,7 @@ export const DrawerAssignment: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Select Branch</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 block">Select Branch</label>
                 <select value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}
                   className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none">
                   <option value="">Choose a branch...</option>
@@ -154,7 +153,7 @@ export const DrawerAssignment: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Select Drawer</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 block">Select Drawer</label>
                 <select value={selectedDrawer} onChange={(e) => setSelectedDrawer(e.target.value)}
                   className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none">
                   <option value="">Choose a drawer...</option>
@@ -197,7 +196,7 @@ export const DrawerAssignment: React.FC = () => {
                   <p className="text-xs text-green-700 dark:text-green-300 mt-1 flex items-center gap-1">
                     <Building2 className="w-3 h-3" />{assignment.branch_name} ({assignment.branch_code})
                   </p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                     Assigned: {new Date(assignment.assigned_at).toLocaleDateString()}
                   </p>
                 </div>

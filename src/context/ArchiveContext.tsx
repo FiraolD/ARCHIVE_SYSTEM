@@ -5,8 +5,12 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useMemo,
+  useRef,
   ReactNode,
 } from 'react';
+import axios from 'axios';
+import { io, Socket } from 'socket.io-client';
 import {
   Branch,
   Department,
@@ -56,6 +60,7 @@ interface ArchiveContextType {
 
   // Auth
   login: (email: string, password: string) => Promise<void>;
+  changePassword: (currentPassword: string | undefined, newPassword: string) => Promise<void>;
   logout: () => void;
 
   // Documents
@@ -131,6 +136,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [facets, setFacets] = useState<Facets | null>(null);
   const [pagination, setPagination] = useState<Pagination | null>(null);
 
+  // ----- Socket Ref -----
+  const socketRef = useRef<Socket | null>(null);
+
   // Public setter (just stores; the effect below triggers the fetch)
   const setFilters = useCallback((next: DocumentFilters) => {
     setFiltersState(next);
@@ -138,7 +146,6 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // ---------------------------------------------------------------------------
   // Unified fetch: documents + pagination + facets (single API call)
-  // The backend returns all three from GET /documents
   // ---------------------------------------------------------------------------
   const fetchDocumentsAndFacets = useCallback(
     async (params: DocumentFilters) => {
@@ -167,7 +174,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Auto-refetch when filters change (debounced for search typing)
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.must_change_password) return;
     const t = setTimeout(() => {
       fetchDocumentsAndFacets(filters);
     }, 200);
@@ -175,44 +182,72 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [filters, user, fetchDocumentsAndFacets]);
 
   // ---------------------------------------------------------------------------
-  // Auth bootstrap
+  // Auth bootstrap & Profile Fetching
   // ---------------------------------------------------------------------------
-  useEffect(() => {
-    if (token) {
-      fetchUserProfile();
-      fetchNotifications();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async (): Promise<User | null> => {
     try {
       const response = await authApi.getProfile();
       setUser(response.data.user);
+      return response.data.user;
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
-      logout();
+      // Note: logout is defined below, so we can't directly call it here 
+      // without adding it to deps or handling state clearing directly.
+      localStorage.removeItem('token');
+      setToken(null);
+      setUser(null);
+      return null;
     }
-  };
+  }, []);
 
-  const login = async (email: string, password: string) => {
+  useEffect(() => {
+    if (token) {
+      void fetchUserProfile().then((profile) => {
+        if (profile && !profile.must_change_password) {
+          // Fetch initial notifications on boot
+          notificationApi.getNotifications()
+            .then(res => setNotifications(res.data))
+            .catch(console.error);
+        }
+      });
+    }
+  }, [token, fetchUserProfile]);
+
+  const login = useCallback(async (email: string, password: string) => {
     try {
       setIsLoading(true);
       const response = await authApi.login(email, password);
-      const { user, token } = response.data;
-      localStorage.setItem('token', token);
-      setToken(token);
-      setUser(user);
-      toast.success(`Welcome back, ${user.name}!`);
+      const { user: userData, token: newToken } = response.data;
+      
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
+      setUser(userData);
+      toast.success(`Welcome back, ${userData.name}!`);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Login failed');
       throw error;
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const changePassword = useCallback(async (currentPassword: string | undefined, newPassword: string) => {
+    try {
+      await authApi.changePassword({ currentPassword, newPassword });
+      setUser((currentUser) => currentUser
+        ? { ...currentUser, must_change_password: false }
+        : currentUser);
+      toast.success('Password changed successfully');
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<{ error?: string }>(error)
+        ? error.response?.data?.error
+        : undefined;
+      toast.error(message || 'Failed to change password');
+      throw error;
+    }
+  }, []);
+
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
@@ -222,17 +257,56 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     setFiltersState(DEFAULT_FILTERS);
     setFacets(null);
     setPagination(null);
+    
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+    
     toast.info('Logged out successfully');
-  };
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Real-Time Socket Connection
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!token || !user) return;
+
+    // Connect to socket
+    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
+      auth: { token }
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('⚡ Connected to real-time notifications');
+    });
+
+    socket.on('new_notification', (newNotif: Notification) => {
+      // Add to state
+      setNotifications((prev) => [newNotif, ...prev]);
+      
+      // Show real-time toast
+      toast.info(newNotif.title, {
+        description: newNotif.message,
+        duration: 5000,
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [token, user]);
 
   // ---------------------------------------------------------------------------
   // Documents
   // ---------------------------------------------------------------------------
-  const fetchDocuments = async (params?: DocumentFilters) => {
+  const fetchDocuments = useCallback(async (params?: DocumentFilters) => {
     await fetchDocumentsAndFacets(params ?? filters);
-  };
+  }, [fetchDocumentsAndFacets, filters]);
 
-  const fetchDocument = async (id: string) => {
+  const fetchDocument = useCallback(async (id: string) => {
     try {
       const response = await documentApi.getDocument(id);
       return response.data;
@@ -240,9 +314,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       toast.error(error.response?.data?.error || 'Failed to fetch document');
       throw error;
     }
-  };
+  }, []);
 
-  const ingestDocument = async (formData: FormData) => {
+  const ingestDocument = useCallback(async (formData: FormData) => {
     try {
       setIsLoading(true);
       const response = await documentApi.ingestDocument(formData);
@@ -257,9 +331,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchDocumentsAndFacets, filters]);
 
-  const updateDocumentStatus = async (id: string, status: string) => {
+  const updateDocumentStatus = useCallback(async (id: string, status: string) => {
     try {
       setIsLoading(true);
       const response = await documentApi.updateStatus(id, status);
@@ -271,9 +345,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const updatePhysicalPlacement = async (id: string, placement: string) => {
+  const updatePhysicalPlacement = useCallback(async (id: string, placement: string) => {
     try {
       setIsLoading(true);
       const response = await documentApi.updatePlacement(id, placement);
@@ -285,21 +359,21 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Registration
   // ---------------------------------------------------------------------------
-  const fetchBranches = async () => {
+  const fetchBranches = useCallback(async () => {
     try {
       const response = await registrationApi.getBranches();
       setBranches(response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to fetch branches');
     }
-  };
+  }, []);
 
-  const addBranch = async (branch: Omit<Branch, 'id'>) => {
+  const addBranch = useCallback(async (branch: Omit<Branch, 'id'>) => {
     try {
       setIsLoading(true);
       const response = await registrationApi.createBranch(branch);
@@ -311,18 +385,18 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       const response = await registrationApi.getDepartments();
       setDepartments(response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to fetch departments');
     }
-  };
+  }, []);
 
-  const addDepartment = async (dept: Omit<Department, 'id'>) => {
+  const addDepartment = useCallback(async (dept: Omit<Department, 'id'>) => {
     try {
       setIsLoading(true);
       const response = await registrationApi.createDepartment(dept);
@@ -334,18 +408,18 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const response = await registrationApi.getProducts();
       setProducts(response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to fetch products');
     }
-  };
+  }, []);
 
-  const addProduct = async (product: Omit<Product, 'id'>) => {
+  const addProduct = useCallback(async (product: Omit<Product, 'id'>) => {
     try {
       setIsLoading(true);
       const response = await registrationApi.createProduct(product);
@@ -357,18 +431,18 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchBoxes = async () => {
+  const fetchBoxes = useCallback(async () => {
     try {
       const response = await registrationApi.getBoxes();
       setBoxes(response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to fetch boxes');
     }
-  };
+  }, []);
 
-  const addBox = async (box: any) => {
+  const addBox = useCallback(async (box: any) => {
     try {
       setIsLoading(true);
       const response = await registrationApi.createBox(box);
@@ -380,18 +454,18 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchCabinets = async () => {
+  const fetchCabinets = useCallback(async () => {
     try {
       const response = await registrationApi.getCabinets();
       setCabinets(response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to fetch cabinets');
     }
-  };
+  }, []);
 
-  const addCabinet = async (cabinet: { number: string; drawers: string[] }) => {
+  const addCabinet = useCallback(async (cabinet: { number: string; drawers: string[] }) => {
     try {
       setIsLoading(true);
       const response = await registrationApi.createCabinet(cabinet);
@@ -403,9 +477,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const assignCabinet = async (assignment: any) => {
+  const assignCabinet = useCallback(async (assignment: any) => {
     try {
       setIsLoading(true);
       await registrationApi.assignCabinet(assignment);
@@ -417,9 +491,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchCabinets]);
 
-  const assignBox = async (assignment: any) => {
+  const assignBox = useCallback(async (assignment: any) => {
     try {
       setIsLoading(true);
       await registrationApi.assignBox(assignment);
@@ -431,30 +505,30 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchBoxes]);
 
   // ---------------------------------------------------------------------------
   // File Requests
   // ---------------------------------------------------------------------------
-  const fetchMyRequests = async () => {
+  const fetchMyRequests = useCallback(async () => {
     try {
       const response = await requestApi.getMyRequests();
       setFileRequests(response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to fetch requests');
     }
-  };
+  }, []);
 
-  const fetchAllRequests = async (params?: any) => {
+  const fetchAllRequests = useCallback(async (params?: any) => {
     try {
       const response = await requestApi.getAllRequests(params);
       setFileRequests(response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to fetch requests');
     }
-  };
+  }, []);
 
-  const addFileRequest = async (request: any) => {
+  const addFileRequest = useCallback(async (request: any) => {
     try {
       setIsLoading(true);
       const response = await requestApi.createRequest(request);
@@ -471,9 +545,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const approveRequest = async (id: string) => {
+  const approveRequest = useCallback(async (id: string) => {
     try {
       setIsLoading(true);
       await requestApi.approveRequest(id);
@@ -487,9 +561,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const returnDocument = async (id: string) => {
+  const returnDocument = useCallback(async (id: string) => {
     try {
       setIsLoading(true);
       await requestApi.returnDocument(id);
@@ -503,21 +577,21 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Notifications
   // ---------------------------------------------------------------------------
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const response = await notificationApi.getNotifications();
       setNotifications(response.data);
     } catch (error: any) {
       console.error('Failed to fetch notifications:', error);
     }
-  };
+  }, []);
 
-  const markNotificationRead = async (id: string) => {
+  const markNotificationRead = useCallback(async (id: string) => {
     try {
       await notificationApi.markAsRead(id);
       setNotifications((prev) =>
@@ -526,9 +600,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (error: any) {
       console.error('Failed to mark notification as read:', error);
     }
-  };
+  }, []);
 
-  const markAllNotificationsRead = async () => {
+  const markAllNotificationsRead = useCallback(async () => {
     try {
       await notificationApi.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -536,12 +610,12 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (error: any) {
       toast.error('Failed to mark notifications as read');
     }
-  };
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
-  const generateBoxIdentifier = (branchCode: string): string => {
+  const generateBoxIdentifier = useCallback((branchCode: string): string => {
     const year = new Date().getFullYear().toString().slice(-2);
     const existingInBranchAndYear = boxes.filter(
       (b) => b.branchCode === branchCode && b.year === year
@@ -549,7 +623,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     const nextSequence = existingInBranchAndYear.length + 1;
     const formattedSequence = nextSequence.toString().padStart(4, '0');
     return `AI/${branchCode}/${formattedSequence}/${year}`;
-  };
+  }, [boxes]);
 
   // ---------------------------------------------------------------------------
   // Initial data load when user logs in
@@ -561,6 +635,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     fetchProducts();
     fetchBoxes();
     fetchCabinets();
+    
     if (user.role === 'Admin') {
       fetchAllRequests();
     } else {
@@ -570,72 +645,83 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // ---------------------------------------------------------------------------
-  // Provide context
-  // ---------------------------------------------------------------------------
+  // ============================================================================
+  // MEMOIZED CONTEXT VALUE (Prevents Global Re-renders)
+  // ============================================================================
+  const contextValue = useMemo(() => ({
+    user,
+    token,
+    documents,
+    branches,
+    departments,
+    products,
+    boxes,
+    cabinets,
+    fileRequests,
+    notifications,
+    isLoading,
+
+    // Search / facets
+    filters,
+    facets,
+    pagination,
+    setFilters,
+    applyFilters,
+
+    // Auth
+    login,
+    changePassword,
+    logout,
+
+    // Documents
+    fetchDocuments,
+    fetchDocument,
+    ingestDocument,
+    updateDocumentStatus,
+    updatePhysicalPlacement,
+
+    // Registration
+    fetchBranches,
+    addBranch,
+    fetchDepartments,
+    addDepartment,
+    fetchProducts,
+    addProduct,
+    fetchBoxes,
+    addBox,
+    fetchCabinets,
+    addCabinet,
+    assignCabinet,
+    assignBox,
+
+    // File Requests
+    fetchMyRequests,
+    fetchAllRequests,
+    addFileRequest,
+    approveRequest,
+    returnDocument,
+
+    // Notifications
+    fetchNotifications,
+    markNotificationRead,
+    markAllNotificationsRead,
+
+    // Helpers
+    generateBoxIdentifier,
+  }), [
+    user, token, documents, branches, departments, products, boxes, cabinets,
+    fileRequests, notifications, isLoading, filters, facets, pagination,
+    setFilters, applyFilters, login, changePassword, logout, fetchDocuments,
+    fetchDocument, ingestDocument, updateDocumentStatus, updatePhysicalPlacement,
+    fetchBranches, addBranch, fetchDepartments, addDepartment, fetchProducts,
+    addProduct, fetchBoxes, addBox, fetchCabinets, addCabinet, assignCabinet,
+    assignBox, fetchMyRequests, fetchAllRequests, addFileRequest, approveRequest,
+    returnDocument, fetchNotifications, markNotificationRead,
+    markAllNotificationsRead, generateBoxIdentifier
+  ]);
+
   return (
-    <ArchiveContext.Provider
-      value={{
-        user,
-        token,
-        documents,
-        branches,
-        departments,
-        products,
-        boxes,
-        cabinets,
-        fileRequests,
-        notifications,
-        isLoading,
-
-        // Search / facets
-        filters,
-        facets,
-        pagination,
-        setFilters,
-        applyFilters,
-
-        // Auth
-        login,
-        logout,
-
-        // Documents
-        fetchDocuments,
-        fetchDocument,
-        ingestDocument,
-        updateDocumentStatus,
-        updatePhysicalPlacement,
-
-        // Registration
-        fetchBranches,
-        addBranch,
-        fetchDepartments,
-        addDepartment,
-        fetchProducts,
-        addProduct,
-        fetchBoxes,
-        addBox,
-        fetchCabinets,
-        addCabinet,
-        assignCabinet,
-        assignBox,
-
-        // File Requests
-        fetchMyRequests,
-        fetchAllRequests,
-        addFileRequest,
-        approveRequest,
-        returnDocument,
-
-        // Notifications
-        fetchNotifications,
-        markNotificationRead,
-        markAllNotificationsRead,
-
-        // Helpers
-        generateBoxIdentifier,
-      }}
-    >
+    <ArchiveContext.Provider value={contextValue}>
       {children}
     </ArchiveContext.Provider>
   );

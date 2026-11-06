@@ -382,29 +382,29 @@ const CabinetRegistrationForm: React.FC = () => {
    Page
    ================================================================ */
 export const RegistrationPage: React.FC<{ activeTab?: string }> = ({ activeTab = 'branch' }) => {
+  const { user } = useArchive(); // <--- Add this
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <PageHeader
-        title="Registration"
-        subtitle="Register branches, departments, products, boxes and cabinets"
-        icon={Layers}
-      />
-
-      {/* Full width form area */}
+      <PageHeader title="Registration" subtitle="..." icon={Layers} />
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 md:p-8">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {activeTab === 'branch' && <BranchRegistrationForm />}
-          {activeTab === 'department' && <DepartmentRegistrationForm />}
-          {activeTab === 'product' && <ProductRegistrationForm />}
-          {activeTab === 'box' && <BoxRegistrationForm />}
-          {activeTab === 'cabinet' && <CabinetRegistrationForm />}
-          {activeTab === 'drawer-assignment' && <DrawerAssignment />}
-          {activeTab === 'add-to-box' && <AddFileToBox />}
+        <motion.div key={activeTab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
+          
+          {/* ADMIN ONLY TABS */}
+          {activeTab === 'branch' && user?.role === 'Admin' && <BranchRegistrationForm />}
+          {activeTab === 'department' && user?.role === 'Admin' && <DepartmentRegistrationForm />}
+          {activeTab === 'product' && user?.role === 'Admin' && <ProductRegistrationForm />}
+          
+          {/* ADMIN & FILE CLERK TABS */}
+          {activeTab === 'box' && (user?.role === 'Admin' || user?.role === 'File Clerk') && <BoxRegistrationForm />}
+          {activeTab === 'cabinet' && (user?.role === 'Admin' || user?.role === 'File Clerk') && <CabinetRegistrationForm />}
+          {activeTab === 'drawer-assignment' && (user?.role === 'Admin' || user?.role === 'File Clerk') && <DrawerAssignment />}
+          {activeTab === 'add-to-box' && (user?.role === 'Admin' || user?.role === 'File Clerk') && <AddFileToBox />}
+          
+          {/* FALLBACK */}
+          {!['branch', 'department', 'product', 'box', 'cabinet', 'drawer-assignment', 'add-to-box'].includes(activeTab) && (
+             <p className="text-slate-500">Select an option from the menu.</p>
+          )}
         </motion.div>
       </div>
     </div>

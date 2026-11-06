@@ -1,4 +1,4 @@
-export type Role = 'Admin' | 'Manager' | 'Agent' | 'Viewer';
+export type Role = 'Admin' | 'File Clerk' | 'Agent' | 'Viewer';
 
 export interface User {
   id: string;
@@ -11,6 +11,7 @@ export interface User {
   // snake_case aliases returned directly by the backend API
   created_at?: string;
   last_login?: string;
+  must_change_password?: boolean;
 }
 
 export interface DocumentVersion {

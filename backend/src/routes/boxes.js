@@ -8,9 +8,9 @@ const ctrl = require('../controllers/boxController');
 
 router.use(authenticate);
 
-router.get('/',                                role('Admin', 'Manager'), ctrl.listBoxes);
-router.get('/:id',                             role('Admin', 'Manager'), ctrl.getBoxDetail);
-router.patch('/:id/status',                    role('Admin', 'Manager'), ctrl.updateBoxStatus);
-router.delete('/:id/documents/:documentId',    role('Admin', 'Manager'), ctrl.removeDocumentFromBox);
+router.get('/',                                role('Admin', 'File Clerk'), ctrl.listBoxes);
+router.get('/:id',                             role('Admin', 'File Clerk'), ctrl.getBoxDetail);
+router.patch('/:id/status',                    role('Admin', 'File Clerk'), ctrl.updateBoxStatus);
+router.delete('/:id/documents/:documentId',    role('Admin', 'File Clerk'), ctrl.removeDocumentFromBox);
 
 module.exports = router;

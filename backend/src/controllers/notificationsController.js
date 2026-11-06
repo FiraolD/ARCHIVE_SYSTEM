@@ -4,7 +4,7 @@ const getUserNotifications = async (req, res) => {
   try {
     const result = await query(
       `SELECT * FROM notifications 
-       WHERE user_id = $1 OR (admin_only = TRUE AND $2 IN ('Admin', 'Manager'))
+       WHERE user_id = $1 OR (admin_only = TRUE AND $2 IN ('Admin', 'File Clerk'))
        ORDER BY timestamp DESC 
        LIMIT 50`,
       [req.user.id, req.user.role]
@@ -21,7 +21,7 @@ const getUnreadCount = async (req, res) => {
   try {
     const result = await query(
       `SELECT COUNT(*) as count FROM notifications 
-       WHERE (user_id = $1 OR (admin_only = TRUE AND $2 IN ('Admin', 'Manager')))
+       WHERE (user_id = $1 OR (admin_only = TRUE AND $2 IN ('Admin', 'File Clerk')))
        AND read = FALSE`,
       [req.user.id, req.user.role]
     );
@@ -53,7 +53,7 @@ const markAllAsRead = async (req, res) => {
   try {
     await query(
       `UPDATE notifications SET read = TRUE 
-       WHERE (user_id = $1 OR (admin_only = TRUE AND $2 IN ('Admin', 'Manager'))) 
+       WHERE (user_id = $1 OR (admin_only = TRUE AND $2 IN ('Admin', 'File Clerk'))) 
        AND read = FALSE`,
       [req.user.id, req.user.role]
     );

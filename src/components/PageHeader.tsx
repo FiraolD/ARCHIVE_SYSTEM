@@ -6,41 +6,35 @@ import { motion } from 'framer-motion';
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   actions?: React.ReactNode;
 }
 
-export const PageHeader: React.FC<PageHeaderProps> = ({
-  title,
-  subtitle,
-  icon: Icon,
-  actions,
-}) => {
+/**
+ * Compact page header (~70px instead of the old ~165px banner).
+ * Same props as before, so every existing page picks it up without changes.
+ */
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, icon: Icon, actions }) => {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
+    <motion.header
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="bg-gradient-to-br from-blue-600 to-blue-800 p-10 rounded-[2.5rem] text-white relative overflow-hidden shadow-2xl shadow-blue-500/20"
+      transition={{ duration: 0.2 }}
+      className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
     >
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="max-w-2xl">
-          <h1 className="text-4xl font-black tracking-tighter mb-4">{title}</h1>
-          {subtitle && (
-            <p className="text-blue-100 text-lg font-medium leading-relaxed">
-              {subtitle}
-            </p>
-          )}
-        </div>
-        {actions && (
-          <div className="flex items-center gap-3 shrink-0 flex-wrap">
-            {actions}
-          </div>
+      <div className="flex min-w-0 items-center gap-4">
+        {Icon && (
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#1E3C90]/10 text-[#1E3C90] dark:bg-[#16B0DF]/15 dark:text-[#16B0DF]">
+            <Icon className="h-6 w-6" />
+          </span>
         )}
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{title}</h1>
+          {subtitle && <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
+        </div>
       </div>
-      <div className="absolute top-0 right-0 p-10 opacity-10 pointer-events-none">
-        <Icon size={200} />
-      </div>
-    </motion.div>
+
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+    </motion.header>
   );
 };

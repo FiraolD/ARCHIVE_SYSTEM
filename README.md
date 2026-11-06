@@ -50,7 +50,7 @@ User Type	Primary Use Case
 Archive Officers (Admin)	Ingest documents, manage physical locations, approve requests
 Claims Staff	Request claim files for processing
 Underwriting Staff	Request policy documents for review
-Managers	Monitor operations, generate reports, track performance
+File Clerks	Monitor operations, generate reports, track performance
 Auditors	Review complete audit trail of all document activity
 1.3 Deployment Modes
 
@@ -105,11 +105,15 @@ The desktop build is fully self-contained — no internet, no Node.js, no separa
 
 2.4 User Management
 
-    ✅ Role-based access control (Admin, Manager, Agent, Viewer)
+    ✅ Role-based access control (Admin, File Clerk, Agent, Viewer)
 
     ✅ Department assignment
 
     ✅ Password hashing with bcrypt
+
+    ✅ Admin-created users and password resets use the temporary password `Insurance123`
+
+    ✅ Admins reset passwords after requests made in person or by phone; temporary passwords must be changed at next login
 
     ✅ Login history and last activity tracking
 
@@ -345,7 +349,7 @@ ARCHIVE_SYSTEM/
 │   ├── src/
 │   │   ├── config/
 │   │   │   ├── database.js            # PostgreSQL pool
-│   │   │   └── embeddedPostgres.js    # Embedded DB manager
+│   │   │   └── embeddedPostgres.js    # Embedded DB File Clerk
 │   │   │
 │   │   ├── controllers/
 │   │   │   ├── authController.js      # Login, register, profile
@@ -440,7 +444,7 @@ id	UUID (PK)	Primary key
 name	VARCHAR(100)	Full name
 email	VARCHAR(100) UNIQUE	Login email
 password_hash	VARCHAR(255)	bcrypt hash
-role	user_role ENUM	Admin, Manager, Agent, Viewer
+role	user_role ENUM	Admin, File Clerk, Agent, Viewer
 department_name	VARCHAR(100)	Department text
 avatar	TEXT	Avatar URL
 created_at	TIMESTAMP	
@@ -582,11 +586,11 @@ idx_drawer_assignments_active, idx_boxes_identifier
 7.1 Role Definitions
 Role	Description
 Admin	Archive officer — full system access
-Manager	Department manager — status updates and reports
+File Clerk	Department File Clerk — status updates and reports
 Agent	Standard staff — file requests
 Viewer	Read-only access (future)
 7.2 Permission Matrix
-Feature	Admin	Manager	Agent
+Feature	Admin	File Clerk	Agent
 Dashboard	✅	✅	✅
 File Request	✅	✅	✅
 Registration	✅	❌	❌
@@ -779,6 +783,11 @@ GET	/users	List users (Admin)
 POST	/users	Create user (Admin)
 PATCH	/users/:id	Update user (Admin)
 DELETE	/users/:id	Delete user (Admin)
+PATCH	/users/:id/reset-password	Reset user password to `Insurance123` (Admin)
+
+Users should contact an administrator in person or by phone to request a password reset. The administrator
+can then reset the user's password from User Management. After applying this version, run
+`cd backend && npm run db:setup` to add the password-change flag to an existing database.
 9.8 Notifications
 Method	Endpoint	Description
 GET	/notifications	User notifications
@@ -842,18 +851,9 @@ npm run electron:dev:all
 
 10.3 Creating the First Admin
 
-With the backend running:
-powershell
-
-cd backend
-node scripts/create-admin.js
-
-Default credentials: admin@insurearch.com / admin123
-
-Custom:
-powershell
-
-node scripts/create-admin.js admin@mycompany.com MySecurePass "John Doe" Admin
+Initialize or upgrade the database with `cd backend && npm run db:setup`. A new database is seeded with
+`admin@insurearch.com` and the temporary password `Insurance123`. The admin must choose a personal
+password at first login. Existing databases retain their current users and passwords.
 
 11. Development Guide
 11.1 Available Scripts

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useArchive } from '../context/ArchiveContext';
 import { FacetedSearch } from '../components/FacetedSearch';
 import { DocumentList } from '../components/DocumentList';
@@ -61,11 +61,15 @@ export const DocumentsPage: React.FC = () => {
       </div>
 
       {isLoading && documents.length === 0 ? (
-        <div className="flex items-center justify-center py-24 text-slate-400">
-          <Loader2 className="w-6 h-6 animate-spin" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3" aria-busy>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-56 animate-pulse rounded-xl bg-slate-200 dark:bg-white/10" />
+          ))}
         </div>
       ) : (
-        <DocumentList documents={documents} onPreview={setPreviewDoc} />
+        <div className={`transition-opacity duration-150 ${isLoading ? 'pointer-events-none opacity-60' : ''}`}>
+          <DocumentList documents={documents} onPreview={setPreviewDoc} />
+        </div>
       )}
 
       {pagination && pagination.total_pages > 1 && (

@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { requestApi } from '../services/api';
-import { PageHeader, PageHeaderButton, SearchInput, FilterBar, EmptyState, Modal } from './ui';
+import { FilterBar, Modal, PageHeader, PageHeaderButton, SearchInput, EmptyState } from './ui';
 
 interface Request {
   id: string;
@@ -156,7 +156,7 @@ export const AdminRequests: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-all"
+                className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-all"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-4">
@@ -320,8 +320,8 @@ const RequestDetailsModal: React.FC<{
     {request && (
       <div className="space-y-4">
         <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-100 dark:border-blue-900">
-          <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">Request Reference</p>
-          <p className="text-lg font-mono font-black text-blue-900 dark:text-blue-200">{request.request_reference}</p>
+          <p className="text-xs font-bold text-blue-600 mb-1">Request Reference</p>
+          <p className="text-lg font-mono font-bold text-blue-900 dark:text-blue-200">{request.request_reference}</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {[
@@ -335,20 +335,20 @@ const RequestDetailsModal: React.FC<{
             ['Expected Return', request.expected_return_date && format(new Date(request.expected_return_date), 'MMM dd, yyyy')],
           ].map(([label, value]) => (
             <div key={label as string} className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">{label}</p>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{label}</p>
               <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{(value as string) || 'N/A'}</p>
             </div>
           ))}
         </div>
         {request.notes && (
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase mb-1">Notes</p>
+            <p className="text-xs font-medium text-slate-500 mb-1">Notes</p>
             <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl">{request.notes}</p>
           </div>
         )}
         {request.rejection_reason && (
           <div>
-            <p className="text-xs font-bold text-red-500 uppercase mb-1">Rejection Reason</p>
+            <p className="text-xs font-bold text-red-500 mb-1">Rejection Reason</p>
             <p className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 p-3 rounded-xl">{request.rejection_reason}</p>
           </div>
         )}

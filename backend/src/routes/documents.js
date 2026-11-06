@@ -1,4 +1,3 @@
-// src/routes/documents.js
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -40,26 +39,39 @@ router.get('/:id', documentController.getDocumentById);
 /* ---------- Write ---------- */
 router.post(
   '/ingest',
-  role('Admin'),
+  role('Admin', 'File Clerk'),
   upload.single('file'),
   documentController.ingestDocument
 );
 
+// NEW: Modify and Delete endpoints
+router.patch(
+  '/:id',
+  role('Admin', 'File Clerk'),
+  documentController.updateDocument
+);
+
+router.delete(
+  '/:id',
+  role('Admin', 'File Clerk'),
+  documentController.deleteDocument
+);
+
 router.patch(
   '/:id/status',
-  role('Admin', 'Manager'),
+  role('Admin', 'File Clerk'),
   documentController.updateDocumentStatus
 );
 
 router.patch(
   '/:id/placement',
-  role('Admin', 'Manager'),
+  role('Admin', 'File Clerk'),
   documentController.updatePhysicalPlacement
 );
 
 router.post(
   '/assign-to-box',
-  role('Admin', 'Manager'),
+  role('Admin', 'File Clerk'),
   documentController.assignToBox
 );
 

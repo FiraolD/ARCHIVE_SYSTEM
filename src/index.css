@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+/*
+  Add this to src/index.css (after the @import "tailwindcss" line).
+
+  You use Tailwind v4, which reads colours from CSS. It ignores tailwind.config.js,
+  so delete that file: it only contained a pasted snippet and does nothing.
+
+  If index.css already has lines like  --color-blue-600: ...  (that is probably why "blue" looks violet),
+  replace those lines with the ones below instead of adding a second set.
+*/
+@theme {
+  --color-blue-50:  #EEF3FD;
+  --color-blue-100: #DDE7FA;
+  --color-blue-200: #BFD1F5;
+  --color-blue-300: #94B1EC;
+  --color-blue-400: #6389DF;
+  --color-blue-500: #3E66C8;
+  --color-blue-600: #2A4DB0;
+  --color-blue-700: #1E3C90; /* Awash navy */
+  --color-blue-800: #182F72;
+  --color-blue-900: #132559;
+  --color-blue-950: #0B1636;
+}
+
+
 @custom-variant dark (&:is(.dark *));
 
 :root {

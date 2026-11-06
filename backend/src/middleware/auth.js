@@ -11,7 +11,7 @@ const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const result = await query(
-      'SELECT id, name, email, role, avatar FROM users WHERE id = $1',
+      'SELECT id, name, email, role, avatar, must_change_password FROM users WHERE id = $1',
       [decoded.userId]
     );
 
@@ -20,6 +20,13 @@ const authenticate = async (req, res, next) => {
     }
 
     req.user = result.rows[0];
+    if (
+      req.user.must_change_password
+      && !(req.baseUrl === '/api/auth' && ['/profile', '/change-password'].includes(req.path))
+    ) {
+      return res.status(403).json({ error: 'Change your password before continuing' });
+    }
+
     req.token = token;
     next();
   } catch (error) {

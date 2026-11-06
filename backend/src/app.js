@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
@@ -46,6 +47,7 @@ const getLocalIP = () => {
   return 'localhost';
 };
 
+app.use(compression());
 // CORS configuration - explicit allow-list from environment
 const localIP = getLocalIP();
 const frontendURL = process.env.FRONTEND_URL || `http://${localIP}:3009`;

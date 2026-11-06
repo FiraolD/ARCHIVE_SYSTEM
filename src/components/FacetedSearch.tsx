@@ -13,7 +13,7 @@ interface FacetedSearchProps {
 }
 
 export const FacetedSearch: React.FC<FacetedSearchProps> = ({ filters, facets, branches, onFiltersChange }) => {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(filters.search ?? '');
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export const FacetedSearch: React.FC<FacetedSearchProps> = ({ filters, facets, b
   const totalActive = activeChips.length;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
       <div className="p-4 flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -77,7 +77,7 @@ export const FacetedSearch: React.FC<FacetedSearchProps> = ({ filters, facets, b
           >
             <Filter className="w-4 h-4" /> Filters
             {totalActive > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold">{totalActive}</span>
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-xs font-bold">{totalActive}</span>
             )}
           </button>
           {totalActive > 0 && (
@@ -177,7 +177,7 @@ export const FacetedSearch: React.FC<FacetedSearchProps> = ({ filters, facets, b
 
 const Field: React.FC<{ label: string; icon?: React.ReactNode; children: React.ReactNode }> = ({ label, icon, children }) => (
   <label className="flex flex-col gap-1.5">
-    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">{icon}{label}</span>
+    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">{icon}{label}</span>
     {children}
   </label>
 );

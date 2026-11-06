@@ -1,5 +1,6 @@
 const { pool } = require('../config/database');
 const bcrypt = require('bcryptjs');
+const { DEFAULT_PASSWORD } = require('../utils/passwords');
 
 /**
  * INSUREARCH database setup / migration script.
@@ -15,7 +16,7 @@ async function createEnumTypes(client) {
   // Enum creation cannot share a transaction with ALTER TYPE ADD VALUE,
   // so each statement is executed and guarded individually.
   const enums = [
-    { name: 'user_role', values: ['Admin', 'Manager', 'Agent', 'Viewer'] },
+    { name: 'user_role', values: ['Admin', 'File Clerk', 'Agent', 'Viewer'] },
     { name: 'file_type', values: ['Claim File', 'Circular', 'Policy', 'Billing', 'Correspondence'] },
     { name: 'file_status', values: ['Active', 'Checked-out', 'Settled Claims', 'Returned'] },
     { name: 'request_status', values: ['Pending', 'Approved', 'Returned', 'Rejected', 'Overdue'] },
@@ -51,6 +52,7 @@ async function createTables(client) {
       name VARCHAR(100) NOT NULL,
       email VARCHAR(100) UNIQUE NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
+      must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
       role user_role NOT NULL DEFAULT 'Agent',
       avatar TEXT,
       department_name VARCHAR(100),
@@ -263,6 +265,7 @@ async function createTables(client) {
 async function upgradeExistingTables(client) {
   // Columns required by current code, added if a database predates them.
   const columnUpgrades = [
+    { table: 'users', column: 'must_change_password', type: 'BOOLEAN NOT NULL DEFAULT FALSE' },
     { table: 'users', column: 'department_name', type: 'VARCHAR(100)' },
     { table: 'documents', column: 'product_custom_fields', type: 'JSONB' },
     { table: 'file_requests', column: 'request_reference', type: 'VARCHAR(50)' },
@@ -305,20 +308,19 @@ async function createIndexes(client) {
 }
 
 async function seedData(client) {
-  // Default admin user (CHANGE THIS PASSWORD in production immediately)
-  const hashedPassword = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD || 'admin123', 10);
+  const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
   await client.query(
-    `INSERT INTO users (name, email, password_hash, role, avatar)
-     SELECT 'Admin User', 'admin@insurearch.com', $1, 'Admin', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330'
+    `INSERT INTO users (name, email, password_hash, role, avatar, must_change_password)
+     SELECT 'Admin User', 'admin@insurearch.com', $1, 'Admin', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330', TRUE
      WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'admin@insurearch.com')`,
     [hashedPassword]
   );
 
   // Default agent user
-  const agentHashedPassword = await bcrypt.hash(process.env.SEED_AGENT_PASSWORD || 'agent123', 10);
+  const agentHashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
   await client.query(
-    `INSERT INTO users (name, email, password_hash, role, avatar)
-     SELECT 'Agent User', 'agent@insurearch.com', $1, 'Agent', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e'
+    `INSERT INTO users (name, email, password_hash, role, avatar, must_change_password)
+     SELECT 'Agent User', 'agent@insurearch.com', $1, 'Agent', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e', TRUE
      WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'agent@insurearch.com')`,
     [agentHashedPassword]
   );

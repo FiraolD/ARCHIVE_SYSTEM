@@ -20,10 +20,10 @@ async function audit(user, action, resource, details) {
  * Box lifecycle state machine
  * ================================================================ */
 const ALLOWED_TRANSITIONS = {
-  'Draft':      [{ to: 'Packed',     roles: ['Admin', 'Manager'] }],
-  'Packed':     [{ to: 'In Transit', roles: ['Admin', 'Manager'] },
+  'Draft':      [{ to: 'Packed',     roles: ['Admin', 'File Clerk'] }],
+  'Packed':     [{ to: 'In Transit', roles: ['Admin', 'File Clerk'] },
                  { to: 'Draft',      roles: ['Admin'] }],
-  'In Transit': [{ to: 'Archived',   roles: ['Admin', 'Manager'] },
+  'In Transit': [{ to: 'Archived',   roles: ['Admin', 'File Clerk'] },
                  { to: 'Packed',     roles: ['Admin'] }],
   'Archived':   [{ to: 'Dissolved',  roles: ['Admin'] },
                  { to: 'In Transit', roles: ['Admin'] }],

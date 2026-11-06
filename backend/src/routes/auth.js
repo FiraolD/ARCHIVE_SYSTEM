@@ -13,5 +13,6 @@ const loginValidation = [
 // Routes - registration is disabled; users are created by admins via /api/users
 router.post('/login', loginValidation, authController.login);
 router.get('/profile', authenticate, authController.getProfile); // Make sure this line exists
+router.post('/change-password', authenticate, authController.changePassword);
 
 module.exports = router;

@@ -4,11 +4,11 @@
  *
  * Usage:
  *   router.get('/', role('Admin'), ctrl.list);            // Admin only
- *   router.post('/', role('Admin', 'Manager'), ctrl.create); // Admin OR Manager
+ *   router.post('/', role('Admin', 'File Clerk'), ctrl.create); // Admin OR File Clerk
  *
  * Relies on `req.user` being populated by the `auth` middleware that runs
  * earlier in the chain. `req.user.role` must be one of:
- *   'Admin' | 'Manager' | 'Agent' | 'Viewer'
+ *   'Admin' | 'File Clerk' | 'Agent' | 'Viewer'
  */
 
 module.exports = (...allowedRoles) => {

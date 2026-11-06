@@ -39,6 +39,8 @@ api.interceptors.response.use(
 export const authApi = {
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
+  changePassword: (data: { currentPassword?: string; newPassword: string }) =>
+    api.post('/auth/change-password', data),
   register: (data: any) => api.post('/auth/register', data),
   getProfile: () => api.get('/auth/profile'),
 };
@@ -50,6 +52,7 @@ export const userApi = {
   getUser: (id: string) => api.get(`/users/${id}`),
   createUser: (data: any) => api.post('/users', data),
   updateUser: (id: string, data: any) => api.patch(`/users/${id}`, data),
+  resetPassword: (id: string) => api.patch(`/users/${id}/reset-password`),
   deleteUser: (id: string) => api.delete(`/users/${id}`),
 };
 
@@ -70,6 +73,8 @@ export const documentApi = {
     api.post('/documents/assign-to-box', data),
   searchByCustomField: (key: string, value: string) =>
     api.get('/documents/search/custom-field', { params: { key, value } }),
+    updateDocument: (id: string, data: any) => api.patch(`/documents/${id}`, data),
+  deleteDocument: (id: string) => api.delete(`/documents/${id}`),
 };
 
 // ==================== FILE REQUESTS ====================

@@ -120,8 +120,8 @@ const TARGETS = [
         "Admin: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900'",
       ],
       [
-        /Manager: 'bg-blue-100 text-blue-700 border-blue-200'/g,
-        "Manager: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900'",
+        /File Clerk: 'bg-blue-100 text-blue-700 border-blue-200'/g,
+        "File Clerk: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900'",
       ],
       [
         /Agent: 'bg-green-100 text-green-700 border-green-200'/g,

@@ -62,12 +62,12 @@ class ReportsController {
         FROM documents
       `);
 
-      // Get user statistics
+      // Get user statistics - UPDATED FOR FILE CLERK
       const userStats = await query(`
         SELECT 
           COUNT(*) as total_users,
           COUNT(CASE WHEN role = 'Admin' THEN 1 END) as admins,
-          COUNT(CASE WHEN role = 'Manager' THEN 1 END) as managers,
+          COUNT(CASE WHEN role = 'File Clerk' THEN 1 END) as file_clerks,
           COUNT(CASE WHEN role = 'Agent' THEN 1 END) as agents,
           COUNT(CASE WHEN role = 'Viewer' THEN 1 END) as viewers
         FROM users
@@ -176,7 +176,7 @@ class ReportsController {
         users: {
           byRole: {
             admins: parseInt(userStats.rows[0].admins),
-            managers: parseInt(userStats.rows[0].managers),
+            file_clerks: parseInt(userStats.rows[0].file_clerks), // FIXED HERE
             agents: parseInt(userStats.rows[0].agents),
             viewers: parseInt(userStats.rows[0].viewers)
           }
@@ -238,13 +238,11 @@ class ReportsController {
       const { type, format = 'PDF' } = req.body;
       const userId = req.user.id;
 
-      // Validate report type
       const validTypes = ['Monthly Summary', 'Claims Analysis', 'Department Usage'];
       if (!validTypes.includes(type)) {
         return res.status(400).json({ error: 'Invalid report type' });
       }
 
-      // Get report data based on type
       let reportData;
       let fileName;
 
@@ -263,11 +261,9 @@ class ReportsController {
           break;
       }
 
-      // Generate file based on format
       let filePath;
       let fileSize;
 
-      // Ensure reports directory exists
       const reportsDir = path.join(__dirname, '../../uploads/reports');
       if (!fs.existsSync(reportsDir)) {
         fs.mkdirSync(reportsDir, { recursive: true });
@@ -287,11 +283,9 @@ class ReportsController {
           return res.status(400).json({ error: 'Invalid format' });
       }
 
-      // Get file size
       const stats = fs.statSync(filePath);
       fileSize = (stats.size / (1024 * 1024)).toFixed(2) + ' MB';
 
-      // Save report record to database
       const result = await query(
         `INSERT INTO generated_reports 
          (report_name, report_type, file_format, file_size, file_path, created_by, report_data)
@@ -300,7 +294,6 @@ class ReportsController {
         [fileName + '.' + format.toLowerCase(), type, format, fileSize, filePath, userId, JSON.stringify(reportData)]
       );
 
-      // Create notification
       await query(
         `INSERT INTO notifications (title, message, type, user_id, related_id)
          VALUES ($1, $2, $3, $4, $5)`,
@@ -313,7 +306,6 @@ class ReportsController {
         ]
       );
 
-      // Log to audit
       await query(
         `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address)
          VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -340,58 +332,94 @@ class ReportsController {
 
   // ==================== DOWNLOAD REPORT ====================
   
- static async downloadReport(req, res) {
-  try {
-    const { id } = req.params;
+  static async downloadReport(req, res) {
+    try {
+      const { id } = req.params;
 
-    const result = await query(
-      'SELECT * FROM generated_reports WHERE id = $1',
-      [id]
-    );
+      const result = await query('SELECT * FROM generated_reports WHERE id = $1', [id]);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Report not found' });
-    }
-
-    const report = result.rows[0];
-
-    // Check if file exists
-    if (!report.file_path || !fs.existsSync(report.file_path)) {
-      return res.status(404).json({ error: 'Report file not found on disk' });
-    }
-
-    // Log download action
-    await query(
-      `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [req.user.id, req.user.name, 'Report Downloaded', report.report_name,
-       `Downloaded ${report.report_type} report in ${report.file_format} format`, req.ip]
-    );
-
-    // Set proper headers and send file
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${report.report_name}"`);
-    
-    const fileStream = fs.createReadStream(report.file_path);
-    fileStream.pipe(res);
-    
-    fileStream.on('error', (error) => {
-      console.error('File stream error:', error);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Error streaming file' });
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Report not found' });
       }
-    });
-  } catch (error) {
-    console.error('Download report error:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+
+      const report = result.rows[0];
+
+      if (!report.file_path || !fs.existsSync(report.file_path)) {
+        return res.status(404).json({ error: 'Report file not found on disk' });
+      }
+
+      await query(
+        `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [req.user.id, req.user.name, 'Report Downloaded', report.report_name,
+         `Downloaded ${report.report_type} report in ${report.file_format} format`, req.ip]
+      );
+
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${report.report_name}"`);
+      
+      const fileStream = fs.createReadStream(report.file_path);
+      fileStream.pipe(res);
+      
+      fileStream.on('error', (error) => {
+        console.error('File stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error streaming file' });
+        }
+      });
+    } catch (error) {
+      console.error('Download report error:', error);
+      res.status(500).json({ error: 'Server error: ' + error.message });
+    }
   }
-}
+
+  // ==================== DELETE REPORT ====================
+
+  static async deleteReport(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      const reportResult = await query('SELECT * FROM generated_reports WHERE id = $1', [id]);
+
+      if (reportResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Report not found' });
+      }
+
+      const report = reportResult.rows[0];
+
+      if (report.file_path && fs.existsSync(report.file_path)) {
+        try {
+          fs.unlinkSync(report.file_path);
+          console.log(`Deleted file: ${report.file_path}`);
+        } catch (fileError) {
+          console.error('Error deleting file:', fileError);
+        }
+      }
+
+      await query('DELETE FROM generated_reports WHERE id = $1', [id]);
+
+      await query(
+        `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [userId, req.user.name, 'Report Deleted', report.report_name,
+         `Deleted ${report.report_type} report generated on ${new Date(report.created_at).toLocaleDateString()}`, req.ip]
+      );
+
+      res.json({ 
+        message: 'Report deleted successfully',
+        id: report.id,
+        name: report.report_name
+      });
+    } catch (error) {
+      console.error('Delete report error:', error);
+      res.status(500).json({ error: 'Server error: ' + error.message });
+    }
+  }
 
   // ==================== REPORT DATA COLLECTION ====================
 
-  // Monthly Summary Report Data
   static async getMonthlySummaryData() {
-    // Get document summary
     const documents = await query(`
       SELECT 
         COUNT(*) as total_documents,
@@ -406,7 +434,6 @@ class ReportsController {
       FROM documents
     `);
 
-    // Get requests summary
     const requests = await query(`
       SELECT 
         COUNT(*) as total_requests,
@@ -418,7 +445,6 @@ class ReportsController {
       FROM file_requests
     `);
 
-    // Get top requested documents
     const topDocuments = await query(`
       SELECT 
         d.title,
@@ -432,7 +458,6 @@ class ReportsController {
       LIMIT 10
     `);
 
-    // Get monthly breakdown
     const monthlyBreakdown = await query(`
       SELECT 
         TO_CHAR(created_at, 'YYYY-MM') as month,
@@ -492,317 +517,244 @@ class ReportsController {
       }))
     };
   }
-// Add this method to your ReportsController class (around line 400-450, before module.exports)
 
-// Delete a specific report
-static async deleteReport(req, res) {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
+  static async getClaimsAnalysisData() {
+    const claims = await query(`
+      SELECT 
+        d.id,
+        d.archive_reference_number,
+        d.title,
+        d.insured_name,
+        d.policy_number,
+        d.claim_number,
+        d.estimated_loss,
+        d.status,
+        d.created_at,
+        b.name as branch_name,
+        p.name as product_name
+      FROM documents d
+      LEFT JOIN branches b ON d.branch_id = b.id
+      LEFT JOIN products p ON d.product_id = p.id
+      WHERE d.type = 'Claim File'
+      ORDER BY d.created_at DESC
+    `);
 
-    // Get report details first
-    const reportResult = await query(
-      'SELECT * FROM generated_reports WHERE id = $1',
-      [id]
-    );
+    const claimsByStatus = await query(`
+      SELECT 
+        status,
+        COUNT(*) as count,
+        SUM(CASE WHEN estimated_loss IS NOT NULL THEN 1 ELSE 0 END) as with_loss
+      FROM documents
+      WHERE type = 'Claim File'
+      GROUP BY status
+    `);
 
-    if (reportResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Report not found' });
+    const claimsByBranch = await query(`
+      SELECT 
+        COALESCE(b.name, 'Unassigned') as branch,
+        COUNT(d.id) as claim_count,
+        SUM(CASE WHEN d.estimated_loss IS NOT NULL THEN d.estimated_loss::numeric ELSE 0 END) as total_loss
+      FROM documents d
+      LEFT JOIN branches b ON d.branch_id = b.id
+      WHERE d.type = 'Claim File'
+      GROUP BY b.name
+      ORDER BY claim_count DESC
+    `);
+
+    const totalLoss = await query(`
+      SELECT SUM(estimated_loss::numeric) as total
+      FROM documents
+      WHERE type = 'Claim File' AND estimated_loss IS NOT NULL
+    `);
+
+    const claimIds = claims.rows.map(c => c.id);
+    let requestCounts = [];
+    
+    if (claimIds.length > 0) {
+      requestCounts = await query(`
+        SELECT 
+          document_id,
+          COUNT(*) as request_count
+        FROM file_requests
+        WHERE document_id = ANY($1::uuid[])
+        GROUP BY document_id
+      `, [claimIds]);
     }
 
-    const report = reportResult.rows[0];
+    const claimsByMonth = await query(`
+      SELECT 
+        TO_CHAR(created_at, 'YYYY-MM') as month,
+        COUNT(*) as claim_count,
+        COALESCE(SUM(estimated_loss::numeric), 0) as monthly_loss
+      FROM documents
+      WHERE type = 'Claim File'
+        AND created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '12 months')
+      GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+      ORDER BY month DESC
+    `);
 
-    // Delete the physical file if it exists
-    if (report.file_path && fs.existsSync(report.file_path)) {
-      try {
-        fs.unlinkSync(report.file_path);
-        console.log(`Deleted file: ${report.file_path}`);
-      } catch (fileError) {
-        console.error('Error deleting file:', fileError);
-        // Continue with database deletion even if file delete fails
-      }
-    }
-
-    // Delete from database
-    await query(
-      'DELETE FROM generated_reports WHERE id = $1',
-      [id]
-    );
-
-    // Log the action
-    await query(
-      `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [userId, req.user.name, 'Report Deleted', report.report_name,
-       `Deleted ${report.report_type} report generated on ${new Date(report.created_at).toLocaleDateString()}`, req.ip]
-    );
-
-    res.json({ 
-      message: 'Report deleted successfully',
-      id: report.id,
-      name: report.report_name
+    const requestCountMap = {};
+    requestCounts.rows.forEach(r => {
+      requestCountMap[r.document_id] = parseInt(r.request_count);
     });
-  } catch (error) {
-    console.error('Delete report error:', error);
-    res.status(500).json({ error: 'Server error: ' + error.message });
-  }
-}
- static async getClaimsAnalysisData() {
-  // Get all claim files without the string_agg
-  const claims = await query(`
-    SELECT 
-      d.id,
-      d.archive_reference_number,
-      d.title,
-      d.insured_name,
-      d.policy_number,
-      d.claim_number,
-      d.estimated_loss,
-      d.status,
-      d.created_at,
-      b.name as branch_name,
-      p.name as product_name
-    FROM documents d
-    LEFT JOIN branches b ON d.branch_id = b.id
-    LEFT JOIN products p ON d.product_id = p.id
-    WHERE d.type = 'Claim File'
-    ORDER BY d.created_at DESC
-  `);
 
-  // Get claims by status
-  const claimsByStatus = await query(`
-    SELECT 
-      status,
-      COUNT(*) as count,
-      SUM(CASE WHEN estimated_loss IS NOT NULL THEN 1 ELSE 0 END) as with_loss
-    FROM documents
-    WHERE type = 'Claim File'
-    GROUP BY status
-  `);
-
-  // Get claims by branch
-  const claimsByBranch = await query(`
-    SELECT 
-      COALESCE(b.name, 'Unassigned') as branch,
-      COUNT(d.id) as claim_count,
-      SUM(CASE WHEN d.estimated_loss IS NOT NULL THEN d.estimated_loss::numeric ELSE 0 END) as total_loss
-    FROM documents d
-    LEFT JOIN branches b ON d.branch_id = b.id
-    WHERE d.type = 'Claim File'
-    GROUP BY b.name
-    ORDER BY claim_count DESC
-  `);
-
-  // Calculate total estimated loss
-  const totalLoss = await query(`
-    SELECT SUM(estimated_loss::numeric) as total
-    FROM documents
-    WHERE type = 'Claim File' AND estimated_loss IS NOT NULL
-  `);
-
-  // Get request counts for claims
-  const claimIds = claims.rows.map(c => c.id);
-  let requestCounts = [];
-  
-  if (claimIds.length > 0) {
-    requestCounts = await query(`
-      SELECT 
-        document_id,
-        COUNT(*) as request_count
-      FROM file_requests
-      WHERE document_id = ANY($1::uuid[])
-      GROUP BY document_id
-    `, [claimIds]);
-  }
-
-  // Get claims grouped by month (last 12 months)
-  const claimsByMonth = await query(`
-    SELECT 
-      TO_CHAR(created_at, 'YYYY-MM') as month,
-      COUNT(*) as claim_count,
-      COALESCE(SUM(estimated_loss::numeric), 0) as monthly_loss
-    FROM documents
-    WHERE type = 'Claim File'
-      AND created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '12 months')
-    GROUP BY TO_CHAR(created_at, 'YYYY-MM')
-    ORDER BY month DESC
-  `);
-
-  // Create a map of request counts
-  const requestCountMap = {};
-  requestCounts.rows.forEach(r => {
-    requestCountMap[r.document_id] = parseInt(r.request_count);
-  });
-
-  // Add request counts to claims
-  const claimsWithCounts = claims.rows.map(claim => ({
-    ...claim,
-    request_count: requestCountMap[claim.id] || 0,
-    estimated_loss: claim.estimated_loss ? parseFloat(claim.estimated_loss) : null
-  }));
-
-  return {
-    generatedAt: new Date().toISOString(),
-    summary: {
-      totalClaims: claims.rows.length,
-      totalEstimatedLoss: parseFloat(totalLoss.rows[0]?.total || 0),
-      averageLossPerClaim: claims.rows.length > 0 
-        ? (parseFloat(totalLoss.rows[0]?.total || 0) / claims.rows.length).toFixed(2)
-        : 0,
-      claimsWithLoss: claims.rows.filter(c => c.estimated_loss).length
-    },
-    claimsByStatus: claimsByStatus.rows.map(row => ({
-      status: row.status,
-      count: parseInt(row.count),
-      withLoss: parseInt(row.with_loss)
-    })),
-    claimsByBranch: claimsByBranch.rows.map(row => ({
-      branch: row.branch,
-      claim_count: parseInt(row.claim_count),
-      total_loss: parseFloat(row.total_loss || 0)
-    })),
-    recentClaims: claimsWithCounts.slice(0, 50),
-    claimsByMonth: claimsByMonth.rows.map(row => ({
-      month: row.month,
-      claim_count: parseInt(row.claim_count),
-      monthly_loss: parseFloat(row.monthly_loss || 0)
-    })),
-    topRequestedClaims: claimsWithCounts
-      .filter(c => c.request_count > 0)
-      .sort((a, b) => b.request_count - a.request_count)
-      .slice(0, 10)
-  };
-}
-
- static async getDepartmentUsageData() {
-  try {
-    // Get all departments
-    const departments = await query(`
-      SELECT 
-        id,
-        name,
-        code
-      FROM departments
-      ORDER BY name
-    `);
-
-    // Get department usage statistics - join on department_name
-    const departmentStats = await query(`
-      SELECT 
-        d.name as department_name,
-        d.code as department_code,
-        COUNT(DISTINCT u.id) as user_count,
-        COUNT(DISTINCT fr.id) as request_count,
-        COUNT(DISTINCT CASE WHEN fr.status = 'Pending' THEN fr.id END) as pending_requests,
-        COUNT(DISTINCT CASE WHEN fr.status = 'Approved' THEN fr.id END) as approved_requests,
-        COUNT(DISTINCT CASE WHEN fr.status = 'Returned' THEN fr.id END) as returned_requests,
-        COUNT(DISTINCT CASE WHEN fr.status = 'Rejected' THEN fr.id END) as rejected_requests,
-        COUNT(DISTINCT CASE WHEN fr.status = 'Overdue' THEN fr.id END) as overdue_requests
-      FROM departments d
-      LEFT JOIN users u ON u.department_name = d.name  -- Join on name, not ID
-      LEFT JOIN file_requests fr ON fr.requested_by = u.id
-      GROUP BY d.id, d.name, d.code
-      ORDER BY request_count DESC
-    `);
-
-    // Get document types requested by department
-    const documentTypesByDept = await query(`
-      SELECT 
-        dept.name as department,
-        d.type as document_type,
-        COUNT(*) as count
-      FROM file_requests fr
-      JOIN users u ON fr.requested_by = u.id
-      JOIN departments dept ON u.department_name = dept.name  -- Join on name
-      JOIN documents d ON fr.document_id = d.id
-      GROUP BY dept.name, d.type
-      ORDER BY dept.name, count DESC
-    `);
-
-    // Get monthly trends by department
-    const monthlyTrends = await query(`
-      SELECT 
-        dept.name as department,
-        TO_CHAR(fr.created_at, 'Mon') as month,
-        EXTRACT(MONTH FROM fr.created_at) as month_num,
-        COUNT(*) as request_count
-      FROM file_requests fr
-      JOIN users u ON fr.requested_by = u.id
-      JOIN departments dept ON u.department_name = dept.name  -- Join on name
-      WHERE fr.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '6 months')
-      GROUP BY dept.name, TO_CHAR(fr.created_at, 'Mon'), EXTRACT(MONTH FROM fr.created_at)
-      ORDER BY dept.name, month_num ASC
-    `);
-
-    // Get users by department
-    const usersByDept = await query(`
-      SELECT 
-        dept.name as department,
-        u.id,
-        u.name,
-        u.email,
-        u.role,
-        u.department_name,
-        COUNT(fr.id) as request_count,
-        MAX(fr.created_at) as last_request
-      FROM departments dept
-      LEFT JOIN users u ON u.department_name = dept.name  -- Join on name
-      LEFT JOIN file_requests fr ON fr.requested_by = u.id
-      GROUP BY dept.name, u.id, u.name, u.email, u.role, u.department_name
-      ORDER BY dept.name, request_count DESC
-    `);
+    const claimsWithCounts = claims.rows.map(claim => ({
+      ...claim,
+      request_count: requestCountMap[claim.id] || 0,
+      estimated_loss: claim.estimated_loss ? parseFloat(claim.estimated_loss) : null
+    }));
 
     return {
       generatedAt: new Date().toISOString(),
       summary: {
-        totalDepartments: departmentStats.rows.length,
-        totalRequests: departmentStats.rows.reduce((sum, dept) => sum + parseInt(dept.request_count || 0), 0),
-        totalUsers: departmentStats.rows.reduce((sum, dept) => sum + parseInt(dept.user_count || 0), 0),
-        activeDepartments: departmentStats.rows.filter(d => d.request_count > 0).length,
-        departmentsWithOverdue: departmentStats.rows.filter(d => parseInt(d.overdue_requests || 0) > 0).length
+        totalClaims: claims.rows.length,
+        totalEstimatedLoss: parseFloat(totalLoss.rows[0]?.total || 0),
+        averageLossPerClaim: claims.rows.length > 0 
+          ? (parseFloat(totalLoss.rows[0]?.total || 0) / claims.rows.length).toFixed(2)
+          : 0,
+        claimsWithLoss: claims.rows.filter(c => c.estimated_loss).length
       },
-      departments: departmentStats.rows.map(dept => ({
-        name: dept.department_name,
-        code: dept.department_code,
-        user_count: parseInt(dept.user_count || 0),
-        request_count: parseInt(dept.request_count || 0),
-        pending_requests: parseInt(dept.pending_requests || 0),
-        approved_requests: parseInt(dept.approved_requests || 0),
-        returned_requests: parseInt(dept.returned_requests || 0),
-        rejected_requests: parseInt(dept.rejected_requests || 0),
-        overdue_requests: parseInt(dept.overdue_requests || 0)
+      claimsByStatus: claimsByStatus.rows.map(row => ({
+        status: row.status,
+        count: parseInt(row.count),
+        withLoss: parseInt(row.with_loss)
       })),
-      documentTypesByDept: documentTypesByDept.rows.map(row => ({
-        department: row.department,
-        document_type: row.document_type,
-        count: parseInt(row.count)
+      claimsByBranch: claimsByBranch.rows.map(row => ({
+        branch: row.branch,
+        claim_count: parseInt(row.claim_count),
+        total_loss: parseFloat(row.total_loss || 0)
       })),
-      monthlyTrends: monthlyTrends.rows.map(row => ({
-        department: row.department,
+      recentClaims: claimsWithCounts.slice(0, 50),
+      claimsByMonth: claimsByMonth.rows.map(row => ({
         month: row.month,
-        request_count: parseInt(row.request_count)
+        claim_count: parseInt(row.claim_count),
+        monthly_loss: parseFloat(row.monthly_loss || 0)
       })),
-      usersByDept: usersByDept.rows
-        .filter(user => user.name)
-        .map(user => ({
-          department: user.department,
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          request_count: parseInt(user.request_count || 0),
-          last_request: user.last_request
-        }))
+      topRequestedClaims: claimsWithCounts
+        .filter(c => c.request_count > 0)
+        .sort((a, b) => b.request_count - a.request_count)
+        .slice(0, 10)
     };
-  } catch (error) {
-    console.error('Error in getDepartmentUsageData:', error);
-    throw error;
   }
-}
+
+  static async getDepartmentUsageData() {
+    try {
+      const departments = await query(`
+        SELECT id, name, code FROM departments ORDER BY name
+      `);
+
+      const departmentStats = await query(`
+        SELECT 
+          d.name as department_name,
+          d.code as department_code,
+          COUNT(DISTINCT u.id) as user_count,
+          COUNT(DISTINCT fr.id) as request_count,
+          COUNT(DISTINCT CASE WHEN fr.status = 'Pending' THEN fr.id END) as pending_requests,
+          COUNT(DISTINCT CASE WHEN fr.status = 'Approved' THEN fr.id END) as approved_requests,
+          COUNT(DISTINCT CASE WHEN fr.status = 'Returned' THEN fr.id END) as returned_requests,
+          COUNT(DISTINCT CASE WHEN fr.status = 'Rejected' THEN fr.id END) as rejected_requests,
+          COUNT(DISTINCT CASE WHEN fr.status = 'Overdue' THEN fr.id END) as overdue_requests
+        FROM departments d
+        LEFT JOIN users u ON u.department_name = d.name
+        LEFT JOIN file_requests fr ON fr.requested_by = u.id
+        GROUP BY d.id, d.name, d.code
+        ORDER BY request_count DESC
+      `);
+
+      const documentTypesByDept = await query(`
+        SELECT 
+          dept.name as department,
+          d.type as document_type,
+          COUNT(*) as count
+        FROM file_requests fr
+        JOIN users u ON fr.requested_by = u.id
+        JOIN departments dept ON u.department_name = dept.name
+        JOIN documents d ON fr.document_id = d.id
+        GROUP BY dept.name, d.type
+        ORDER BY dept.name, count DESC
+      `);
+
+      const monthlyTrends = await query(`
+        SELECT 
+          dept.name as department,
+          TO_CHAR(fr.created_at, 'Mon') as month,
+          EXTRACT(MONTH FROM fr.created_at) as month_num,
+          COUNT(*) as request_count
+        FROM file_requests fr
+        JOIN users u ON fr.requested_by = u.id
+        JOIN departments dept ON u.department_name = dept.name
+        WHERE fr.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '6 months')
+        GROUP BY dept.name, TO_CHAR(fr.created_at, 'Mon'), EXTRACT(MONTH FROM fr.created_at)
+        ORDER BY dept.name, month_num ASC
+      `);
+
+      const usersByDept = await query(`
+        SELECT 
+          dept.name as department,
+          u.id,
+          u.name,
+          u.email,
+          u.role,
+          u.department_name,
+          COUNT(fr.id) as request_count,
+          MAX(fr.created_at) as last_request
+        FROM departments dept
+        LEFT JOIN users u ON u.department_name = dept.name
+        LEFT JOIN file_requests fr ON fr.requested_by = u.id
+        GROUP BY dept.name, u.id, u.name, u.email, u.role, u.department_name
+        ORDER BY dept.name, request_count DESC
+      `);
+
+      return {
+        generatedAt: new Date().toISOString(),
+        summary: {
+          totalDepartments: departmentStats.rows.length,
+          totalRequests: departmentStats.rows.reduce((sum, dept) => sum + parseInt(dept.request_count || 0), 0),
+          totalUsers: departmentStats.rows.reduce((sum, dept) => sum + parseInt(dept.user_count || 0), 0),
+          activeDepartments: departmentStats.rows.filter(d => d.request_count > 0).length,
+          departmentsWithOverdue: departmentStats.rows.filter(d => parseInt(d.overdue_requests || 0) > 0).length
+        },
+        departments: departmentStats.rows.map(dept => ({
+          name: dept.department_name,
+          code: dept.department_code,
+          user_count: parseInt(dept.user_count || 0),
+          request_count: parseInt(dept.request_count || 0),
+          pending_requests: parseInt(dept.pending_requests || 0),
+          approved_requests: parseInt(dept.approved_requests || 0),
+          returned_requests: parseInt(dept.returned_requests || 0),
+          rejected_requests: parseInt(dept.rejected_requests || 0),
+          overdue_requests: parseInt(dept.overdue_requests || 0)
+        })),
+        documentTypesByDept: documentTypesByDept.rows.map(row => ({
+          department: row.department,
+          document_type: row.document_type,
+          count: parseInt(row.count)
+        })),
+        monthlyTrends: monthlyTrends.rows.map(row => ({
+          department: row.department,
+          month: row.month,
+          request_count: parseInt(row.request_count)
+        })),
+        usersByDept: usersByDept.rows
+          .filter(user => user.name)
+          .map(user => ({
+            department: user.department,
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            request_count: parseInt(user.request_count || 0),
+            last_request: user.last_request
+          }))
+      };
+    } catch (error) {
+      console.error('Error in getDepartmentUsageData:', error);
+      throw error;
+    }
+  }
 
   // ==================== FILE GENERATION ====================
 
-  // Generate PDF Report
   static async generatePDFReport(data, fileName, reportType, reportsDir) {
     return new Promise((resolve, reject) => {
       const filePath = path.join(reportsDir, `${fileName}.pdf`);
@@ -811,7 +763,6 @@ static async deleteReport(req, res) {
       
       doc.pipe(stream);
 
-      // Header
       doc.fontSize(20).font('Helvetica-Bold').text('INSUREARCH', { align: 'center' });
       doc.moveDown();
       doc.fontSize(16).font('Helvetica-Bold').text(`${reportType} Report`, { align: 'center' });
@@ -819,7 +770,6 @@ static async deleteReport(req, res) {
       doc.fontSize(10).font('Helvetica').text(`Generated: ${new Date(data.generatedAt).toLocaleString()}`, { align: 'center' });
       doc.moveDown(2);
 
-      // Content based on report type
       if (reportType === 'Monthly Summary') {
         ReportsController.addMonthlySummaryToPDF(doc, data);
       } else if (reportType === 'Claims Analysis') {
@@ -828,13 +778,6 @@ static async deleteReport(req, res) {
         ReportsController.addDepartmentUsageToPDF(doc, data);
       }
 
-     /*Footer
-      doc.fontSize(8).font('Helvetica').text(
-        `Generated by INSUREARCH System`,
-        50, doc.page.height - 50,
-        { align: 'center' }
-      );*/
-
       doc.end();
 
       stream.on('finish', () => resolve(filePath));
@@ -842,9 +785,7 @@ static async deleteReport(req, res) {
     });
   }
 
-  // Add Monthly Summary content to PDF
   static addMonthlySummaryToPDF(doc, data) {
-    // Summary Section
     doc.fontSize(14).font('Helvetica-Bold').text('Executive Summary');
     doc.moveDown(0.5);
     doc.fontSize(10).font('Helvetica').text(`Total Documents: ${data.summary.totalDocuments}`);
@@ -853,7 +794,6 @@ static async deleteReport(req, res) {
     doc.text(`Request Fulfillment Rate: ${data.summary.requestFulfillmentRate}%`);
     doc.moveDown();
 
-    // Documents Section
     doc.fontSize(14).font('Helvetica-Bold').text('Documents by Type');
     doc.moveDown(0.5);
     doc.fontSize(10).font('Helvetica').text(`Claims: ${data.documents.byType.claims}`);
@@ -870,7 +810,6 @@ static async deleteReport(req, res) {
     doc.text(`Settled: ${data.documents.byStatus.settled}`);
     doc.moveDown();
 
-    // Requests Section
     doc.fontSize(14).font('Helvetica-Bold').text('Requests by Status');
     doc.moveDown(0.5);
     doc.fontSize(10).font('Helvetica').text(`Pending: ${data.requests.byStatus.pending}`);
@@ -880,7 +819,6 @@ static async deleteReport(req, res) {
     doc.text(`Overdue: ${data.requests.byStatus.overdue}`);
     doc.moveDown();
 
-    // Top Documents
     if (data.topDocuments.length > 0) {
       doc.fontSize(14).font('Helvetica-Bold').text('Most Requested Documents');
       doc.moveDown(0.5);
@@ -895,9 +833,7 @@ static async deleteReport(req, res) {
     }
   }
 
-  // Add Claims Analysis content to PDF
   static addClaimsAnalysisToPDF(doc, data) {
-    // Summary
     doc.fontSize(14).font('Helvetica-Bold').text('Claims Summary');
     doc.moveDown(0.5);
     doc.fontSize(10).font('Helvetica').text(`Total Claims: ${data.summary.totalClaims}`);
@@ -906,7 +842,6 @@ static async deleteReport(req, res) {
     doc.text(`Claims with Loss Estimates: ${data.summary.claimsWithLoss}`);
     doc.moveDown();
 
-    // Claims by Status
     doc.fontSize(14).font('Helvetica-Bold').text('Claims by Status');
     doc.moveDown(0.5);
     data.claimsByStatus.forEach(item => {
@@ -914,7 +849,6 @@ static async deleteReport(req, res) {
     });
     doc.moveDown();
 
-    // Claims by Branch
     doc.fontSize(14).font('Helvetica-Bold').text('Claims by Branch');
     doc.moveDown(0.5);
     data.claimsByBranch.forEach(item => {
@@ -922,7 +856,6 @@ static async deleteReport(req, res) {
     });
     doc.moveDown();
 
-    // Top Requested Claims
     if (data.topRequestedClaims.length > 0) {
       doc.fontSize(14).font('Helvetica-Bold').text('Most Requested Claims');
       doc.moveDown(0.5);
@@ -937,9 +870,7 @@ static async deleteReport(req, res) {
     }
   }
 
-  // Add Department Usage content to PDF
   static addDepartmentUsageToPDF(doc, data) {
-    // Summary
     doc.fontSize(14).font('Helvetica-Bold').text('Department Usage Summary');
     doc.moveDown(0.5);
     doc.fontSize(10).font('Helvetica').text(`Total Departments: ${data.summary.totalDepartments}`);
@@ -949,7 +880,6 @@ static async deleteReport(req, res) {
     doc.text(`Departments with Overdue: ${data.summary.departmentsWithOverdue}`);
     doc.moveDown();
 
-    // Department Breakdown
     doc.fontSize(14).font('Helvetica-Bold').text('Department Breakdown');
     doc.moveDown(0.5);
     
@@ -965,7 +895,6 @@ static async deleteReport(req, res) {
     });
   }
 
-  // Generate Excel Report
   static async generateExcelReport(data, fileName, reportType, reportsDir) {
     const filePath = path.join(reportsDir, `${fileName}.xlsx`);
     const workbook = new ExcelJS.Workbook();
@@ -984,9 +913,7 @@ static async deleteReport(req, res) {
     return filePath;
   }
 
-  // Add Monthly Summary to Excel
   static async addMonthlySummaryToExcel(workbook, data) {
-    // Summary Sheet
     const summarySheet = workbook.addWorksheet('Summary');
     summarySheet.columns = [
       { header: 'Metric', key: 'metric', width: 30 },
@@ -999,7 +926,6 @@ static async deleteReport(req, res) {
     summarySheet.addRow(['Active Rate', `${data.summary.activeRate}%`]);
     summarySheet.addRow(['Request Fulfillment Rate', `${data.summary.requestFulfillmentRate}%`]);
 
-    // Documents by Type Sheet
     const typeSheet = workbook.addWorksheet('Documents by Type');
     typeSheet.columns = [
       { header: 'Type', key: 'type', width: 20 },
@@ -1010,7 +936,6 @@ static async deleteReport(req, res) {
       typeSheet.addRow({ type: key, count: value });
     });
 
-    // Documents by Status Sheet
     const statusSheet = workbook.addWorksheet('Documents by Status');
     statusSheet.columns = [
       { header: 'Status', key: 'status', width: 20 },
@@ -1021,7 +946,6 @@ static async deleteReport(req, res) {
       statusSheet.addRow({ status: key, count: value });
     });
 
-    // Requests Sheet
     const requestsSheet = workbook.addWorksheet('Requests');
     requestsSheet.columns = [
       { header: 'Status', key: 'status', width: 20 },
@@ -1032,7 +956,6 @@ static async deleteReport(req, res) {
       requestsSheet.addRow({ status: key, count: value });
     });
 
-    // Top Documents Sheet
     if (data.topDocuments.length > 0) {
       const topDocsSheet = workbook.addWorksheet('Top Documents');
       topDocsSheet.columns = [
@@ -1053,9 +976,7 @@ static async deleteReport(req, res) {
     }
   }
 
-  // Add Claims Analysis to Excel
   static async addClaimsAnalysisToExcel(workbook, data) {
-    // Summary Sheet
     const summarySheet = workbook.addWorksheet('Summary');
     summarySheet.columns = [
       { header: 'Metric', key: 'metric', width: 30 },
@@ -1068,7 +989,6 @@ static async deleteReport(req, res) {
     summarySheet.addRow(['Average Loss per Claim', `$${data.summary.averageLossPerClaim}`]);
     summarySheet.addRow(['Claims with Loss Estimates', data.summary.claimsWithLoss]);
 
-    // Claims by Status Sheet
     const statusSheet = workbook.addWorksheet('Claims by Status');
     statusSheet.columns = [
       { header: 'Status', key: 'status', width: 20 },
@@ -1084,7 +1004,6 @@ static async deleteReport(req, res) {
       });
     });
 
-    // Claims by Branch Sheet
     const branchSheet = workbook.addWorksheet('Claims by Branch');
     branchSheet.columns = [
       { header: 'Branch', key: 'branch', width: 25 },
@@ -1100,7 +1019,6 @@ static async deleteReport(req, res) {
       });
     });
 
-    // Claims by Month Sheet
     const monthSheet = workbook.addWorksheet('Claims by Month');
     monthSheet.columns = [
       { header: 'Month', key: 'month', width: 15 },
@@ -1116,7 +1034,6 @@ static async deleteReport(req, res) {
       });
     });
 
-    // Recent Claims Sheet
     const claimsSheet = workbook.addWorksheet('Recent Claims');
     claimsSheet.columns = [
       { header: 'Reference', key: 'ref', width: 20 },
@@ -1143,9 +1060,7 @@ static async deleteReport(req, res) {
     });
   }
 
-  // Add Department Usage to Excel
   static async addDepartmentUsageToExcel(workbook, data) {
-    // Summary Sheet
     const summarySheet = workbook.addWorksheet('Summary');
     summarySheet.columns = [
       { header: 'Metric', key: 'metric', width: 30 },
@@ -1159,7 +1074,6 @@ static async deleteReport(req, res) {
     summarySheet.addRow(['Active Departments', data.summary.activeDepartments]);
     summarySheet.addRow(['Departments with Overdue', data.summary.departmentsWithOverdue]);
 
-    // Departments Sheet
     const departmentSheet = workbook.addWorksheet('Departments');
     departmentSheet.columns = [
       { header: 'Department', key: 'name', width: 25 },
@@ -1185,7 +1099,6 @@ static async deleteReport(req, res) {
       });
     });
 
-    // Document Types by Department Sheet
     const docTypeSheet = workbook.addWorksheet('Document Types by Department');
     docTypeSheet.columns = [
       { header: 'Department', key: 'department', width: 25 },
@@ -1201,7 +1114,6 @@ static async deleteReport(req, res) {
       });
     });
 
-    // Users by Department Sheet
     const usersSheet = workbook.addWorksheet('Users by Department');
     usersSheet.columns = [
       { header: 'Department', key: 'department', width: 25 },
@@ -1224,7 +1136,6 @@ static async deleteReport(req, res) {
     });
   }
 
-  // Generate CSV Report
   static async generateCSVReport(data, fileName, reportType, reportsDir) {
     const filePath = path.join(reportsDir, `${fileName}.csv`);
     let csvContent = '';
@@ -1241,7 +1152,6 @@ static async deleteReport(req, res) {
     return filePath;
   }
 
-  // Generate Monthly Summary CSV
   static generateMonthlySummaryCSV(data) {
     let csv = 'Monthly Summary Report\n';
     csv += `Generated At,${new Date(data.generatedAt).toLocaleString()}\n\n`;
@@ -1275,7 +1185,6 @@ static async deleteReport(req, res) {
     return csv;
   }
 
-  // Generate Claims Analysis CSV
   static generateClaimsAnalysisCSV(data) {
     let csv = 'Claims Analysis Report\n';
     csv += `Generated At,${new Date(data.generatedAt).toLocaleString()}\n\n`;
@@ -1295,7 +1204,6 @@ static async deleteReport(req, res) {
     return csv;
   }
 
-  // Generate Department Usage CSV
   static generateDepartmentUsageCSV(data) {
     let csv = 'Department Usage Report\n';
     csv += `Generated At,${new Date(data.generatedAt).toLocaleString()}\n\n`;
@@ -1317,11 +1225,8 @@ static async deleteReport(req, res) {
   }
 }
 
-// Helper function to format date
 function formatDate(date) {
   return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
 }
-
-
 
 module.exports = ReportsController;
