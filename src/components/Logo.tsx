@@ -10,12 +10,16 @@ interface LogoProps {
   variant?: 'light' | 'dark';
 }
 
+<<<<<<< HEAD
 export const Logo: React.FC<LogoProps> = ({ 
   className = "", // Empty by default so it renders at natural size
   variant = 'light' 
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
+=======
+export const Logo: React.FC<LogoProps> = ({ className = "w-8 h-8" }) => {
+>>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
       {/* Skeleton loader while the image is loading */}

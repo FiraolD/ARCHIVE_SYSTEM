@@ -72,7 +72,7 @@ export interface Document {
   date_of_accident?: string;
 
   // Product custom fields (JSONB)
-  product_custom_fields?: Record<string, any>;
+  product_custom_fields?: Record<string, unknown>;
   // snake_case aliases returned directly by the backend API
   archive_reference_number?: string;
   physical_placement?: string;
@@ -175,7 +175,7 @@ export interface FileRequest {
   requestedBy: string;
   requestDate: string;
   expectedReturnDate: string;
-  status: 'Pending' | 'Approved' | 'Returned' | 'Rejected' | 'Overdue';
+  status: 'Pending' | 'Approved' | 'Return Pending' | 'Returned' | 'Rejected' | 'Overdue';
   claimNumber?: string;
   policyNumber?: string;
   insuredName?: string;

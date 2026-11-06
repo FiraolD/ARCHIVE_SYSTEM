@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminApi } from '../services/api';
-import { PageHeader, SectionCard } from './ui';
+import { getApiErrorDetails } from '../utils/apiError';
+import { PageHeader } from './ui';
 
 interface QueryResult {
   statementType: string;
@@ -14,7 +15,7 @@ interface QueryResult {
   rowCount: number;
   duration: number;
   truncated: boolean;
-  rows: Record<string, any>[];
+  rows: Record<string, unknown>[];
   fields: { name: string; dataTypeID: number }[];
   isWrite?: boolean;
   isDDL?: boolean;
@@ -71,10 +72,10 @@ export const AdminQueryPage: React.FC = () => {
       } else {
         toast.success(`Query OK — ${response.data.rowCount} row(s) in ${response.data.duration}ms`);
       }
-    } catch (err: any) {
-      const errData = err.response?.data || { error: err.message };
-      setError(errData);
-      toast.error(errData.error || 'Query failed');
+    } catch (err: unknown) {
+      const details = getApiErrorDetails(err);
+      setError({ error: details.error || details.message || 'Query failed' });
+      toast.error(details.error || details.message || 'Query failed');
     } finally {
       setIsRunning(false);
     }

@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
+<<<<<<< HEAD
   FileText, Clock, AlertCircle, CheckCircle2, User, Calendar,
   History, RefreshCw, FileSearch, Building2, Archive,
   LayoutDashboard, Database, Users, Activity, Server, HardDrive
+=======
+  FileText, AlertCircle, CheckCircle2, User, Calendar,
+  History, RefreshCw, Hash, FileSearch, MapPin, Building2,
+  Archive, Loader2, LayoutDashboard, Clock,
+>>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 } from 'lucide-react';
 import { useArchive } from '../context/ArchiveContext';
 import { dashboardApi, documentApi } from '../services/api';
@@ -10,18 +16,56 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { PageHeader, PageHeaderButton, SectionCard, StatCard, EmptyState } from './ui';
 
+<<<<<<< HEAD
 /** Raw SQL / schema-change log lines are noise for dashboard readers; they stay in the audit trail. */
 const isSchemaNoise = (a: any) =>
   /\.(ddl|sql)$/i.test(a?.action ?? '') ||
   /^\s*(ALTER|CREATE|DROP|TRUNCATE|INSERT|UPDATE|DELETE|SELECT)\s/i.test(a?.details ?? '');
+=======
+interface DashboardDocument {
+  id: string;
+  archive_reference_number?: string;
+  branch_name?: string;
+  cabinet_number?: string;
+  drawer_number?: string;
+  claim_number?: string;
+  policy_number?: string;
+  insured_name?: string;
+  physical_placement?: string;
+  status?: string;
+  created_at?: string;
+}
+
+interface DashboardActivity {
+  id?: string;
+  status?: string;
+  document_title?: string;
+  request_date?: string;
+  requester_name?: string;
+  archive_reference_number?: string;
+}
+
+interface DashboardStats {
+  totalDocuments?: number;
+  activeDocuments?: number;
+  checkedOutDocuments?: number;
+  pendingRequests?: number;
+  overdueRequests?: number;
+  myRequests?: number;
+  myActiveRequests?: number;
+  myOverdueRequests?: number;
+  recentActivity?: DashboardActivity[];
+  recentDocuments?: DashboardDocument[];
+}
+>>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 
 export const OperationsDashboard: React.FC = () => {
   const { user } = useArchive();
   const [stats, setStats] = useState<any>({ recentActivity: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [claimDocuments, setClaimDocuments] = useState<any[]>([]);
-  const [policyDocuments, setPolicyDocuments] = useState<any[]>([]);
+  const [claimDocuments, setClaimDocuments] = useState<DashboardDocument[]>([]);
+  const [policyDocuments, setPolicyDocuments] = useState<DashboardDocument[]>([]);
 
   useEffect(() => {
     loadDashboard();
@@ -282,7 +326,7 @@ export const OperationsDashboard: React.FC = () => {
   );
 };
 
-const DocumentRow: React.FC<{ document: any }> = ({ document }) => (
+const DocumentRow: React.FC<{ document: DashboardDocument }> = ({ document }) => (
   <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
     <div className="flex items-start justify-between gap-4">
       <div className="flex-1 min-w-0">
@@ -309,4 +353,49 @@ const DocumentRow: React.FC<{ document: any }> = ({ document }) => (
       }`}>{document.status}</span>
     </div>
   </div>
+<<<<<<< HEAD
+=======
+);
+
+const RecentActivity: React.FC<{ activities: DashboardActivity[]; title?: string }> = ({ activities, title = 'Recent Activity' }) => (
+  <SectionCard title={title} icon={History}>
+    <div className="space-y-4">
+      {activities.length > 0 ? (
+        activities.slice(0, 5).map((activity, i) => (
+          <div key={activity.id || i} className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+            <div className={`w-2 h-2 rounded-full ${
+              activity.status === 'Approved' ? 'bg-green-500'
+              : activity.status === 'Pending' ? 'bg-amber-500'
+              : activity.status === 'Overdue' ? 'bg-red-500'
+              : activity.status === 'Returned' ? 'bg-blue-500'
+              : 'bg-slate-400'
+            }`} />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-slate-900 dark:text-white truncate">{activity.document_title || 'Document'}</p>
+              <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  {activity.request_date ? format(new Date(activity.request_date), 'MMM dd, yyyy') : ''}
+                </span>
+                <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                <span className="flex items-center gap-1"><History className="w-3 h-3" />{activity.status}</span>
+                {activity.requester_name && (
+                  <>
+                    <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                    <span className="flex items-center gap-1"><User className="w-3 h-3" />{activity.requester_name}</span>
+                  </>
+                )}
+              </div>
+              {activity.archive_reference_number && (
+                <p className="text-[10px] font-mono text-blue-600 mt-1">Ref: {activity.archive_reference_number}</p>
+              )}
+            </div>
+          </div>
+        ))
+      ) : (
+        <EmptyState icon={History} title="No recent activity" description="Activity will appear here as you use the system." />
+      )}
+    </div>
+  </SectionCard>
+>>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 );

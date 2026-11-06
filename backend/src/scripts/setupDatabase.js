@@ -1,6 +1,15 @@
-const { pool } = require('../config/database');
+let defaultPool;
+
+function getDefaultPool() {
+  if (!defaultPool) defaultPool = require('../config/database').pool;
+  return defaultPool;
+}
 const bcrypt = require('bcryptjs');
+<<<<<<< HEAD
 const { DEFAULT_PASSWORD } = require('../utils/passwords');
+=======
+const { getRequiredSeedPassword } = require('../utils/seedCredentials');
+>>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 
 /**
  * INSUREARCH database setup / migration script.
@@ -9,37 +18,39 @@ const { DEFAULT_PASSWORD } = require('../utils/passwords');
  * - Creates ENUM types (and adds missing values on existing databases).
  * - Creates all tables used by the application.
  * - Adds columns that later versions of the code rely on.
- * - Seeds a default Admin/Agent user and reference data (only when empty).
+ * - Seeds Admin/Agent accounts only when explicit, strong seed passwords are configured.
+ * - Seeds reference data only when the corresponding tables are empty.
  */
 
 async function createEnumTypes(client) {
-  // Enum creation cannot share a transaction with ALTER TYPE ADD VALUE,
-  // so each statement is executed and guarded individually.
+  // Run enum creation and additions in a dedicated transaction. This phase is
+  // committed before the schema/data transaction consumes new enum labels.
   const enums = [
     { name: 'user_role', values: ['Admin', 'File Clerk', 'Agent', 'Viewer'] },
     { name: 'file_type', values: ['Claim File', 'Circular', 'Policy', 'Billing', 'Correspondence'] },
     { name: 'file_status', values: ['Active', 'Checked-out', 'Settled Claims', 'Returned'] },
-    { name: 'request_status', values: ['Pending', 'Approved', 'Returned', 'Rejected', 'Overdue'] },
+    { name: 'request_status', values: ['Pending', 'Approved', 'Return Pending', 'Returned', 'Rejected', 'Overdue'] },
     { name: 'notification_type', values: ['info', 'warning', 'error', 'success'] },
   ];
 
   for (const enumType of enums) {
-    try {
-      await client.query(`CREATE TYPE ${enumType.name} AS ENUM (${enumType.values.map(v => `'${v}'`).join(', ')})`);
-      console.log(`Created ENUM type: ${enumType.name}`);
-    } catch (err) {
-      if (err.code === '42710') {
-        // Type already exists - add any missing values
-        for (const value of enumType.values) {
-          try {
-            await client.query(`ALTER TYPE ${enumType.name} ADD VALUE IF NOT EXISTS '${value}'`);
-          } catch (addErr) {
-            if (addErr.code !== '42710') throw addErr;
-          }
-        }
-      } else {
-        throw err;
-      }
+    const values = enumType.values.map(value => `'${value}'`).join(', ');
+    // Catch duplicate_object inside a DO block's subtransaction. Catching a
+    // failed CREATE TYPE in JavaScript leaves the surrounding transaction
+    // aborted, so subsequent ALTER TYPE statements would fail with 25P02.
+    await client.query(`
+      DO $enum_create$
+      BEGIN
+        CREATE TYPE ${enumType.name} AS ENUM (${values});
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END
+      $enum_create$;
+    `);
+
+    // Values are fixed constants defined above, not user input.
+    for (const value of enumType.values) {
+      await client.query(`ALTER TYPE ${enumType.name} ADD VALUE IF NOT EXISTS '${value}'`);
     }
   }
 }
@@ -197,6 +208,7 @@ async function createTables(client) {
       document_id UUID REFERENCES documents(id),
       requested_by UUID REFERENCES users(id),
       request_date DATE NOT NULL,
+      requester_name VARCHAR(150),
       expected_return_date DATE NOT NULL,
       actual_return_date DATE,
       status request_status NOT NULL DEFAULT 'Pending',
@@ -268,6 +280,7 @@ async function upgradeExistingTables(client) {
     { table: 'users', column: 'must_change_password', type: 'BOOLEAN NOT NULL DEFAULT FALSE' },
     { table: 'users', column: 'department_name', type: 'VARCHAR(100)' },
     { table: 'documents', column: 'product_custom_fields', type: 'JSONB' },
+    { table: 'file_requests', column: 'requester_name', type: 'VARCHAR(150)' },
     { table: 'file_requests', column: 'request_reference', type: 'VARCHAR(50)' },
     { table: 'file_requests', column: 'rejection_reason', type: 'TEXT' },
     { table: 'file_requests', column: 'approved_by', type: 'UUID REFERENCES users(id)' },
@@ -307,6 +320,7 @@ async function createIndexes(client) {
   `);
 }
 
+<<<<<<< HEAD
 async function seedData(client) {
   const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
   await client.query(
@@ -324,6 +338,47 @@ async function seedData(client) {
      WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'agent@insurearch.com')`,
     [agentHashedPassword]
   );
+=======
+async function seedData(client, env = process.env) {
+  // Never create privileged accounts with predictable fallback credentials.
+  // Existing accounts do not need seed passwords; new accounts require explicit,
+  // independently configured secrets supplied by the operator.
+  const seedAccounts = [
+    {
+      email: 'admin@insurearch.com',
+      name: 'Admin User',
+      role: 'Admin',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
+      passwordEnv: 'SEED_ADMIN_PASSWORD',
+    },
+    {
+      email: 'agent@insurearch.com',
+      name: 'Agent User',
+      role: 'Agent',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4f',
+      passwordEnv: 'SEED_AGENT_PASSWORD',
+    },
+  ];
+
+  for (const account of seedAccounts) {
+    const existing = await client.query('SELECT 1 FROM users WHERE email = $1 LIMIT 1', [account.email]);
+    if (existing.rowCount > 0) continue;
+
+    let password;
+    try {
+      password = getRequiredSeedPassword(account.passwordEnv, env);
+    } catch (error) {
+      throw new Error(`Cannot seed ${account.role} account: ${error.message}`);
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await client.query(
+      `INSERT INTO users (name, email, password_hash, role, avatar)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [account.name, account.email, passwordHash, account.role, account.avatar]
+    );
+  }
+>>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 
   // Sample branches if none exist
   const branchCount = await client.query('SELECT COUNT(*) FROM branches');
@@ -360,33 +415,71 @@ async function seedData(client) {
   }
 }
 
-async function setupDatabase() {
-  const client = await pool.connect();
+async function setupDatabase(options = {}) {
+  const {
+    dbPool = getDefaultPool(),
+    env = process.env,
+    logger = console,
+    closePool = true,
+  } = options;
+  const client = await dbPool.connect();
 
   try {
-    // ENUM types first (tables reference them)
+    // Phase 1: apply enum creation/value additions atomically. Commit this phase
+    // before tables/data use any newly-added enum labels; PostgreSQL does not
+    // allow a newly-added enum value to be used until its transaction commits.
+    await client.query('BEGIN');
     await createEnumTypes(client);
+    await client.query('COMMIT');
 
+    // Phase 2: schema, indexes, legacy data repair, and seed data are atomic.
     await client.query('BEGIN');
     await createTables(client);
     await upgradeExistingTables(client);
+
+    // Legacy workflow used request status 'Returned' while the document was
+    // still in document status 'Returned' awaiting archive staff verification.
+    // Reclassify only that unmistakably pending pair; completed returns have an
+    // Active document and remain Returned.
+    await client.query(`
+      UPDATE file_requests fr
+         SET status = 'Return Pending'
+        FROM documents d
+       WHERE d.id = fr.document_id
+         AND fr.status = 'Returned'
+         AND d.status = 'Returned'
+    `);
+
     await createIndexes(client);
-    await seedData(client);
+    await seedData(client, env);
     await client.query('COMMIT');
 
-    console.log('✅ Database setup completed successfully');
+    logger.log('✅ Database setup completed successfully');
   } catch (error) {
     try {
       await client.query('ROLLBACK');
     } catch (rollbackError) {
       // A ROLLBACK failure means we are outside the failed transaction; ignore.
     }
-    console.error('❌ Error setting up database:', error);
-    process.exitCode = 1;
+    logger.error('❌ Error setting up database:', error);
+    throw error;
   } finally {
     client.release();
-    await pool.end();
+    if (closePool) await dbPool.end();
   }
 }
 
-setupDatabase();
+if (require.main === module) {
+  setupDatabase().catch(() => {
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  createEnumTypes,
+  createTables,
+  upgradeExistingTables,
+  createIndexes,
+  seedData,
+  setupDatabase,
+};

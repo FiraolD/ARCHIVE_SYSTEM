@@ -6,6 +6,10 @@ import {
   Copy, CheckCheck, Edit3, Trash2, Search, AlertTriangle, Save
 } from 'lucide-react';
 import { toast } from 'sonner';
+<<<<<<< HEAD
+=======
+import { getApiErrorDetails } from '../utils/apiError';
+>>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 import { FILE_TYPES } from '../lib/constants';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi, documentApi } from '../services/api';
@@ -83,7 +87,7 @@ const AddMode: React.FC = () => {
   const [selectedBranchCode, setSelectedBranchCode] = useState<string>('');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<string>('');
-  const [selectedProductCode, setSelectedProductCode] = useState<string>('');
+  const [, setSelectedProductCode] = useState<string>('');
   const [productCustomValues, setProductCustomValues] = useState<Record<string, string>>({});
   const [selectedCabinet, setSelectedCabinet] = useState<string>('');
   const [selectedDrawer, setSelectedDrawer] = useState<string>('');
@@ -104,7 +108,17 @@ const AddMode: React.FC = () => {
     sumInsured: '', dateOfAccident: '', plateNumber: '',
   });
 
+<<<<<<< HEAD
   const { branches, products, fetchBranches, fetchProducts, ingestDocument } = useArchive();
+=======
+  const { branches, products, fetchBranches, fetchDepartments, fetchProducts, ingestDocument } = useArchive();
+
+  useEffect(() => {
+    fetchBranches();
+    fetchDepartments();
+    fetchProducts();
+  }, []);
+>>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 
   useEffect(() => { fetchBranches(); fetchProducts(); }, []);
   useEffect(() => {
@@ -223,8 +237,14 @@ const AddMode: React.FC = () => {
       setFormData({ insuredName: '', policyNumber: '', claimNumber: '', dateAdded: new Date().toISOString().split('T')[0], receivedBy: '', deliveredBy: '', receiverRemark: '', estimatedLoss: '', title: '', sumInsured: '', dateOfAccident: '', plateNumber: '' });
       setPolicyFromDate(''); setPolicyToDate(''); setSelectedCabinet(''); setSelectedDrawer(''); setSelectedProduct(''); setProductCustomValues({});
       if (fileInput) fileInput.value = '';
+<<<<<<< HEAD
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to ingest document');
+=======
+    } catch (error: unknown) {
+      const errorMessage = getApiErrorDetails(error).message || 'Failed to ingest document';
+      toast.error(errorMessage);
+>>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
     } finally {
       setIsSubmitting(false);
     }

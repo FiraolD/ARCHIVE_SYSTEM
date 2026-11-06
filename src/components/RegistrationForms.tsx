@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
 import {
-  Building2, Layers, Package, Box as BoxIcon, Archive, Plus,
-  AlertCircle, Grid, FolderOpen,
+  Layers, Plus, AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorDetails } from '../utils/apiError';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi } from '../services/api';
+import type { Department } from '../types';
 import { DrawerAssignment } from './DrawerAssignment';
 import { AddFileToBox } from './AddFileToBox';
 import { PageHeader } from './ui';
@@ -47,7 +47,7 @@ const FormSection: React.FC<{
 const BranchRegistrationForm: React.FC = () => {
   const { addBranch } = useArchive();
   const [formData, setFormData] = useState({ name: '', code: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,9 +97,9 @@ const BranchRegistrationForm: React.FC = () => {
 const DepartmentRegistrationForm: React.FC = () => {
   const { addDepartment } = useArchive();
   const [formData, setFormData] = useState({ name: '', code: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [existingDepartments, setExistingDepartments] = useState<any[]>([]);
+  const [existingDepartments, setExistingDepartments] = useState<Department[]>([]);
   const [suggestedCode, setSuggestedCode] = useState<string>('');
 
   useEffect(() => {
@@ -152,11 +152,11 @@ const DepartmentRegistrationForm: React.FC = () => {
       setSuggestedCode('');
       await loadDepartments();
       toast.success('Department registered successfully');
-    } catch (error: any) {
-      if (error.response?.data?.error?.includes('already exists')) {
+    } catch (error: unknown) {
+      if (getApiErrorDetails(error).error?.includes('already exists')) {
         setError(`Department code "${formData.code}" already exists`);
       } else {
-        toast.error(error.response?.data?.error || 'Failed to register department');
+        toast.error(getApiErrorDetails(error).error || 'Failed to register department');
       }
     } finally {
       setIsSubmitting(false);
@@ -229,7 +229,7 @@ const DepartmentRegistrationForm: React.FC = () => {
 const ProductRegistrationForm: React.FC = () => {
   const { addProduct } = useArchive();
   const [productName, setProductName] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -331,7 +331,7 @@ const BoxRegistrationForm: React.FC = () => {
 const CabinetRegistrationForm: React.FC = () => {
   const { addCabinet } = useArchive();
   const [formData, setFormData] = useState({ number: '', drawers: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

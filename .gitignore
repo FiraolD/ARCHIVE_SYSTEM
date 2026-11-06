@@ -1,33 +1,42 @@
-# Dependencies
+# Dependencies (do not commit installed packages)
 node_modules/
+**/node_modules/
 
-# Environment files (secrets) - never commit
+# Environment files and secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
 backend/.env
+backend/.env.*
+!backend/.env.example
 
 # Build output
 dist/
 build/
+coverage/
+*.tsbuildinfo
 
-# Backend uploads (user documents & generated reports)
+# Runtime uploads, generated reports, and backups
 backend/uploads/
-
-# Database backups
+uploads/
 backend/backups/
 backups/
+*.dump
+*.backup
 
-# Logs
+# Logs and temporary diagnostics
 *.log
-build.log
 logs/
+build.log
 
-# OS / editor cruft
+# OS / editor files
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# Misc
-*.tsbuildinfo
+# Local database / test artifacts
+*.sqlite
+*.sqlite3
+*.db

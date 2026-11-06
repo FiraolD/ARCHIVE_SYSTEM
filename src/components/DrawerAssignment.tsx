@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
+<<<<<<< HEAD
 import { Archive, Grid, Building2, CheckCircle2, History, RefreshCw, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+=======
+import { Archive, Grid, Building2, CheckCircle2, History, User } from 'lucide-react';
+
+import { motion } from 'framer-motion';
+>>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 import { toast } from 'sonner';
 import { useArchive } from '../context/ArchiveContext';
 import { registrationApi } from '../services/api';
 import { Modal, PageHeader, SectionCard, PageHeaderButton } from './ui';
 
 interface Cabinet { id: string; number: string; drawers: string[]; }
+interface DrawerAssignmentHistory {
+  id: string;
+  branch_name: string;
+  assigned_at: string;
+  ended_at?: string;
+  assigned_by_name?: string;
+}
+
 interface DrawerAssignment {
   id: string; cabinet_id: string; drawer_number: string;
   branch_id: string; branch_name: string; branch_code: string;
@@ -21,7 +35,7 @@ export const DrawerAssignment: React.FC = () => {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedDrawer, setSelectedDrawer] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyData, setHistoryData] = useState<DrawerAssignmentHistory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => { loadData(); }, []);
