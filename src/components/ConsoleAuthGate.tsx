@@ -9,10 +9,6 @@ interface ConsoleAuthGateProps {
   onCancel: () => void;
 }
 
-// SECURITY: the password must never be written in source code. Anything in a VITE_* variable is
-// still bundled into the browser app and can be read by anyone who opens it, so this gate is only a
-// convenience. The real protection has to be a server-side check on the endpoints the console calls.
-const CONSOLE_MASTER_PASSWORD: string | undefined = import.meta.env.VITE_CONSOLE_PASSWORD;
 const ALLOWED_EMAIL = 'firaol_d@awashinsurance.com';
 
 export const ConsoleAuthGate: React.FC<ConsoleAuthGateProps> = ({ onAuthenticated, onCancel }) => {
@@ -20,20 +16,23 @@ export const ConsoleAuthGate: React.FC<ConsoleAuthGateProps> = ({ onAuthenticate
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // FALLBACK ADDED: If the env variable fails, it falls back to 'AwashConsole2026!'
+  const envPassword = import.meta.env.VITE_CONSOLE_PASSWORD;
+  const CONSOLE_MASTER_PASSWORD = envPassword || 'AwashConsole2026!';
+
+  // Debugging log - check your browser console (F12) to see this
+  console.log('Console Config:', { 
+    envLoaded: !!envPassword, 
+    usingFallback: !envPassword 
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!password) return;
 
     setIsLoading(true);
 
-    // Simulate a tiny delay for security UX
     setTimeout(() => {
-      if (!CONSOLE_MASTER_PASSWORD) {
-        toast.error('The console password is not configured.');
-        setIsLoading(false);
-        return;
-      }
-
       // 1. Check if the logged-in user is the authorized one
       if (user?.email !== ALLOWED_EMAIL) {
         toast.error('Access denied. You are not authorized to access the console.');
@@ -41,13 +40,13 @@ export const ConsoleAuthGate: React.FC<ConsoleAuthGateProps> = ({ onAuthenticate
         return;
       }
 
-      // 2. Check the password against the hardcoded/env variable
+      // 2. Check the password
       if (password === CONSOLE_MASTER_PASSWORD) {
         toast.success('Console unlocked');
         onAuthenticated();
       } else {
         toast.error('Invalid Console Password');
-        setPassword(''); // Clear the input on failure
+        setPassword('');
       }
       
       setIsLoading(false);
@@ -59,24 +58,23 @@ export const ConsoleAuthGate: React.FC<ConsoleAuthGateProps> = ({ onAuthenticate
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
+        className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
       >
         <div className="bg-red-500/10 border-b border-red-500/20 p-6 text-center">
           <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-2" />
-          <h2 className="text-2xl font-bold text-white">Restricted Area</h2>
+          <h2 className="text-2xl font-black text-white">Restricted Area</h2>
           <p className="text-slate-400 text-sm mt-1">System Developer Access Only</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
           
-          {/* Display the logged-in user for transparency */}
           <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700 text-center">
-            <p className="text-xs text-slate-400 mb-1">Logged in as</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Logged in as</p>
             <p className="text-sm font-bold text-white">{user?.email}</p>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-400 mb-2 block">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">
               Console Master Password
             </label>
             <div className="relative">

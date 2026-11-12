@@ -40,14 +40,8 @@ const ROWS = 8;
 const CELLS = Array.from({ length: COLS * ROWS }, (_, i) => i);
 const cellLabel = (i: number) => `${String.fromCharCode(65 + Math.floor(i / COLS))}-${(i % COLS) + 1}`;
 const cellDrawer = (i: number) => (i % 3) + 1;
-// pick a cell in the right half of the wall so it is never hidden behind the text
 const randomCell = () => Math.floor(Math.random() * ROWS) * COLS + (3 + Math.floor(Math.random() * (COLS - 3)));
 
-/**
- * The shelving wall: a grid of archive boxes seen at a slight angle.
- * It is rendered twice – a dim base layer, and a bright "lit" layer that is
- * revealed only around the cursor through a radial mask.
- */
 const Wall: React.FC<{ lit?: boolean; active?: number | null }> = ({ lit = false, active = null }) => (
   <div
     aria-hidden
@@ -75,13 +69,11 @@ const Wall: React.FC<{ lit?: boolean; active?: number | null }> = ({ lit = false
               : 'border-white/[0.07] bg-white/[0.025]',
           ].join(' ')}
         >
-          {/* label plate */}
           <span
             className={`absolute left-1/2 top-2 h-1.5 w-6 -translate-x-1/2 rounded-sm ${
               lit || isActive ? 'bg-[#16B0DF]' : 'bg-white/10'
             }`}
           />
-          {/* handle */}
           <span
             className={`absolute bottom-2 left-1/2 h-1 w-3 -translate-x-1/2 rounded-full ${
               lit || isActive ? 'bg-[#16B0DF]/90' : 'bg-white/10'
@@ -102,6 +94,7 @@ const Wall: React.FC<{ lit?: boolean; active?: number | null }> = ({ lit = false
 
 interface FieldProps {
   id: string;
+  name: string; // <-- ADDED: Required for browser password managers
   label: string;
   type: string;
   value: string;
@@ -117,7 +110,7 @@ interface FieldProps {
 }
 
 const Field: React.FC<FieldProps> = ({
-  id, label, type, value, placeholder, icon, onChange, onBlur, onKey, error, disabled, autoComplete, trailing,
+  id, name, label, type, value, placeholder, icon, onChange, onBlur, onKey, error, disabled, autoComplete, trailing,
 }) => (
   <div>
     <div className="group relative">
@@ -133,6 +126,7 @@ const Field: React.FC<FieldProps> = ({
 
       <input
         id={id}
+        name={name} // <-- ADDED
         type={type}
         value={value}
         placeholder={placeholder}
@@ -155,7 +149,6 @@ const Field: React.FC<FieldProps> = ({
         ].join(' ')}
       />
 
-      {/* floating label: sits in the field until it is focused or filled */}
       <label
         htmlFor={id}
         className={[
@@ -241,7 +234,6 @@ export const LoginPage: React.FC = () => {
     }
   }, []);
 
-  /* cursor spotlight over the archive wall */
   const mx = useMotionValue(600);
   const my = useMotionValue(360);
   const sx = useSpring(mx, { stiffness: 140, damping: 22 });
@@ -263,7 +255,6 @@ export const LoginPage: React.FC = () => {
     my.set(e.clientY - r.top);
   };
 
-  /* the wall "finds" a box every few seconds */
   useEffect(() => {
     setActiveCell(randomCell());
     if (reduceMotion) return;
@@ -292,6 +283,24 @@ export const LoginPage: React.FC = () => {
       setStatus('loading');
       await login(email.trim(), password);
 
+      // ==========================================
+      // TRIGGER BROWSER PASSWORD SAVE PROMPT
+      // ==========================================
+      // This tells the browser (Chrome/Edge/Safari) that the login was successful
+      // and it should offer to save the credentials.
+      if ((window as any).PasswordCredential && navigator.credentials) {
+        try {
+          const credential = new (window as any).PasswordCredential({
+            id: email.trim(),
+            password: password,
+            name: email.trim()
+          });
+          await navigator.credentials.store(credential);
+        } catch (err) {
+          console.log('Browser refused to store credential:', err);
+        }
+      }
+
       try {
         if (rememberMe) localStorage.setItem(REMEMBER_KEY, email.trim());
         else localStorage.removeItem(REMEMBER_KEY);
@@ -301,18 +310,15 @@ export const LoginPage: React.FC = () => {
 
       setStatus('success');
       toast.success('Welcome back!');
-      // If the page is still mounted after a moment, return the button to normal
       window.setTimeout(() => setStatus('idle'), 2000);
     } catch (error) {
       console.error('Login failed:', error);
       setStatus('idle');
-      // Error toast is usually handled by the context, but just in case:
       toast.error('Invalid email or password');
       shake();
     }
   };
 
-  /* one orchestrated entrance for the form */
   const rise = (i: number) =>
     reduceMotion
       ? {}
@@ -334,10 +340,7 @@ export const LoginPage: React.FC = () => {
             'radial-gradient(900px circle at 10% 105%, #1E3C90 0%, rgba(30,60,144,0) 62%), #08112E',
         }}
       >
-        {/* dim wall */}
         <Wall active={activeCell} />
-
-        {/* lit wall, revealed around the cursor */}
         <motion.div
           aria-hidden
           className="absolute inset-0"
@@ -345,13 +348,9 @@ export const LoginPage: React.FC = () => {
         >
           <Wall lit />
         </motion.div>
-
         <motion.div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: glow }} />
-
-        {/* scrim so the copy stays readable */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#08112E] via-[#08112E]/85 to-[#08112E]/0" />
 
-        {/* content */}
         <motion.div
           {...(reduceMotion
             ? {}
@@ -393,7 +392,6 @@ export const LoginPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* caption that follows the wall's "lookup" */}
         <div aria-hidden className="pointer-events-none absolute bottom-10 right-10 z-10">
           <AnimatePresence mode="wait">
             {activeCell !== null && (
@@ -418,7 +416,6 @@ export const LoginPage: React.FC = () => {
 
       {/* ========================= RIGHT: the form ============================ */}
       <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6 sm:p-12">
-        {/* faint brand wash in the corner */}
         <div
           aria-hidden
           className="pointer-events-none absolute -right-40 -top-40 h-[28rem] w-[28rem] rounded-full opacity-60 blur-3xl dark:opacity-40"
@@ -426,7 +423,6 @@ export const LoginPage: React.FC = () => {
         />
 
         <div className="relative w-full max-w-[400px]">
-          {/* mobile brand */}
           <motion.div {...rise(0)} className="mb-10 flex items-center gap-3 lg:hidden">
             <Logo className="h-10 w-10" variant="dark" />
             <span className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -439,7 +435,7 @@ export const LoginPage: React.FC = () => {
               Sign in to AwashArch
             </h1>
             <p className="mt-2 text-[15px] text-slate-500 dark:text-slate-400">
-              Use your Awash Insurance email and password.
+              Use your email and password.
             </p>
           </motion.div>
 
@@ -448,6 +444,7 @@ export const LoginPage: React.FC = () => {
               <motion.div {...rise(1)}>
                 <Field
                   id="email"
+                  name="username" // <-- ADDED: Required for password managers
                   label="Email address"
                   type="email"
                   value={email}
@@ -464,6 +461,7 @@ export const LoginPage: React.FC = () => {
               <motion.div {...rise(2)}>
                 <Field
                   id="password"
+                  name="password" // <-- ADDED: Required for password managers
                   label="Password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -511,19 +509,14 @@ export const LoginPage: React.FC = () => {
                 <label className="flex cursor-pointer items-center gap-2.5">
                   <input
                     type="checkbox"
+                    id="remember-me" // <-- ADDED
+                    name="remember-me" // <-- ADDED
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 accent-[#1E3C90] focus-visible:ring-2 focus-visible:ring-[#16B0DF] dark:border-slate-600 dark:accent-[#16B0DF]"
                   />
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Remember my email</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => toast.info('Please contact your administrator to reset your password.')}
-                  className="rounded text-sm font-semibold text-[#1E3C90] transition-colors hover:text-[#16B0DF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16B0DF] dark:text-[#5CCBF0] dark:hover:text-white"
-                >
-                  Forgot password?
-                </button>
               </motion.div>
 
               <motion.div {...rise(4)}>
