@@ -329,20 +329,23 @@ const BoxRegistrationForm: React.FC = () => {
    File Box (cabinet)
    ================================================================ */
 const CabinetRegistrationForm: React.FC = () => {
-  const { addCabinet } = useArchive();
-  const [formData, setFormData] = useState({ number: '', drawers: '' });
+  const { addCabinet, cabinets } = useArchive();
+  const [drawerCount, setDrawerCount] = useState(12);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const nextFileBoxNumber = useMemo(() => {
+    const highestNumber = cabinets.reduce((highest, cabinet) => {
+      const match = /^FILEBOX(\d+)$/.exec(cabinet.number);
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+    return `FILEBOX${highestNumber + 1}`;
+  }, [cabinets]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const drawersArray = formData.drawers
-        .split(',')
-        .map((d) => d.trim())
-        .filter((d) => d.length > 0);
-      await addCabinet({ number: formData.number, drawers: drawersArray });
-      toast.success('File Box registered successfully');
+      const cabinet = await addCabinet({ drawerCount });
+      toast.success(`File Box ${cabinet.number} registered successfully`);
     } catch {
       toast.error('Failed to register File Box');
     } finally {
@@ -356,23 +359,29 @@ const CabinetRegistrationForm: React.FC = () => {
         <label className="text-sm font-bold text-slate-700 dark:text-slate-300">File Box Name</label>
         <input
           name="number"
-          value={formData.number}
-          onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-          required
-          placeholder="Assigned automatically: FILEBOX + sequence"
-          className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
+          value={nextFileBoxNumber}
+          readOnly
+          aria-label="Next File Box number"
+          className="w-full p-3 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300"
         />
       </div>
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Drawers</label>
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Number of Drawers</label>
         <input
-          name="drawers"
-          value={formData.drawers}
-          onChange={(e) => setFormData({ ...formData, drawers: e.target.value })}
+          name="drawerCount"
+          type="number"
+          min={1}
+          max={12}
+          step={1}
+          value={drawerCount}
+          onChange={(e) => setDrawerCount(e.target.valueAsNumber)}
           required
-          placeholder="12 drawers are created automatically"
+          aria-describedby="drawer-count-help"
           className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
         />
+        <p id="drawer-count-help" className="text-xs text-slate-500 dark:text-slate-400">
+          Defaults to 12. Enter any number from 1 to 12.
+        </p>
       </div>
     </FormSection>
   );

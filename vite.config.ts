@@ -18,16 +18,12 @@ export default defineConfig({
     }),
   ],
   server: {
-    // allow overriding via environment (cross-env or .env)
     port: parseInt(process.env.PORT || "", 10) || 3009,
     host: true,
-    allowedHosts: true,
   },
   preview: {
-    // preview should stay on 3009 by default but also use env if provided
     port: parseInt(process.env.PORT || "", 10) || 3009,
     host: true,
-    allowedHosts: true,
   },
   resolve: {
     alias: {

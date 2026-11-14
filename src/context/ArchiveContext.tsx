@@ -11,6 +11,7 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
+import { getBackendOrigin } from '../lib/backendOrigin';
 import {
   Branch,
   Department,
@@ -76,7 +77,7 @@ interface ArchiveContextType {
   fetchBoxes: () => Promise<void>;
   addBox: (box: any) => Promise<void>;
   fetchCabinets: () => Promise<void>;
-  addCabinet: (cabinet: { number: string; drawers: string[] }) => Promise<void>;
+  addCabinet: (cabinet: { drawerCount: number }) => Promise<Cabinet>;
   assignCabinet: (assignment: any) => Promise<void>;
   assignBox: (assignment: any) => Promise<void>;
 
@@ -100,6 +101,21 @@ const DEFAULT_FILTERS: DocumentFilters = {
   limit: 20,
   sort_by: 'date_added',
   sort_order: 'DESC',
+};
+const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const LAST_ACTIVITY_KEY = 'archive.lastActivityAt';
+
+const getTokenExpiration = (authToken: string): number | null => {
+  try {
+    const payload = authToken.split('.')[1];
+    if (!payload) return null;
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decodedPayload = atob(normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '='));
+    const expiration = JSON.parse(decodedPayload).exp;
+    return typeof expiration === 'number' ? expiration * 1000 : null;
+  } catch {
+    return null;
+  }
 };
 
 // ============================================================================
@@ -200,6 +216,7 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       const response = await authApi.login(email, password);
       const { user: userData, token: newToken } = response.data;
       localStorage.setItem('token', newToken);
+      localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
       setToken(newToken);
       setUser(userData);
       toast.success(`Welcome back, ${userData.name}!`);
@@ -227,8 +244,9 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback((reason?: 'idle' | 'expired') => {
     localStorage.removeItem('token');
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
     setToken(null);
     setUser(null);
     setDocuments([]);
@@ -241,15 +259,89 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
       socketRef.current.disconnect();
       socketRef.current = null;
     }
-    toast.info('Logged out successfully');
+    toast.info(
+      reason === 'idle'
+        ? 'You were logged out after a period of inactivity'
+        : reason === 'expired'
+          ? 'Your session has expired. Please sign in again.'
+          : 'Logged out successfully'
+    );
   }, []);
+
+  useEffect(() => {
+    if (!token || !user) return;
+
+    let lastActivityAt = Number(localStorage.getItem(LAST_ACTIVITY_KEY));
+    if (!Number.isFinite(lastActivityAt) || lastActivityAt <= 0) {
+      lastActivityAt = Date.now();
+      localStorage.setItem(LAST_ACTIVITY_KEY, String(lastActivityAt));
+    }
+
+    const tokenExpiresAt = getTokenExpiration(token);
+    let timeoutId: number;
+
+    const scheduleLogout = () => {
+      window.clearTimeout(timeoutId);
+      const idleExpiresAt = lastActivityAt + SESSION_IDLE_TIMEOUT_MS;
+      const expiresAt = tokenExpiresAt === null
+        ? idleExpiresAt
+        : Math.min(idleExpiresAt, tokenExpiresAt);
+      const remainingTime = expiresAt - Date.now();
+
+      if (remainingTime <= 0) {
+        logout(tokenExpiresAt !== null && tokenExpiresAt <= Date.now() ? 'expired' : 'idle');
+        return;
+      }
+
+      timeoutId = window.setTimeout(scheduleLogout, remainingTime);
+    };
+
+    const recordActivity = () => {
+      if (Date.now() - lastActivityAt >= SESSION_IDLE_TIMEOUT_MS) {
+        logout('idle');
+        return;
+      }
+
+      lastActivityAt = Date.now();
+      localStorage.setItem(LAST_ACTIVITY_KEY, String(lastActivityAt));
+      scheduleLogout();
+    };
+
+    const synchronizeActivity = (event: StorageEvent) => {
+      if (event.key === 'token' && !event.newValue) {
+        logout();
+        return;
+      }
+      if (event.key !== LAST_ACTIVITY_KEY || !event.newValue) return;
+
+      const updatedActivityAt = Number(event.newValue);
+      if (Number.isFinite(updatedActivityAt) && updatedActivityAt > lastActivityAt) {
+        lastActivityAt = updatedActivityAt;
+        scheduleLogout();
+      }
+    };
+
+    const checkExpiration = () => scheduleLogout();
+    const activityEvents: Array<keyof WindowEventMap> = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
+    activityEvents.forEach(eventName => window.addEventListener(eventName, recordActivity, { passive: true }));
+    window.addEventListener('storage', synchronizeActivity);
+    document.addEventListener('visibilitychange', checkExpiration);
+    scheduleLogout();
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      activityEvents.forEach(eventName => window.removeEventListener(eventName, recordActivity));
+      window.removeEventListener('storage', synchronizeActivity);
+      document.removeEventListener('visibilitychange', checkExpiration);
+    };
+  }, [token, user, logout]);
 
   // ---------------------------------------------------------------------------
   // Socket
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!token || !user) return;
-    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
+    const socket = io(import.meta.env.VITE_SOCKET_URL || getBackendOrigin(), {
       auth: { token }
     });
     socketRef.current = socket;
@@ -426,12 +518,13 @@ export const ArchiveProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, []);
 
-  const addCabinet = useCallback(async (cabinet: { number: string; drawers: string[] }) => {
+  const addCabinet = useCallback(async (cabinet: { drawerCount: number }) => {
     try {
       setIsLoading(true);
       const response = await registrationApi.createCabinet(cabinet);
       setCabinets((prev) => [...prev, response.data]);
       toast.success('Cabinet added successfully');
+      return response.data as Cabinet;
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to add cabinet');
       throw error;

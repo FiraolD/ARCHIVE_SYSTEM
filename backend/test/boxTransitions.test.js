@@ -2,16 +2,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { allowedFor } = require('../src/utils/boxTransitions');
 
-test('Draft can only be packed by Admin or Manager', () => {
+test('Draft can only be packed by Admin or File Clerk', () => {
   assert.deepEqual(allowedFor('Draft', 'Admin'), ['Packed']);
-  assert.deepEqual(allowedFor('Draft', 'Manager'), ['Packed']);
+  assert.deepEqual(allowedFor('Draft', 'File Clerk'), ['Packed']);
   assert.deepEqual(allowedFor('Draft', 'Agent'), []);
 });
 
-test('Manager cannot perform Admin-only reversals or dissolution', () => {
-  assert.deepEqual(allowedFor('Packed', 'Manager'), ['In Transit']);
-  assert.deepEqual(allowedFor('In Transit', 'Manager'), ['Archived']);
-  assert.deepEqual(allowedFor('Archived', 'Manager'), []);
+test('File Clerk cannot perform Admin-only reversals or dissolution', () => {
+  assert.deepEqual(allowedFor('Packed', 'File Clerk'), ['In Transit']);
+  assert.deepEqual(allowedFor('In Transit', 'File Clerk'), ['Archived']);
+  assert.deepEqual(allowedFor('Archived', 'File Clerk'), []);
 });
 
 test('Admin can perform permitted lifecycle reversals', () => {

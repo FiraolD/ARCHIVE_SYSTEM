@@ -3,6 +3,14 @@
 ## Objective
 Harden the existing React/TypeScript + Express + PostgreSQL application in small, testable increments. Preserve existing business workflows and avoid a rewrite unless measurements demonstrate a need.
 
+## Confirmed project profile and open decisions
+- Intended deployment is a central on-premises web application serving branch offices.
+- Working sizing assumption, pending confirmation: 80 branches, 1,000 users, 50 concurrent users, 100,000 documents, and 12% annual growth.
+- In-scope record classes are claims, legal, policy, finance, and general records.
+- Required file-format families include PDF, JPEG/PNG, ZIP, audio/video, Excel, and Word. Each format still needs explicit validation, safe handling, access, and preservation rules.
+- The organization identified Ethiopia's Personal Data Protection Proclamation No. 1321/2024, NBE Financial Consumer Protection Directive No. FCP/01/2020, NBE insurance governance/IT risk directives including SIB/56/2022, and Computer Crimes Proclamation No. 958/2016 as relevant. Applicability and current obligations must be confirmed by the organization's compliance/legal owner; this plan is not a legal-compliance determination.
+- Recovery objectives (RPO/RTO), approved retention triggers and periods, legal-hold/disposition authority, average file size/storage growth, and offline-branch needs remain open decisions and must not be guessed in implementation.
+
 ## Current repository findings
 - The default branch is `full`; implementation work is isolated on `hardening/production-readiness-phase-1`.
 - Root and backend environment files were tracked in the public repository and have been removed from this hardening branch. This does not erase their contents from Git history; rotate any credentials that were ever stored there.
@@ -34,7 +42,7 @@ Harden the existing React/TypeScript + Express + PostgreSQL application in small
 5. Extend CI with automated tests, dependency audit, and migration checks after the initial baseline is known.
 
 ### Phase 3 — Security and access control
-1. Validate JWT secret presence/strength at startup; reject missing or weak production configuration.
+1. [Implemented] Validate production JWT secret length and reject missing, short, or example placeholder values at startup. Deployments must still provision a unique random secret; this check cannot prove entropy.
 2. Define explicit CORS origins per environment and validate proxy/trust-proxy settings.
 3. Add schema validation for every mutating endpoint and consistent error handling.
 4. Verify route-level authorization, including branch/department scope and ownership checks.

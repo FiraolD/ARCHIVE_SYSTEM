@@ -827,11 +827,17 @@ npm install --save-dev electron electron-builder
 
 # 5. Configure frontend environment
 # .env
-# VITE_API_URL=http://localhost:5000/api
+# Leave VITE_API_URL unset when the backend runs on the same machine;
+# the browser uses the page's host name with port 5000 automatically.
+# For a backend on another machine, set:
+# VITE_API_URL=http://<backend-lan-ip>:5000/api
+# VITE_SOCKET_URL=http://<backend-lan-ip>:5000
 
 # 6. Configure backend environment
 # backend/.env
-# PORT=7000
+# PORT=5000
+# HOST=0.0.0.0
+# FRONTEND_PORT=3009
 # EMBEDDED_DB=true
 # PG_DATA_DIR=D:/path/to/project/backend/pgdata
 # PG_PORT=5433
@@ -844,23 +850,41 @@ npm install --save-dev electron electron-builder
 # DB_PASSWORD=<same-as-PG_PASSWORD>
 # JWT_SECRET=<long-random-string>
 # JWT_EXPIRE=7d
+# SEED_ADMIN_PASSWORD=<unique-random-password-at-least-16-characters>
+# SEED_AGENT_PASSWORD=<different-unique-random-password-at-least-16-characters>
 # FRONTEND_URL=http://localhost:3009
+# CORS_ORIGINS=http://archive-server:3009
 
 # 7. Start everything
 npm run electron:dev:all
 
+#### Open the web app from other computers on the LAN
+
+Start the web and backend servers on the host computer with `npm run dev:all`. From
+another computer, open `http://<server-lan-ip>:3009` (find the host's address with
+`ipconfig`). The backend must use `HOST=0.0.0.0`; its default port is `5000`.
+The browser automatically sends API and Socket.IO traffic to the same host on
+port `5000`. Allow inbound TCP ports `3009` and `5000` through the host's firewall.
+If you access the frontend through a DNS name or a different port, add its exact
+origin to `CORS_ORIGINS` in `backend/.env`, separated by commas. For a DNS name,
+also explicitly allow that hostname in Vite's `server.allowedHosts`. Direct
+connections trust no reverse proxies; if deploying behind a trusted proxy, set
+`TRUST_PROXY_HOPS` to the exact number of proxies in `backend/.env`.
+
 10.3 Creating the First Admin
 
 Initialize or upgrade the database with `cd backend && npm run db:setup`. A new database is seeded with
-`admin@insurearch.com` and the temporary password `Insurance123`. The admin must choose a personal
-password at first login. Existing databases retain their current users and passwords.
+`admin@insurearch.com` and `agent@insurearch.com`. Configure unique `SEED_ADMIN_PASSWORD` and
+`SEED_AGENT_PASSWORD` values of at least 16 characters in `backend/.env` before first setup.
+The seeded users must change their passwords at first login. Existing databases retain their
+current users and passwords.
 
 11. Development Guide
 11.1 Available Scripts
 Root package.json
 Script	Purpose
 npm run dev	Vite dev server only (port 3009)
-npm run dev:backend	Backend with nodemon (port 7000)
+npm run dev:backend	Backend with nodemon (port 5000)
 npm run dev:all	Both dev servers, no Electron
 npm run electron:dev	Electron alone (needs Vite + backend running)
 npm run electron:dev:all	Recommended — Vite + backend + Electron

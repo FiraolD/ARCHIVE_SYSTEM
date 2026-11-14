@@ -42,8 +42,8 @@ export const DrawerAssignment: React.FC = () => {
     }
   };
 
-  const getDrawerAssignment = (cabinetId: string, drawerNumber: string) =>
-    assignments.find(a => a.cabinet_id === cabinetId && a.drawer_number === drawerNumber);
+  const getDrawerAssignments = (cabinetId: string, drawerNumber: string) =>
+    assignments.filter(a => a.cabinet_id === cabinetId && a.drawer_number === drawerNumber);
 
   const handleAssignDrawer = async () => {
     if (!selectedCabinet || !selectedBranch || !selectedDrawer) {
@@ -103,21 +103,35 @@ export const DrawerAssignment: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                   {cabinet.drawers.map((drawer) => {
-                    const assignment = getDrawerAssignment(cabinet.id, drawer);
+                    const drawerAssignments = getDrawerAssignments(cabinet.id, drawer);
+                    const branchCodes = drawerAssignments.map(assignment => assignment.branch_code);
+                    const branchNames = drawerAssignments.map(assignment => assignment.branch_name);
                     return (
                       <div key={drawer} className={`p-2 rounded-lg border text-center relative group ${
-                        assignment
+                        drawerAssignments.length > 0
                           ? 'bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-900'
                           : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-200'
-                      }`}>
-                        <Grid className={`w-4 h-4 mx-auto mb-1 ${assignment ? 'text-green-600' : 'text-slate-400'}`} />
+                      }`} title={branchNames.join(', ')}>
+                        <Grid className={`w-4 h-4 mx-auto mb-1 ${drawerAssignments.length > 0 ? 'text-green-600' : 'text-slate-400'}`} />
                         <span className="text-xs font-medium block">Drawer {drawer}</span>
-                        {assignment && (
+                        {drawerAssignments.length > 0 && (
                           <>
-                            <span className="text-xs text-green-600 font-bold mt-1 block truncate">{assignment.branch_code}</span>
+                            {drawerAssignments.length > 1 ? (
+                              <span className="text-xs text-green-700 dark:text-green-300 font-bold mt-1 block">
+                                {drawerAssignments.length} branches
+                              </span>
+                            ) : (
+                              <span className="text-xs text-green-600 font-bold mt-1 block truncate">{branchCodes[0]}</span>
+                            )}
+                            {drawerAssignments.length > 1 && (
+                              <span className="text-[10px] text-green-600 dark:text-green-400 block truncate">
+                                {branchCodes.join(', ')}
+                              </span>
+                            )}
                             <button
                               onClick={(e) => { e.stopPropagation(); viewHistory(cabinet.id, drawer); }}
                               className="absolute -top-1 -right-1 w-5 h-5 bg-slate-800 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              aria-label={`View assignment history for drawer ${drawer}`}
                             >
                               <History className="w-3 h-3" />
                             </button>
@@ -158,10 +172,15 @@ export const DrawerAssignment: React.FC = () => {
                   className="w-full p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none">
                   <option value="">Choose a drawer...</option>
                   {selectedCabinet.drawers.map(drawer => {
-                    const assignment = getDrawerAssignment(selectedCabinet.id, drawer);
+                    const drawerAssignments = getDrawerAssignments(selectedCabinet.id, drawer);
                     return (
                       <option key={drawer} value={drawer}>
-                        Drawer {drawer}{assignment ? ` (Assigned to ${assignment.branch_code})` : ''}
+                        Drawer {drawer}
+                        {drawerAssignments.length > 1
+                          ? ` (Assigned to ${drawerAssignments.length} branches)`
+                          : drawerAssignments.length === 1
+                            ? ` (Assigned to ${drawerAssignments[0].branch_code})`
+                            : ''}
                       </option>
                     );
                   })}

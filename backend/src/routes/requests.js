@@ -71,4 +71,11 @@ router.get('/reference/:reference',
   requestController.getRequestByReference
 );
 
+router.patch(
+  '/:id/verify-return',
+  authenticate,
+  authorize('Admin', 'File Clerk'),
+  requestController.verifyReturn
+);
+
 module.exports = router;

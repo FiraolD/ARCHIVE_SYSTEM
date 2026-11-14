@@ -1,8 +1,9 @@
  function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }// src/services/api.ts
 import axios from 'axios';
+import { getBackendOrigin } from '../lib/backendOrigin';
 
-// ⚠️ Desktop app: backend ALWAYS runs on localhost
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const API_URL = import.meta.env.VITE_API_URL || `${getBackendOrigin()}/api`;
 
 console.log('[api.ts] API_URL =', API_URL);
 
@@ -59,7 +60,8 @@ export const userApi = {
 // ==================== DOCUMENTS ====================
 
 export const documentApi = {
-  getDocuments: (params) => api.get('/documents', { params }),
+  getDocuments: (params) =>
+    api.get('/documents', { params }),
   getDocument: (id) => api.get(`/documents/${id}`),
   ingestDocument: (formData) =>
     api.post('/documents/ingest', formData, {

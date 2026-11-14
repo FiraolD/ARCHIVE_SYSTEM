@@ -4,7 +4,31 @@ const bcrypt = require('bcryptjs');
 const { query } = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const { DEFAULT_PASSWORD } = require('../utils/passwords');
-const VALID_ROLES = ['Admin', 'File Clerk', 'Agent', 'Viewer']; // <--- CHANGED
+const VALID_ROLES = ['Admin', 'File Clerk', 'Agent', 'Viewer'];
+
+const resolveDepartmentName = async (department) => {
+  if (department === undefined || department === null || department === '') {
+    return { departmentName: null };
+  }
+  if (typeof department !== 'string') {
+    return { error: 'Invalid department' };
+  }
+
+  const result = await query(
+    `SELECT name
+     FROM departments
+     WHERE id::text = $1 OR name = $1
+     ORDER BY CASE WHEN id::text = $1 THEN 0 ELSE 1 END
+     LIMIT 1`,
+    [department]
+  );
+  if (result.rows.length === 0) {
+    return { error: 'Selected department does not exist' };
+  }
+
+  return { departmentName: result.rows[0].name };
+};
+
 // ==================== GET ALL USERS ====================
 router.get('/', authenticate, authorize('Admin'), async (req, res) => {
   try {
@@ -65,8 +89,11 @@ router.post('/', authenticate, authorize('Admin'), async (req, res) => {
       return res.status(400).json({ error: 'Name and email are required' });
     }
 
-    const VALID_ROLES = ['Admin', 'File Clerk', 'Agent', 'Viewer'];
     const safeRole = VALID_ROLES.includes(role) ? role : 'Agent';
+    const departmentResult = await resolveDepartmentName(department);
+    if (departmentResult.error) {
+      return res.status(400).json({ error: departmentResult.error });
+    }
 
     // Check if user exists
     const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
@@ -84,7 +111,7 @@ router.post('/', authenticate, authorize('Admin'), async (req, res) => {
       )
       VALUES ($1, $2, $3, $4, $5, $6, TRUE, TRUE, CURRENT_TIMESTAMP)
       RETURNING id, name, email, role, department_name, is_active`,
-      [name, email, hashedPassword, safeRole, avatar || null, department || null]
+      [name, email, hashedPassword, safeRole, avatar || null, departmentResult.departmentName]
     );
 
     res.status(201).json(result.rows[0]);
@@ -127,8 +154,13 @@ router.patch('/:id', authenticate, authorize('Admin'), async (req, res) => {
     const { id } = req.params;
     const { name, email, role, department, is_active } = req.body;
 
-    const VALID_ROLES = ['Admin', 'File Clerk', 'Agent', 'Viewer'];
     const safeRole = role && VALID_ROLES.includes(role) ? role : undefined;
+    const departmentResult = department === undefined
+      ? null
+      : await resolveDepartmentName(department);
+    if (departmentResult?.error) {
+      return res.status(400).json({ error: departmentResult.error });
+    }
 
     // Build dynamic query to only update provided fields
     const updates = [];
@@ -149,7 +181,7 @@ router.patch('/:id', authenticate, authorize('Admin'), async (req, res) => {
     }
     if (department !== undefined) {
       updates.push(`department_name = $${paramCount++}`);
-      values.push(department);
+      values.push(departmentResult.departmentName);
     }
     if (is_active !== undefined) {
       updates.push(`is_active = $${paramCount++}`);

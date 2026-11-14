@@ -473,35 +473,51 @@ const returnDocumentByRequester = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
+
     const result = await withTransaction(async (client) => {
       const requestResult = await client.query(
-        `SELECT fr.*, d.id AS document_id, d.title, d.archive_reference_number,
-                d.status AS doc_status
-           FROM file_requests fr
-           JOIN documents d ON d.id = fr.document_id
-          WHERE fr.id = $1 AND fr.requested_by = $2
-          FOR UPDATE OF fr`,
+        `SELECT fr.*, d.id AS document_id, d.title, d.archive_reference_number, d.status AS doc_status
+         FROM file_requests fr
+         JOIN documents d ON fr.document_id = d.id
+         WHERE fr.id = $1 AND fr.requested_by = $2
+         FOR UPDATE OF fr, d`,
         [id, userId]
       );
+
       if (requestResult.rows.length === 0) return { outcome: 'not_found' };
+
       const request = requestResult.rows[0];
       if (!canRequesterReturn(request.status, request.doc_status)) {
-        return { outcome: 'conflict', requestStatus: request.status, documentStatus: request.doc_status };
+        return {
+          outcome: 'conflict',
+          requestStatus: request.status,
+          documentStatus: request.doc_status,
+        };
       }
 
-      const doc = await client.query(
-        `UPDATE documents SET status = 'Returned', updated_at = CURRENT_TIMESTAMP
-          WHERE id = $1 AND status = 'Checked-out' RETURNING id`,
+      const documentResult = await client.query(
+        `UPDATE documents
+         SET status = 'Returned', updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1 AND status = 'Checked-out'
+         RETURNING id`,
         [request.document_id]
       );
-      if (doc.rowCount === 0) return { outcome: 'conflict', requestStatus: request.status, documentStatus: request.doc_status };
+      if (documentResult.rowCount === 0) {
+        return {
+          outcome: 'conflict',
+          requestStatus: request.status,
+          documentStatus: request.doc_status,
+        };
+      }
 
-      const fr = await client.query(
-        `UPDATE file_requests SET status = 'Return Pending', actual_return_date = CURRENT_DATE
-          WHERE id = $1 AND status = 'Approved' RETURNING id`,
+      const updateRequestResult = await client.query(
+        `UPDATE file_requests
+         SET status = 'Return Pending', actual_return_date = CURRENT_DATE
+         WHERE id = $1 AND status = 'Approved'
+         RETURNING id`,
         [id]
       );
-      if (fr.rowCount === 0) {
+      if (updateRequestResult.rowCount === 0) {
         const error = new Error('Request state changed while returning');
         error.code = 'REQUEST_STATE_CONFLICT';
         throw error;
@@ -510,37 +526,111 @@ const returnDocumentByRequester = async (req, res) => {
       await client.query(
         `INSERT INTO notifications (title, message, type, admin_only, related_id)
          VALUES ($1, $2, $3, $4, $5)`,
-        ['Document Returned',
-         `${req.user.name} returned "${request.title}" (Ref: ${request.request_reference}). Please verify the file.`,
-         'info', true, id]
+        [
+          'Document Returned',
+          `${req.user.name} returned "${request.title}" (Ref: ${request.archive_reference_number}). Please verify.`,
+          'info',
+          true,
+          id
+        ]
       );
+
       await client.query(
         `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address, user_agent)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [userId, req.user.name, 'Document Returned by Requester', request.archive_reference_number,
-         `Returned request ${request.request_reference}; awaiting admin verification`,
-         req.ip, req.get('user-agent')]
+         `Returned request ${request.request_reference}`, req.ip, req.get('user-agent')]
       );
-      return { outcome: 'returned' };
+
+      return { outcome: 'return_pending' };
     });
 
-    if (result.outcome === 'not_found') return res.status(404).json({ error: 'Request not found or you are not authorized' });
+    if (result.outcome === 'not_found') {
+      return res.status(404).json({ error: 'Request not found or you are not authorized' });
+    }
     if (result.outcome === 'conflict') {
       return res.status(409).json({
-        error: 'Only an approved request with a checked-out document can be returned',
+        error: 'Request/document is not in a returnable state',
         requestStatus: result.requestStatus,
-        documentStatus: result.documentStatus
+        documentStatus: result.documentStatus,
       });
     }
     return res.json({ message: 'Document returned successfully. Awaiting admin verification.' });
   } catch (error) {
     console.error('Return document error:', error);
-    if (error.code === 'REQUEST_STATE_CONFLICT') return res.status(409).json({ error: 'Request state changed; refresh and try again' });
-    return res.status(500).json({ error: 'Server error' });
+    if (error.code === 'REQUEST_STATE_CONFLICT') {
+      return res.status(409).json({ error: 'Request state changed; refresh and try again' });
+    }
+    res.status(500).json({ error: 'Server error: ' + error.message });
   }
 };
 
-// ==================== EXPORTS ====================
+const verifyReturn = async (req, res) => {
+  try {
+    const { id } = req.params; // request_id
+
+    const requestResult = await query(
+      `SELECT fr.*, d.id as document_id, d.title, d.archive_reference_number
+       FROM file_requests fr
+       JOIN documents d ON fr.document_id = d.id
+       WHERE fr.id = $1`,
+      [id]
+    );
+
+    if (requestResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    const request = requestResult.rows[0];
+
+    if (request.status !== 'Return Pending') {
+      return res.status(400).json({ error: 'Only "Return Pending" requests can be verified' });
+    }
+
+    await withTransaction(async (client) => {
+      // Request → Returned
+      await client.query(
+        `UPDATE file_requests 
+         SET status = 'Returned', processed_by = $1, processed_at = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [req.user.id, id]
+      );
+
+      // Document → Active (back on shelf, available)
+      await client.query(
+        `UPDATE documents 
+         SET status = 'Active', updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [request.document_id]
+      );
+
+      // Notify the requester
+      await client.query(
+        `INSERT INTO notifications (title, message, type, user_id, related_id)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          'Return Verified',
+          `Your return for "${request.title}" (Ref: ${request.archive_reference_number}) has been verified.`,
+          'success',
+          request.requested_by,
+          id
+        ]
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (user_id, user_name, action, resource, details, ip_address, user_agent)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [req.user.id, req.user.name, 'Return Verified', request.archive_reference_number,
+         `Verified return for request ${request.request_reference}`, req.ip, req.get('user-agent')]
+      );
+    });
+
+    res.json({ message: 'Return verified. Document is now Active.' });
+  } catch (error) {
+    console.error('Verify return error:', error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
+  }
+};
 
 module.exports = {
   createFileRequest,
@@ -551,5 +641,6 @@ module.exports = {
   getAllRequests,
   getRequestByReference,
   returnDocument,
-  returnDocumentByRequester
+  returnDocumentByRequester,
+  verifyReturn
 };

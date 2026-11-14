@@ -5,11 +5,7 @@ function getDefaultPool() {
   return defaultPool;
 }
 const bcrypt = require('bcryptjs');
-<<<<<<< HEAD
-const { DEFAULT_PASSWORD } = require('../utils/passwords');
-=======
 const { getRequiredSeedPassword } = require('../utils/seedCredentials');
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 
 /**
  * INSUREARCH database setup / migration script.
@@ -320,25 +316,6 @@ async function createIndexes(client) {
   `);
 }
 
-<<<<<<< HEAD
-async function seedData(client) {
-  const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-  await client.query(
-    `INSERT INTO users (name, email, password_hash, role, avatar, must_change_password)
-     SELECT 'Admin User', 'admin@insurearch.com', $1, 'Admin', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330', TRUE
-     WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'admin@insurearch.com')`,
-    [hashedPassword]
-  );
-
-  // Default agent user
-  const agentHashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-  await client.query(
-    `INSERT INTO users (name, email, password_hash, role, avatar, must_change_password)
-     SELECT 'Agent User', 'agent@insurearch.com', $1, 'Agent', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e', TRUE
-     WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'agent@insurearch.com')`,
-    [agentHashedPassword]
-  );
-=======
 async function seedData(client, env = process.env) {
   // Never create privileged accounts with predictable fallback credentials.
   // Existing accounts do not need seed passwords; new accounts require explicit,
@@ -373,12 +350,11 @@ async function seedData(client, env = process.env) {
 
     const passwordHash = await bcrypt.hash(password, 12);
     await client.query(
-      `INSERT INTO users (name, email, password_hash, role, avatar)
-       VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO users (name, email, password_hash, role, avatar, must_change_password)
+       VALUES ($1, $2, $3, $4, $5, TRUE)`,
       [account.name, account.email, passwordHash, account.role, account.avatar]
     );
   }
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
 
   // Sample branches if none exist
   const branchCount = await client.query('SELECT COUNT(*) FROM branches');

@@ -1,8 +1,9 @@
 // src/services/api.ts
 import axios from 'axios';
+import { getBackendOrigin } from '../lib/backendOrigin';
+import type { DocumentFilters } from '../types';
 
-// ⚠️ Desktop app: backend ALWAYS runs on localhost
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || `${getBackendOrigin()}/api`;
 
 console.log('[api.ts] API_URL =', API_URL);
 
@@ -39,13 +40,9 @@ api.interceptors.response.use(
 export const authApi = {
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
-<<<<<<< HEAD
   changePassword: (data: { currentPassword?: string; newPassword: string }) =>
     api.post('/auth/change-password', data),
-  register: (data: any) => api.post('/auth/register', data),
-=======
   register: (data: object) => api.post('/auth/register', data),
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
   getProfile: () => api.get('/auth/profile'),
 };
 
@@ -54,21 +51,17 @@ export const authApi = {
 export const userApi = {
   getUsers: () => api.get('/users'),
   getUser: (id: string) => api.get(`/users/${id}`),
-<<<<<<< HEAD
-  createUser: (data: any) => api.post('/users', data),
-  updateUser: (id: string, data: any) => api.patch(`/users/${id}`, data),
-  resetPassword: (id: string) => api.patch(`/users/${id}/reset-password`),
-=======
   createUser: (data: object) => api.post('/users', data),
   updateUser: (id: string, data: object) => api.patch(`/users/${id}`, data),
->>>>>>> 9b2a11fc6243168849ef3bdc80d020b09aa41860
+  resetPassword: (id: string) => api.patch(`/users/${id}/reset-password`),
   deleteUser: (id: string) => api.delete(`/users/${id}`),
 };
 
 // ==================== DOCUMENTS ====================
 
 export const documentApi = {
-  getDocuments: (params?: Record<string, unknown>) => api.get('/documents', { params }),
+  getDocuments: (params?: DocumentFilters | Record<string, unknown>) =>
+    api.get('/documents', { params }),
   getDocument: (id: string) => api.get(`/documents/${id}`),
   ingestDocument: (formData: FormData) =>
     api.post('/documents/ingest', formData, {
@@ -131,7 +124,7 @@ export const registrationApi = {
   // Cabinets (called "File Boxes" in some UI)
   getCabinets: (branchId?: string) =>
     api.get(branchId ? `/registration/cabinets?branchId=${branchId}` : '/registration/cabinets'),
-  createCabinet: (data: { number: string; drawers: string[] }) =>
+  createCabinet: (data: { drawerCount: number }) =>
     api.post('/registration/cabinets', data),
 
   // Drawer assignments

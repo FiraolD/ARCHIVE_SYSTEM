@@ -4,202 +4,195 @@ const path = require('path');
 const PDFDocument = require('pdfkit');
 const ExcelJS = require('exceljs');
 
+function validDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
 class ReportsController {
   // ==================== REPORT STATISTICS ====================
   
   static async getReportStats(req, res) {
     try {
-      const { period = '6months' } = req.query;
-      
-      // Calculate date range based on period
-      const now = new Date();
-      let startDate = new Date();
-      
-      switch(period) {
-        case '6months':
-          startDate.setMonth(now.getMonth() - 6);
-          break;
-        case '1year':
-          startDate.setFullYear(now.getFullYear() - 1);
-          break;
-        default:
-          startDate = new Date(0);
+      const { period = '6months', startDate: requestedStart, endDate: requestedEnd } = req.query;
+      const validPeriods = ['7days', '30days', '90days', '6months', '1year', 'all'];
+      if (!validPeriods.includes(period)) {
+        return res.status(400).json({ error: 'Invalid report period' });
       }
 
-      // Get document statistics
+      let startDate = null;
+      let endDate = null;
+      if (requestedStart !== undefined || requestedEnd !== undefined) {
+        if (!validDate(requestedStart) || !validDate(requestedEnd) || requestedStart > requestedEnd) {
+          return res.status(400).json({ error: 'Valid startDate and endDate are required, and startDate must not be after endDate' });
+        }
+        startDate = requestedStart;
+        endDate = requestedEnd;
+      } else if (period !== 'all') {
+        const now = new Date();
+        const start = new Date(now);
+        const days = { '7days': 7, '30days': 30, '90days': 90 };
+        if (days[period]) start.setDate(start.getDate() - days[period] + 1);
+        else if (period === '6months') start.setMonth(start.getMonth() - 6);
+        else start.setFullYear(start.getFullYear() - 1);
+        startDate = start.toISOString().slice(0, 10);
+        endDate = now.toISOString().slice(0, 10);
+      }
+
+      const rangeParams = [startDate, endDate];
       const documentStats = await query(`
-        SELECT 
-          COUNT(*) as total_documents,
-          COUNT(CASE WHEN type = 'Claim File' THEN 1 END) as claim_files,
-          COUNT(CASE WHEN type = 'Policy' THEN 1 END) as policy_documents,
-          COUNT(CASE WHEN type = 'Circular' THEN 1 END) as circulars,
-          COUNT(CASE WHEN type = 'Correspondence' THEN 1 END) as correspondence,
-          COUNT(CASE WHEN type = 'Billing' THEN 1 END) as billing,
-          COUNT(CASE WHEN status = 'Active' THEN 1 END) as active_documents,
-          COUNT(CASE WHEN status = 'Checked-out' THEN 1 END) as checked_out_documents,
-          COUNT(CASE WHEN status = 'Settled Claims' THEN 1 END) as settled_claims,
-          COALESCE(SUM(file_size), 0) as total_storage_bytes
+        SELECT COUNT(*) AS total_documents,
+          COUNT(*) FILTER (WHERE type = 'Claim File') AS claim_files,
+          COUNT(*) FILTER (WHERE type = 'Policy') AS policy_documents,
+          COUNT(*) FILTER (WHERE type = 'Circular') AS circulars,
+          COUNT(*) FILTER (WHERE type = 'Correspondence') AS correspondence,
+          COUNT(*) FILTER (WHERE type = 'Billing') AS billing,
+          COUNT(*) FILTER (WHERE status = 'Active') AS active_documents,
+          COUNT(*) FILTER (WHERE status = 'Checked-out') AS checked_out_documents,
+          COUNT(*) FILTER (WHERE status = 'Settled Claims') AS settled_claims,
+          COUNT(*) FILTER (WHERE status = 'Returned') AS returned_documents
         FROM documents
-      `);
+        WHERE ($1::date IS NULL OR created_at >= $1::date)
+          AND ($2::date IS NULL OR created_at < $2::date + INTERVAL '1 day')
+      `, rangeParams);
 
-      // Get request statistics
+      const storageStats = await query('SELECT COALESCE(SUM(file_size), 0) AS total_storage_bytes FROM documents');
       const requestStats = await query(`
-        SELECT 
-          COUNT(*) as total_requests,
-          COUNT(CASE WHEN status = 'Pending' THEN 1 END) as pending_requests,
-          COUNT(CASE WHEN status = 'Approved' THEN 1 END) as approved_requests,
-          COUNT(CASE WHEN status = 'Returned' THEN 1 END) as returned_requests,
-          COUNT(CASE WHEN status = 'Rejected' THEN 1 END) as rejected_requests,
-          COUNT(CASE WHEN status = 'Overdue' THEN 1 END) as overdue_requests
+        SELECT COUNT(*) AS total_requests,
+          COUNT(*) FILTER (WHERE status = 'Pending') AS pending_requests,
+          COUNT(*) FILTER (WHERE status = 'Approved') AS approved_requests,
+          COUNT(*) FILTER (WHERE status = 'Return Pending') AS return_pending_requests,
+          COUNT(*) FILTER (WHERE status = 'Returned') AS returned_requests,
+          COUNT(*) FILTER (WHERE status = 'Rejected') AS rejected_requests,
+          COUNT(*) FILTER (WHERE status = 'Overdue') AS overdue_requests,
+          ROUND(AVG(actual_return_date - request_date) FILTER (WHERE actual_return_date IS NOT NULL), 1) AS average_return_days
         FROM file_requests
-      `);
+        WHERE ($1::date IS NULL OR created_at >= $1::date)
+          AND ($2::date IS NULL OR created_at < $2::date + INTERVAL '1 day')
+      `, rangeParams);
 
-      // Get branch statistics
-      const branchStats = await query(`
-        SELECT 
-          COUNT(DISTINCT branch_id) as active_branches,
-          COUNT(DISTINCT department_id) as active_departments
-        FROM documents
-      `);
+      const [userStats, branchStats, departmentStats, trends, topBranches, topDepartments, recentActivity] = await Promise.all([
+        query(`SELECT COUNT(*) AS total_users,
+          COUNT(*) FILTER (WHERE role = 'Admin') AS admins,
+          COUNT(*) FILTER (WHERE role = 'File Clerk') AS file_clerks,
+          COUNT(*) FILTER (WHERE role = 'Agent') AS agents,
+          COUNT(*) FILTER (WHERE role = 'Viewer') AS viewers
+        FROM users`),
+        query(`SELECT COUNT(*) AS total_branches FROM branches`),
+        query(`SELECT COUNT(*) AS total_departments FROM departments`),
+        query(`SELECT month, year, month_start, document_count, claim_count, policy_count
+        FROM (
+          SELECT TO_CHAR(DATE_TRUNC('month', created_at), 'Mon') AS month,
+            EXTRACT(YEAR FROM created_at)::int AS year,
+            DATE_TRUNC('month', created_at)::date AS month_start,
+            COUNT(*) AS document_count,
+            COUNT(*) FILTER (WHERE type = 'Claim File') AS claim_count,
+            COUNT(*) FILTER (WHERE type = 'Policy') AS policy_count
+          FROM documents
+          WHERE ($1::date IS NULL OR created_at >= $1::date)
+            AND ($2::date IS NULL OR created_at < $2::date + INTERVAL '1 day')
+          GROUP BY DATE_TRUNC('month', created_at)
+          ORDER BY month_start DESC
+          LIMIT 24
+        ) monthly_window
+        ORDER BY month_start ASC`, rangeParams),
+        query(`SELECT COALESCE(b.name, 'Unassigned') AS name, COUNT(*) AS count
+        FROM documents d LEFT JOIN branches b ON b.id = d.branch_id
+        WHERE ($1::date IS NULL OR d.created_at >= $1::date)
+          AND ($2::date IS NULL OR d.created_at < $2::date + INTERVAL '1 day')
+        GROUP BY b.name ORDER BY count DESC LIMIT 6`, rangeParams),
+        query(`SELECT COALESCE(dept.name, 'Unassigned') AS name, COUNT(*) AS count
+        FROM documents d LEFT JOIN departments dept ON dept.id = d.department_id
+        WHERE ($1::date IS NULL OR d.created_at >= $1::date)
+          AND ($2::date IS NULL OR d.created_at < $2::date + INTERVAL '1 day')
+        GROUP BY dept.name ORDER BY count DESC LIMIT 6`, rangeParams),
+        query(`(SELECT id, title AS description, type AS category, created_at AS occurred_at
+          FROM documents
+          WHERE ($1::date IS NULL OR created_at >= $1::date)
+            AND ($2::date IS NULL OR created_at < $2::date + INTERVAL '1 day'))
+        UNION ALL
+        (SELECT id, COALESCE(requester_name, 'File request') AS description,
+          'Request · ' || status AS category, created_at AS occurred_at
+          FROM file_requests
+          WHERE ($1::date IS NULL OR created_at >= $1::date)
+            AND ($2::date IS NULL OR created_at < $2::date + INTERVAL '1 day'))
+        ORDER BY occurred_at DESC LIMIT 8`, rangeParams),
+      ]);
 
-      // Get user statistics - UPDATED FOR FILE CLERK
-      const userStats = await query(`
-        SELECT 
-          COUNT(*) as total_users,
-          COUNT(CASE WHEN role = 'Admin' THEN 1 END) as admins,
-          COUNT(CASE WHEN role = 'File Clerk' THEN 1 END) as file_clerks,
-          COUNT(CASE WHEN role = 'Agent' THEN 1 END) as agents,
-          COUNT(CASE WHEN role = 'Viewer' THEN 1 END) as viewers
-        FROM users
-      `);
-
-      // Get monthly trends
-      const monthlyTrends = await query(`
-        SELECT 
-          TO_CHAR(created_at, 'Mon') as month,
-          EXTRACT(MONTH FROM created_at) as month_num,
-          EXTRACT(YEAR FROM created_at) as year,
-          COUNT(*) as document_count,
-          COUNT(CASE WHEN type = 'Claim File' THEN 1 END) as claim_count,
-          COUNT(CASE WHEN type = 'Policy' THEN 1 END) as policy_count
-        FROM documents
-        WHERE created_at >= $1
-        GROUP BY TO_CHAR(created_at, 'Mon'), EXTRACT(MONTH FROM created_at), EXTRACT(YEAR FROM created_at)
-        ORDER BY year ASC, month_num ASC
-        LIMIT 12
-      `, [startDate]);
-
-      // Get recent reports
-      const recentReports = await query(`
-        SELECT 
-          id,
-          report_name as name,
-          report_type as type,
-          created_at as generated_at,
-          file_format as format,
-          file_size as size
-        FROM generated_reports
-        ORDER BY created_at DESC
-        LIMIT 10
-      `);
-
-      // Get user count
-      const userCount = await query('SELECT COUNT(*) FROM users');
-
-      // Calculate ingestion rate
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      const sixtyDaysAgo = new Date();
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-
-      const recentIngestion = await query(`
-        SELECT COUNT(*) as count
-        FROM documents
-        WHERE created_at >= $1
-      `, [thirtyDaysAgo]);
-
-      const previousIngestion = await query(`
-        SELECT COUNT(*) as count
-        FROM documents
-        WHERE created_at >= $1 AND created_at < $2
-      `, [sixtyDaysAgo, thirtyDaysAgo]);
-
-      const recentCount = parseInt(recentIngestion.rows[0].count);
-      const previousCount = parseInt(previousIngestion.rows[0].count);
-      
-      let ingestionRate = 0;
-      let ingestionTrend = '0%';
-      
-      if (previousCount > 0) {
-        const change = ((recentCount - previousCount) / previousCount) * 100;
-        ingestionRate = recentCount;
-        ingestionTrend = `${change > 0 ? '+' : ''}${change.toFixed(1)}% from last month`;
-      }
-
-      // Calculate storage
-      const totalBytes = parseInt(documentStats.rows[0].total_storage_bytes);
-      const totalGB = totalBytes / (1024 * 1024 * 1024);
-      const storagePercentage = Math.min(100, (totalGB / 5) * 100); // Assuming 5GB total capacity
+      const documents = documentStats.rows[0];
+      const requests = requestStats.rows[0];
+      const totalBytes = Number(storageStats.rows[0].total_storage_bytes || 0);
+      const totalGB = totalBytes / (1024 ** 3);
+      const capacityGB = 5;
 
       res.json({
+        range: { startDate, endDate, period },
         summary: {
-          totalDocuments: parseInt(documentStats.rows[0].total_documents),
-          totalRequests: parseInt(requestStats.rows[0].total_requests),
-          totalUsers: parseInt(userStats.rows[0].total_users),
-          activeBranches: parseInt(branchStats.rows[0].active_branches),
-          activeDepartments: parseInt(branchStats.rows[0].active_departments)
+          totalDocuments: Number(documents.total_documents),
+          totalRequests: Number(requests.total_requests),
+          totalUsers: Number(userStats.rows[0].total_users),
+          activeBranches: Number(branchStats.rows[0].total_branches),
+          activeDepartments: Number(departmentStats.rows[0].total_departments),
+          requestFulfillmentRate: Number(requests.total_requests)
+            ? Math.round(((Number(requests.approved_requests) + Number(requests.returned_requests)) / Number(requests.total_requests)) * 100)
+            : 0,
+          averageReturnDays: Number(requests.average_return_days || 0),
         },
         documents: {
           byType: {
-            claims: parseInt(documentStats.rows[0].claim_files),
-            policies: parseInt(documentStats.rows[0].policy_documents),
-            circulars: parseInt(documentStats.rows[0].circulars),
-            correspondence: parseInt(documentStats.rows[0].correspondence),
-            billing: parseInt(documentStats.rows[0].billing)
+            claims: Number(documents.claim_files),
+            policies: Number(documents.policy_documents),
+            circulars: Number(documents.circulars),
+            correspondence: Number(documents.correspondence),
+            billing: Number(documents.billing),
           },
           byStatus: {
-            active: parseInt(documentStats.rows[0].active_documents),
-            checkedOut: parseInt(documentStats.rows[0].checked_out_documents),
-            settled: parseInt(documentStats.rows[0].settled_claims)
-          }
+            active: Number(documents.active_documents),
+            checkedOut: Number(documents.checked_out_documents),
+            settled: Number(documents.settled_claims),
+            returned: Number(documents.returned_documents),
+          },
         },
         requests: {
           byStatus: {
-            pending: parseInt(requestStats.rows[0].pending_requests),
-            approved: parseInt(requestStats.rows[0].approved_requests),
-            returned: parseInt(requestStats.rows[0].returned_requests),
-            rejected: parseInt(requestStats.rows[0].rejected_requests),
-            overdue: parseInt(requestStats.rows[0].overdue_requests)
-          }
+            pending: Number(requests.pending_requests),
+            approved: Number(requests.approved_requests),
+            returnPending: Number(requests.return_pending_requests),
+            returned: Number(requests.returned_requests),
+            rejected: Number(requests.rejected_requests),
+            overdue: Number(requests.overdue_requests),
+          },
         },
         users: {
           byRole: {
-            admins: parseInt(userStats.rows[0].admins),
-            file_clerks: parseInt(userStats.rows[0].file_clerks), // FIXED HERE
-            agents: parseInt(userStats.rows[0].agents),
-            viewers: parseInt(userStats.rows[0].viewers)
-          }
+            admins: Number(userStats.rows[0].admins),
+            fileClerks: Number(userStats.rows[0].file_clerks),
+            agents: Number(userStats.rows[0].agents),
+            viewers: Number(userStats.rows[0].viewers),
+          },
         },
         trends: {
-          ingestionRate,
-          ingestionTrend,
-          monthlyTrends: monthlyTrends.rows.map(row => ({
+          monthlyTrends: trends.rows.map(row => ({
             month: row.month,
-            year: row.year,
-            count: parseInt(row.document_count),
-            claimCount: parseInt(row.claim_count),
-            policyCount: parseInt(row.policy_count)
-          }))
+            year: Number(row.year),
+            count: Number(row.document_count),
+            claimCount: Number(row.claim_count),
+            policyCount: Number(row.policy_count),
+          })),
         },
+        breakdowns: {
+          branches: topBranches.rows.map(row => ({ name: row.name, count: Number(row.count) })),
+          departments: topDepartments.rows.map(row => ({ name: row.name, count: Number(row.count) })),
+        },
+        recentActivity: recentActivity.rows,
         storage: {
           used: `${totalGB.toFixed(2)} GB`,
-          total: '5 GB',
-          percentage: storagePercentage,
-          details: `${totalGB.toFixed(2)} GB / 5 GB`
+          total: `${capacityGB} GB`,
+          percentage: Math.min(100, (totalGB / capacityGB) * 100),
+          details: `${totalGB.toFixed(2)} GB / ${capacityGB} GB`,
         },
-        recentReports: recentReports.rows,
-        generatedAt: new Date().toISOString()
+        generatedAt: new Date().toISOString(),
       });
     } catch (error) {
       console.error('Get report stats error:', error);

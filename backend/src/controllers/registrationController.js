@@ -1,4 +1,5 @@
 const { query, withTransaction } = require('../config/database');
+const { createDrawerNumbers, DEFAULT_DRAWER_COUNT } = require('../utils/cabinetDrawers');
 
 // ==================== BRANCH CONTROLLERS ====================
 
@@ -247,17 +248,30 @@ const getCabinets = async (req, res) => {
 };
 const createCabinet = async (req, res) => {
   try {
-    const nextNumberResult = await query(`
-      SELECT COALESCE(MAX(CAST(SUBSTRING(number FROM '^FILEBOX([0-9]+)$') AS INTEGER)), 0) + 1 AS next_number
-      FROM cabinets
-    `);
-    const number = `FILEBOX${nextNumberResult.rows[0].next_number}`;
-    const drawers = Array.from({ length: 12 }, (_, index) => String(index + 1));
+    const requestedCount = req.body.drawerCount
+      ?? (Array.isArray(req.body.drawers) ? req.body.drawers.length : DEFAULT_DRAWER_COUNT);
+    let drawers;
+    try {
+      drawers = createDrawerNumbers(requestedCount);
+    } catch (error) {
+      if (error instanceof RangeError) {
+        return res.status(400).json({ error: error.message });
+      }
+      throw error;
+    }
 
-    const result = await query(
-      'INSERT INTO cabinets (number, drawers, created_by) VALUES ($1, $2, $3) RETURNING *',
-      [number, drawers, req.user.id]
-    );
+    const result = await withTransaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('filebox_sequence'))");
+      const nextNumberResult = await client.query(`
+        SELECT COALESCE(MAX(CAST(SUBSTRING(number FROM '^FILEBOX([0-9]+)$') AS INTEGER)), 0) + 1 AS next_number
+        FROM cabinets
+      `);
+      const number = `FILEBOX${nextNumberResult.rows[0].next_number}`;
+      return client.query(
+        'INSERT INTO cabinets (number, drawers, created_by) VALUES ($1, $2, $3) RETURNING *',
+        [number, drawers, req.user.id]
+      );
+    });
     
     res.status(201).json(result.rows[0]);
   } catch (error) {

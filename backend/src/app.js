@@ -6,6 +6,7 @@ const path = require('path');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+const { isAllowedOrigin } = require('./config/cors');
 
 
 const { query } = require('./config/database');
@@ -33,46 +34,9 @@ const adminRoutes = require('./routes/admin'); // Import the admin routes
 
 const app = express();
 
-// Get local IP for CORS fallback in development
-const getLocalIP = () => {
-  const { networkInterfaces } = require('os');
-  const nets = networkInterfaces();
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      if (net.family === 'IPv4' && !net.internal) {
-        return net.address;
-      }
-    }
-  }
-  return 'localhost';
-};
-
 app.use(compression());
-// CORS configuration - explicit allow-list from environment
-const localIP = getLocalIP();
-const frontendURL = process.env.FRONTEND_URL || `http://${localIP}:3009`;
-
-const allowedOrigins = [
-  ...new Set([
-    frontendURL,
-    'http://localhost:3009',
-    'http://127.0.0.1:3009',
-    'http://10.1.12.21:3009',
-    ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean) : [])
-  ])
-];
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (server-to-server calls, health checks)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: isAllowedOrigin,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -85,8 +49,12 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Rate limiting
-app.set('trust proxy', 1);
+// Only trust a known number of reverse proxies; direct LAN access trusts none.
+const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
+if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0) {
+  throw new Error('TRUST_PROXY_HOPS must be a non-negative integer');
+}
+app.set('trust proxy', trustProxyHops);
 
 // Global limiter: general API traffic
 app.use(rateLimit({
@@ -136,9 +104,10 @@ app.get('/api/health', async (req, res) => {
       database: { connected: true }
     });
   } catch (error) {
+    console.error('Health check failed:', error);
     res.status(500).json({ 
       status: 'ERROR',
-      database: { connected: false, error: error.message }
+      database: { connected: false }
     });
   }
 });

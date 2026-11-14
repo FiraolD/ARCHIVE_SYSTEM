@@ -26,8 +26,8 @@ interface User {
   branch_name?: string;
   created_at?: string;
   last_login?: string;
-  is_active?: boolean | string; // Handled carefully below
-  isActive?: boolean | string;
+  is_active?: boolean | string | number; // Handled carefully below
+  isActive?: boolean | string | number;
 }
 
 interface Department { id: string; name: string; code: string; }
@@ -44,7 +44,7 @@ export const UserManagement: React.FC = () => {
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   // Modal States
@@ -122,20 +122,20 @@ export const UserManagement: React.FC = () => {
         u.username?.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchRole = roleFilter ? u.role === roleFilter : true;
-      const matchBranch = branchFilter ? u.branch_name === branchFilter : true;
+      const matchDepartment = departmentFilter ? u.department_name === departmentFilter : true;
       
       let matchStatus = true;
       if (statusFilter === 'active') matchStatus = isUserActive(u);
       if (statusFilter === 'inactive') matchStatus = !isUserActive(u);
 
-      return matchSearch && matchRole && matchBranch && matchStatus;
+      return matchSearch && matchRole && matchDepartment && matchStatus;
     });
-  }, [users, searchQuery, roleFilter, branchFilter, statusFilter]);
+  }, [users, searchQuery, roleFilter, departmentFilter, statusFilter]);
 
   const clearFilters = () => {
     setSearchQuery('');
     setRoleFilter('');
-    setBranchFilter('');
+    setDepartmentFilter('');
     setStatusFilter('');
   };
 
@@ -145,7 +145,7 @@ export const UserManagement: React.FC = () => {
       {/* Page Header */}
       <PageHeader
         title="Users"
-        subtitle="Manage who can sign in, their role, and which branch they belong to"
+        subtitle="Manage who can sign in, their role, and department"
         icon={UsersIcon}
         actions={
           <PageHeaderButton icon={Plus} variant="solid" onClick={() => setShowAddForm(true)}>
@@ -176,12 +176,14 @@ export const UserManagement: React.FC = () => {
             <option value="Viewer">Viewer</option>
           </select>
           <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-300"
           >
-            <option value="">All branches</option>
-            {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+            <option value="">All departments</option>
+            {departments.map(department => (
+              <option key={department.id} value={department.name}>{department.name}</option>
+            ))}
           </select>
           <select
             value={statusFilter}
@@ -217,7 +219,7 @@ export const UserManagement: React.FC = () => {
                 <th className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">Username</th>
                 <th className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">Email</th>
                 <th className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">Role</th>
-                <th className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">Branch</th>
+                <th className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">Department</th>
                 <th className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">Last Login</th>
                 <th className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">Status</th>
                 <th className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400 text-right">Actions</th>
@@ -254,7 +256,7 @@ export const UserManagement: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-400">
-                        {user.branch_name || 'Awash Head Office'}
+                        {user.department_name || '—'}
                       </td>
                       <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-400">
                         <span title={user.last_login ? new Date(user.last_login).toLocaleString() : undefined}>{user.last_login ? timeAgo(user.last_login) : 'Never'}</span>
@@ -316,7 +318,7 @@ const UserForm: React.FC<{
     name: editing?.name || '',
     email: editing?.email || '',
     role: editing?.role || 'Agent',
-    department: editing?.department_name || '',
+    department: departments.find(department => department.name === editing?.department_name)?.id || '',
     branch: editing?.branch_name || 'Awash Head Office',
     is_active: editing ? (editing.is_active === true || editing.is_active === 'true') : true,
   });
@@ -378,7 +380,7 @@ const UserForm: React.FC<{
         <select value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })}
           className="w-full p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-600 rounded-lg text-sm dark:text-white">
           <option value="">Select Department</option>
-          {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+          {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
       </div>
       {editing && (
