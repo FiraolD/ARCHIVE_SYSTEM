@@ -93,7 +93,7 @@ export interface Document {
   updated_at?: string;
   owner_name?: string;
   file_size?: number;
-  file_path?: string;
+  file_mime?: string;
 }
 
 export interface RetentionPolicy {

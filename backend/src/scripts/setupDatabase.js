@@ -157,6 +157,7 @@ async function createTables(client) {
       owner_id UUID REFERENCES users(id),
       file_size BIGINT,
       file_path TEXT,
+      file_mime VARCHAR(255),
 
       -- Claim File specific fields
       insured_name VARCHAR(255),
@@ -275,6 +276,10 @@ async function upgradeExistingTables(client) {
   const columnUpgrades = [
     { table: 'users', column: 'must_change_password', type: 'BOOLEAN NOT NULL DEFAULT FALSE' },
     { table: 'users', column: 'department_name', type: 'VARCHAR(100)' },
+    { table: 'documents', column: 'owner_id', type: 'UUID REFERENCES users(id)' },
+    { table: 'documents', column: 'file_size', type: 'BIGINT' },
+    { table: 'documents', column: 'file_path', type: 'TEXT' },
+    { table: 'documents', column: 'file_mime', type: 'VARCHAR(255)' },
     { table: 'documents', column: 'product_custom_fields', type: 'JSONB' },
     { table: 'file_requests', column: 'requester_name', type: 'VARCHAR(150)' },
     { table: 'file_requests', column: 'request_reference', type: 'VARCHAR(50)' },
@@ -295,6 +300,34 @@ async function upgradeExistingTables(client) {
   for (const { table, column, type } of columnUpgrades) {
     await client.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${type}`);
   }
+
+  await client.query(`
+    DO $document_file_migration$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name = 'documents'
+           AND column_name = 'file_url'
+      ) THEN
+        EXECUTE 'UPDATE documents
+                    SET file_path = COALESCE(file_path, file_url)
+                  WHERE file_path IS NULL AND file_url IS NOT NULL';
+      END IF;
+
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name = 'documents'
+           AND column_name = 'created_by'
+      ) THEN
+        EXECUTE 'UPDATE documents
+                    SET owner_id = COALESCE(owner_id, created_by)
+                  WHERE owner_id IS NULL AND created_by IS NOT NULL';
+      END IF;
+    END;
+    $document_file_migration$;
+  `);
 }
 
 async function createIndexes(client) {

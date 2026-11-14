@@ -63,6 +63,8 @@ export const documentApi = {
   getDocuments: (params) =>
     api.get('/documents', { params }),
   getDocument: (id) => api.get(`/documents/${id}`),
+  downloadDocumentFile: (id) =>
+    api.get(`/documents/${id}/file`, { responseType: 'blob' }),
   ingestDocument: (formData) =>
     api.post('/documents/ingest', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

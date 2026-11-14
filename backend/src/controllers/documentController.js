@@ -1,6 +1,9 @@
 // src/controllers/documentController.js
+const fs = require('fs');
+const path = require('path');
 const { query, withTransaction } = require('../config/database');
 const notificationService = require('../services/notificationService');
+const { resolveDocumentStoragePath } = require('../middleware/documentUpload');
 const { normalizePagination } = require('../utils/pagination');
 const { buildWhere } = require('../utils/documentFilters');
 
@@ -19,6 +22,23 @@ async function audit(user, action, resource, details) {
   } catch (err) {
     console.error('audit() failed:', err.message);
   }
+}
+
+async function removeUploadedFile(filePath) {
+  if (!filePath) return;
+  try {
+    await fs.promises.unlink(filePath);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.error('Failed to remove uploaded file after ingestion error:', error);
+    }
+  }
+}
+
+function withoutFilePath(document) {
+  const safeDocument = { ...document };
+  delete safeDocument.file_path;
+  return safeDocument;
 }
 
 /**
@@ -161,7 +181,7 @@ exports.getDocuments = async (req, res) => {
     ]);
 
     res.json({
-      documents: dataRes.rows,
+      documents: dataRes.rows.map(withoutFilePath),
       pagination: {
         page,
         limit,
@@ -222,7 +242,7 @@ exports.getDocumentById = async (req, res) => {
     );
 
     res.json({
-      ...docRes.rows[0],
+      ...withoutFilePath(docRes.rows[0]),
       versions: versionsRes.rows,
     });
   } catch (err) {
@@ -232,13 +252,62 @@ exports.getDocumentById = async (req, res) => {
 };
 
 /* ================================================================
+ * GET /api/documents/:id/file
+ * ================================================================ */
+exports.downloadDocumentFile = async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT archive_reference_number, file_path
+         FROM documents
+        WHERE id = $1`,
+      [req.params.id]
+    );
+    if (result.rows.length === 0 || !result.rows[0].file_path) {
+      return res.status(404).json({ error: 'Document file not found' });
+    }
+
+    const document = result.rows[0];
+    const filePath = await resolveDocumentStoragePath(document.file_path);
+    if (!filePath) {
+      return res.status(404).json({ error: 'Document file not found' });
+    }
+
+    const fileName = `${String(document.archive_reference_number || 'document').replace(/[^a-zA-Z0-9._-]/g, '_')}${path.extname(filePath).toLowerCase()}`;
+    await audit(req.user, 'Document Downloaded', req.params.id, `Ref: ${document.archive_reference_number}`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', (error) => {
+      console.error('Document download stream failed:', error);
+      if (!res.headersSent) {
+        res.status(404).json({ error: 'Document file not found' });
+      } else {
+        res.destroy(error);
+      }
+    });
+    stream.pipe(res);
+  } catch (err) {
+    console.error('downloadDocumentFile error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Unable to download document file' });
+    } else {
+      res.destroy(err);
+    }
+  }
+};
+
+/* ================================================================
  * POST /api/documents/ingest
  * ================================================================ */
 exports.ingestDocument = async (req, res) => {
+  let persisted = false;
   try {
     const b = req.body;
 
     if (!b.branchId || !b.type) {
+      await removeUploadedFile(req.file?.path);
       return res.status(400).json({ error: 'branchId and type are required' });
     }
 
@@ -278,8 +347,8 @@ exports.ingestDocument = async (req, res) => {
            sum_insured, estimated_loss, date_of_accident, period_of_policy,
            date_added, received_by, delivered_by, receiver_remark,
            physical_placement, product_id, product_custom_fields,
-           cabinet_id, drawer_number, file_url, file_size, file_mime,
-           created_by, created_at, updated_at
+           cabinet_id, drawer_number, file_path, file_size, file_mime,
+           owner_id, created_at, updated_at
          ) VALUES (
            $1, $2, 'Active', $3, $4,
            $5, $6, $7, $8,
@@ -329,6 +398,7 @@ exports.ingestDocument = async (req, res) => {
 
       return newDoc;
     });
+    persisted = true;
 
     await audit(
       req.user,
@@ -346,8 +416,9 @@ exports.ingestDocument = async (req, res) => {
       );
     }
 
-    res.status(201).json(doc);
+    res.status(201).json(withoutFilePath(doc));
   } catch (err) {
+    if (!persisted) await removeUploadedFile(req.file?.path);
     console.error('ingestDocument error:', err);
     res.status(500).json({ error: err.message });
   }
@@ -513,7 +584,7 @@ exports.updateDocumentStatus = async (req, res) => {
       );
     }
 
-    res.json(update.rows[0]);
+    res.json(withoutFilePath(update.rows[0]));
   } catch (err) {
     console.error('updateDocumentStatus error:', err);
     res.status(500).json({ error: err.message });
@@ -568,7 +639,7 @@ exports.updatePhysicalPlacement = async (req, res) => {
       );
     }
 
-    res.json(update.rows[0]);
+    res.json(withoutFilePath(update.rows[0]));
   } catch (err) {
     console.error('updatePhysicalPlacement error:', err);
     res.status(500).json({ error: err.message });

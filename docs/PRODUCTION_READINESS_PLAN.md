@@ -46,12 +46,12 @@ Harden the existing React/TypeScript + Express + PostgreSQL application in small
 2. Define explicit CORS origins per environment and validate proxy/trust-proxy settings.
 3. Add schema validation for every mutating endpoint and consistent error handling.
 4. Verify route-level authorization, including branch/department scope and ownership checks.
-5. Secure uploads using allowlisted extensions, MIME plus file-signature checks, generated names, storage outside public paths, quotas, and safe download authorization.
+5. [Partially implemented] Persist ingest files using the canonical document columns; clean up files after validation or persistence failures; restrict extension/MIME pairs; verify file signatures; generate storage names; enforce a configurable size limit; store new files outside the static uploads directory; and provide authenticated record-ID downloads with storage-path containment checks. Still required: storage quotas, malware scanning where available, branch/department download authorization, and operational storage monitoring.
 6. Add password policy, login abuse controls, token expiry/revocation strategy, and session security.
 7. Make audit events reliable for security-sensitive state changes and avoid leaking internal errors.
 
 ### Phase 4 — Data integrity and workflow correctness
-1. Add reviewed, versioned migrations rather than relying only on an evolving setup script.
+1. [Partially implemented] The setup upgrade adds canonical document file metadata columns and copies legacy `file_url`/`created_by` values into `file_path`/`owner_id`. Adopt reviewed, versioned migrations rather than relying only on an evolving setup script.
 2. Enforce foreign keys, check constraints, unique constraints, and indexes for actual invariants.
 3. Make archive/box reference allocation concurrency-safe.
 4. Implement state-transition updates with transactional row locks or conditional updates.

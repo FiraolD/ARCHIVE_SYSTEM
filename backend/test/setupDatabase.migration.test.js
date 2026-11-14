@@ -33,6 +33,17 @@ test('database setup is repeatable and preserves existing schema and records', {
 
     await runSetup(seedEnv);
 
+    const documentColumns = await adminPool.query(
+      `SELECT column_name FROM information_schema.columns
+        WHERE table_schema = $1 AND table_name = 'documents'
+          AND column_name IN ('file_path', 'file_size', 'file_mime', 'owner_id')`,
+      [schema],
+    );
+    assert.deepEqual(
+      documentColumns.rows.map(({ column_name }) => column_name).sort(),
+      ['file_mime', 'file_path', 'file_size', 'owner_id'],
+    );
+
     const initial = await adminPool.query(
       `SELECT
         (SELECT count(*)::int FROM "${schema}".users) AS users,
@@ -53,9 +64,21 @@ test('database setup is repeatable and preserves existing schema and records', {
     await adminPool.query(
       `INSERT INTO "${schema}".branches (name, code) VALUES ('Custom Test Branch', 'ITX')`,
     );
+    await adminPool.query(`ALTER TABLE "${schema}".documents ADD COLUMN file_url TEXT`);
+    const legacyDocument = await adminPool.query(
+      `INSERT INTO "${schema}".documents (archive_reference_number, physical_placement, title, type, file_url)
+       VALUES ('AI/ITX/001/26', 'Temporary Location', 'Legacy file', 'Claim File', '/legacy/file.pdf')
+       RETURNING id`,
+    );
 
     // Existing seed accounts must not require seed passwords on later runs.
     await runSetup({});
+
+    const migratedDocument = await adminPool.query(
+      `SELECT file_path FROM "${schema}".documents WHERE id = $1`,
+      [legacyDocument.rows[0].id],
+    );
+    assert.equal(migratedDocument.rows[0].file_path, '/legacy/file.pdf');
 
     const after = await adminPool.query(
       `SELECT
